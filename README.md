@@ -1,6 +1,6 @@
 # Hobbs
 
-*Named after the Hobbs meter, the clock in the airplane that measures flight time in tenths of an hour.*
+*Named after the Hobbs meter, the clock in an airplane that measures flight time in tenths of an hour.*
 
 A logbook and social app for student pilots. Log your flights, track your progress toward the FAA private pilot checkride requirements, see your routes on a map, and share flights with friends.
 
