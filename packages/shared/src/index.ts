@@ -9,3 +9,4 @@ export * from "./schemas/aircraft.js";
 export * from "./schemas/common.js";
 export * from "./schemas/instructors.js";
 export * from "./schemas/flights.js";
+export * from "./schemas/auth.js"

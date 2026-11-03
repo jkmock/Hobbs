@@ -1,12 +1,15 @@
 import Fastify from "fastify";
 import { pool } from "./db.js";
+import cookie from "@fastify/cookie";
 
 import aircraftRoutes from "./routes/aircraft.js";
 import airportRoutes from "./routes/airports.js";
 import instructorRoutes from "./routes/instructors.js";
 import flightRoutes from "./routes/flights.js";
+import authRoutes from "./routes/auth.js";
 
 const app = Fastify({ logger: true });
+app.register(cookie);
 
 app.setErrorHandler((error, request, reply) => {
   const statusCode =
@@ -48,5 +51,6 @@ app.register(airportRoutes);
 app.register(aircraftRoutes);
 app.register(instructorRoutes);
 app.register(flightRoutes);
+app.register(authRoutes);
 
 await app.listen({ port: 3000 });
