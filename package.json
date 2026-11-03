@@ -1,9 +1,9 @@
 {
-  "name": "pilot-log",
+  "name": "hobbs",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @pilot-log/api dev",
+    "dev": "pnpm --filter @hobbs/api dev",
     "db:up": "dbmate up",
     "db:status": "dbmate status",
     "db:rollback": "dbmate rollback",

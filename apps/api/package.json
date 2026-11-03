@@ -1,9 +1,10 @@
 {
-    "name": "@pilot-log/api",
+    "name": "@hobbs/api",
     "dependencies": {
-        "@pilot-log/shared": "workspace:*",
+        "@hobbs/shared": "workspace:*",
         "fastify": "^5.12.5",
-        "pg": "^8.23.1"
+        "pg": "^8.23.1",
+        "zod": "^4.6.7"
     },
     "devDependencies": {
         "@types/node": "^26.6.5",

@@ -1,10 +1,10 @@
 # Database schema design
 
-Design notes for the PilotLog schema (Phase 1). The ERD is in `docs/schema-erd.png`.
+Design notes for the Hobbs schema (Phase 1). The ERD is in `docs/schema-erd.png`.
 
 ## Scope
 
-- A flight is one entry in **one student's** logbook. Instructors keep their own logbooks; PilotLog only records who the instructor was.
+- A flight is one entry in **one student's** logbook. Instructors keep their own logbooks; Hobbs only records who the instructor was.
 - **CFI accounts are out of scope.** Instructors don't log in or sign off flights. Each student keeps their own list of instructors to pick from when logging a flight.
 
 ## Conventions

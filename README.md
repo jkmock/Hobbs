@@ -1,4 +1,6 @@
-# PilotLog
+# Hobbs
+
+*Named after the Hobbs meter, the clock in the airplane that measures flight time in tenths of an hour.*
 
 A logbook and social app for student pilots. Log your flights, track your progress toward the FAA private pilot checkride requirements, see your routes on a map, and share flights with friends.
 
@@ -25,7 +27,7 @@ A logbook and social app for student pilots. Log your flights, track your progre
 ## Project structure
 
 ```
-PilotLog/
+Hobbs/
 ├── apps/
 │   └── api/             # Backend API
 ├── packages/
@@ -59,8 +61,8 @@ PilotLog/
 1. Clone the repo and install dependencies:
 
    ```bash
-   git clone https://github.com/jkmock/PilotLog.git
-   cd PilotLog
+   git clone https://github.com/jkmock/Hobbs.git
+   cd Hobbs
    pnpm install
    ```
 
@@ -140,4 +142,4 @@ To change the schema:
 
 ## Disclaimer
 
-PilotLog is a training and progress-tracking tool. It is not a substitute for your official pilot logbook.
+Hobbs is a training and progress-tracking tool. It is not a substitute for your official pilot logbook.

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { pool } from "../db.js";
 
-import { CreateInstructorSchema, UpdateInstructorSchema, IdParamsSchema } from "@pilot-log/shared";
+import { CreateInstructorSchema, UpdateInstructorSchema, IdParamsSchema } from "@hobbs/shared";
 
 import { getCurrentUserId } from "../auth.js";
 

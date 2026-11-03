@@ -65,3 +65,11 @@ export type CreateFlight = z.infer<typeof CreateFlightSchema>;
 // PUT /flights/:id
 export const UpdateFlightSchema = CreateFlightSchema;
 export type UpdateFlight = z.infer<typeof UpdateFlightSchema>;
+
+// GET /flights?limit=20&cursor=...
+// Query parameters always arrive as strings, so `limit` is coerced to a number.
+export const FlightListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  cursor: z.string().max(200).optional(),
+});
+export type FlightListQuery = z.infer<typeof FlightListQuerySchema>;

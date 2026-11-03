@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { pool } from "../db.js";
 
-import { CreateAircraftSchema, UpdateAircraftSchema, AircraftSearchSchema, IdParamsSchema } from "@pilot-log/shared";
+import { CreateAircraftSchema, UpdateAircraftSchema, AircraftSearchSchema, IdParamsSchema } from "@hobbs/shared";
 
 // Shared column list: every aircraft endpoint returns this exact shape
 const AIRCRAFT_COLUMNS = `
