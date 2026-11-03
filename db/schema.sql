@@ -215,6 +215,32 @@ CREATE TABLE public.schema_migrations (
 
 
 --
+-- Name: sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sessions (
+    token_hash text NOT NULL,
+    user_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    expires_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: user_identities; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_identities (
+    identity_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    provider text NOT NULL,
+    provider_user_id text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT user_identities_provider_check CHECK ((provider = 'google'::text))
+);
+
+
+--
 -- Name: users; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -223,7 +249,7 @@ CREATE TABLE public.users (
     first_name text NOT NULL,
     last_name text NOT NULL,
     email public.citext NOT NULL,
-    password_hash text NOT NULL,
+    password_hash text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -286,6 +312,14 @@ ALTER TABLE ONLY public.flights
 
 
 --
+-- Name: user_identities identity_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_identities
+    ADD CONSTRAINT identity_unique UNIQUE (provider, provider_user_id);
+
+
+--
 -- Name: instructors instructors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -302,11 +336,35 @@ ALTER TABLE ONLY public.instructors
 
 
 --
+-- Name: user_identities one_identity_per_provider; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_identities
+    ADD CONSTRAINT one_identity_per_provider UNIQUE (user_id, provider);
+
+
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.schema_migrations
     ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sessions
+    ADD CONSTRAINT sessions_pkey PRIMARY KEY (token_hash);
+
+
+--
+-- Name: user_identities user_identities_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_identities
+    ADD CONSTRAINT user_identities_pkey PRIMARY KEY (identity_id);
 
 
 --
@@ -365,6 +423,20 @@ CREATE INDEX flights_instructor_idx ON public.flights USING btree (instructor_id
 --
 
 CREATE INDEX flights_user_date_idx ON public.flights USING btree (user_id, flight_date DESC);
+
+
+--
+-- Name: sessions_expires_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX sessions_expires_at_idx ON public.sessions USING btree (expires_at);
+
+
+--
+-- Name: sessions_user_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX sessions_user_id_idx ON public.sessions USING btree (user_id);
 
 
 --
@@ -459,6 +531,22 @@ ALTER TABLE ONLY public.instructors
 
 
 --
+-- Name: sessions sessions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sessions
+    ADD CONSTRAINT sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_identities user_identities_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_identities
+    ADD CONSTRAINT user_identities_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
@@ -471,4 +559,5 @@ ALTER TABLE ONLY public.instructors
 
 INSERT INTO public.schema_migrations (version) VALUES
     ('20261012160800'),
-    ('20261013003421');
+    ('20261013003421'),
+    ('20261103045707');
