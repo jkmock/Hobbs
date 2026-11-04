@@ -4,9 +4,7 @@ import { pool } from "../db.js";
 import { SignupSchema, LoginSchema }from "@hobbs/shared";
 import { hashPassword, verifyPassword } from "../passwords.js";
 import { createSession, deleteSession, validateSession } from "../sessions.js"
-
-
-const SESSION_COOKIE = "session";
+import { SESSION_COOKIE } from "../auth.js";
 
 function cookieOptions(expires: Date) {
   return {
@@ -100,27 +98,31 @@ export default async function authRoutes(app: FastifyInstance) {
   });
 
   app.get("/auth/me", async (request, reply) => {
-    const sessionCookie = request.cookies[SESSION_COOKIE];
-
-    if (!sessionCookie) {
-      return reply.code(401).send({ error: "Invalid Session" });
-    }
-
-    const userId = await validateSession(sessionCookie);
-    
-    if (!userId) {
-      return reply.code(401).send({ error: "Invalid Session" });
+    if (!request.userId) {
+      return reply.code(401).send({ error: "Not logged in" });
     }
 
     const result = await pool.query(
       `SELECT user_id AS id, email, first_name AS "firstName", last_name AS "lastName"
       FROM users
       WHERE user_id = $1`,
-      [userId],
+      [request.userId],
     );
     const user = result.rows[0];
 
     return user
-
   });
+
+  app.delete("/auth/me", async (request, reply) => {
+    if (!request.userId) {
+      return reply.code(401).send({ error: "Not logged in" });
+    }
+
+    await pool.query(`DELETE FROM users WHERE user_id = $1`,
+      [request.userId]
+    )
+
+    reply.clearCookie(SESSION_COOKIE, { path: "/" });
+    return reply.code(204).send();
+  })
 }

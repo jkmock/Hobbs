@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { pool } from "../db.js";
 
 import { CreateAircraftSchema, UpdateAircraftSchema, AircraftSearchSchema, IdParamsSchema } from "@hobbs/shared";
+import { requireAuth } from "../auth.js";
 
 // Shared column list: every aircraft endpoint returns this exact shape
 const AIRCRAFT_COLUMNS = `
@@ -18,6 +19,7 @@ const AIRCRAFT_COLUMNS = `
 `;
 
 export default async function aircraftRoutes(app: FastifyInstance) {
+  app.addHook("preHandler", requireAuth);
   app.get("/aircraft/:id", async (request, reply) => {
     const params = IdParamsSchema.safeParse(request.params);
     if (!params.success) {

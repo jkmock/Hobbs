@@ -7,9 +7,12 @@ import airportRoutes from "./routes/airports.js";
 import instructorRoutes from "./routes/instructors.js";
 import flightRoutes from "./routes/flights.js";
 import authRoutes from "./routes/auth.js";
+import { registerAuth } from "./auth.js";
 
 const app = Fastify({ logger: true });
 app.register(cookie);
+
+registerAuth(app);
 
 app.setErrorHandler((error, request, reply) => {
   const statusCode =

@@ -3,7 +3,7 @@ import { pool } from "../db.js";
 
 import { CreateInstructorSchema, UpdateInstructorSchema, IdParamsSchema } from "@hobbs/shared";
 
-import { getCurrentUserId } from "../auth.js";
+import { getCurrentUserId, requireAuth } from "../auth.js";
 
 // Shared column list: every instructor endpoint returns this exact shape
 const INSTRUCTOR_COLUMNS = `
@@ -14,6 +14,7 @@ const INSTRUCTOR_COLUMNS = `
 `;
 
 export default async function instructorRoutes(app: FastifyInstance) {
+  app.addHook("preHandler", requireAuth);
   app.get("/instructors/:id", async (request, reply) => {
     const params = IdParamsSchema.safeParse(request.params);
     if (!params.success) {
@@ -22,7 +23,7 @@ export default async function instructorRoutes(app: FastifyInstance) {
 
     const result = await pool.query(
       `SELECT ${INSTRUCTOR_COLUMNS} FROM instructors WHERE instructor_id = $1 AND student_id = $2`,
-      [params.data.id, getCurrentUserId()],
+      [params.data.id, getCurrentUserId(request)],
     );
 
     if (result.rows.length === 0) {
@@ -37,7 +38,7 @@ export default async function instructorRoutes(app: FastifyInstance) {
     const result = await pool.query(
       `SELECT ${INSTRUCTOR_COLUMNS}
       FROM instructors WHERE student_id = $1
-      ORDER BY last_name, first_name`, [getCurrentUserId()]);
+      ORDER BY last_name, first_name`, [getCurrentUserId(request)]);
 
     return result.rows;
   });
@@ -58,7 +59,7 @@ export default async function instructorRoutes(app: FastifyInstance) {
           VALUES ($1, $2, $3)
           RETURNING ${INSTRUCTOR_COLUMNS}`,
         [
-          getCurrentUserId(),
+          getCurrentUserId(request),
           body.firstName,
           body.lastName
         ],
@@ -98,7 +99,7 @@ export default async function instructorRoutes(app: FastifyInstance) {
       RETURNING ${INSTRUCTOR_COLUMNS}`,
       [
         params.id,
-        getCurrentUserId(),
+        getCurrentUserId(request),
         body.firstName ?? null,
         body.lastName ?? null,
       ],
@@ -120,7 +121,7 @@ export default async function instructorRoutes(app: FastifyInstance) {
     
     try {
       const result = await pool.query(
-        `DELETE FROM instructors WHERE instructor_id = $1 AND student_id = $2`, [params.data.id, getCurrentUserId()],
+        `DELETE FROM instructors WHERE instructor_id = $1 AND student_id = $2`, [params.data.id, getCurrentUserId(request)],
       );
       if (result.rowCount === 0) {
         return reply.code(404).send({ error: "Instructor not found" });

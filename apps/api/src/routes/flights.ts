@@ -4,7 +4,7 @@ import { pool } from "../db.js";
 import { z } from "zod";
 import { CreateFlightSchema, UpdateFlightSchema, IdParamsSchema, FlightListQuerySchema } from "@hobbs/shared";
 
-import { getCurrentUserId } from "../auth.js";
+import { getCurrentUserId, requireAuth } from "../auth.js";
 
 // A cursor is the sort key of the last flight on a page: date, exact created_at, and id.
 // It's encoded as an opaque base64url string so clients treat it as a token, not data.
@@ -81,6 +81,7 @@ async function loadLegs(flightIds: string[]): Promise<Map<string, Leg[]>> {
 }
 
 export default async function flightRoutes(app: FastifyInstance) {
+  app.addHook("preHandler", requireAuth);
   app.get("/flights/:id", async (request, reply) => {
     const params = IdParamsSchema.safeParse(request.params);
     if (!params.success) {
@@ -89,7 +90,7 @@ export default async function flightRoutes(app: FastifyInstance) {
 
     const result = await pool.query(
       `SELECT ${FLIGHT_COLUMNS} FROM flights WHERE flight_id = $1 AND user_id = $2`,
-      [params.data.id, getCurrentUserId()],
+      [params.data.id, getCurrentUserId(request)],
     );
 
     if (result.rows.length === 0) {
@@ -126,7 +127,7 @@ export default async function flightRoutes(app: FastifyInstance) {
               OR (flight_date, created_at, flight_id) < ($2::date, $3::timestamptz, $4::uuid))
        ORDER BY flight_date DESC, created_at DESC, flight_id DESC
        LIMIT $5`,
-      [getCurrentUserId(), cursor?.d ?? null, cursor?.c ?? null, cursor?.id ?? null, limit + 1],
+      [getCurrentUserId(request), cursor?.d ?? null, cursor?.c ?? null, cursor?.id ?? null, limit + 1],
     );
 
     const hasMore = result.rows.length > limit;
@@ -148,7 +149,7 @@ export default async function flightRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "Invalid request", issues: parsed.error.issues });
     }
     const body = parsed.data;
-    const userId = getCurrentUserId();
+    const userId = getCurrentUserId(request);
 
     // 2. Look up all airports in one query
     const idents = [...new Set(body.legs.flatMap((leg) => [leg.origin, leg.destination]))];
@@ -255,7 +256,7 @@ export default async function flightRoutes(app: FastifyInstance) {
 
     const body = bodyParsed.data;
     const params = paramsParsed.data;
-    const userId = getCurrentUserId();
+    const userId = getCurrentUserId(request);
 
     // 2. Look up all airports in one query
     const idents = [...new Set(body.legs.flatMap((leg) => [leg.origin, leg.destination]))];
@@ -380,7 +381,7 @@ export default async function flightRoutes(app: FastifyInstance) {
     }
 
     const params = paramsParsed.data;
-    const userId = getCurrentUserId();
+    const userId = getCurrentUserId(request);
 
     const flightResult = await pool.query(`DELETE FROM flights WHERE flight_id = $1 AND user_id = $2`,
       [params.id, userId]
