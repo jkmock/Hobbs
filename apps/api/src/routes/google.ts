@@ -11,6 +11,9 @@ if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
   throw new Error("GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and GOOGLE_REDIRECT_URI must be set");
 }
 
+// Where to send the user after signing in (the Vite dev server locally).
+const WEB_URL = process.env.WEB_URL ?? "http://localhost:5173";
+
 const google = new Google(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI);
 
 const STATE_COOKIE = "google_oauth_state";
@@ -143,7 +146,7 @@ export default async function googleRoutes(app: FastifyInstance) {
     const { token, expiresAt } = await createSession(userId);
     reply.setCookie(SESSION_COOKIE, token, cookieOptions(expiresAt));
 
-    // No frontend yet, so show who just signed in. Later this redirects into the app.
-    return reply.redirect("/auth/me");
+    // Back into the web app, now logged in.
+    return reply.redirect(WEB_URL);
   });
 }

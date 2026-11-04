@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --filter @hobbs/api dev",
+    "dev:web": "pnpm --filter @hobbs/web dev",
     "db:up": "dbmate up",
     "db:status": "dbmate status",
     "db:rollback": "dbmate rollback",

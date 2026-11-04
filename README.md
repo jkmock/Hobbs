@@ -29,7 +29,8 @@ A logbook and social app for student pilots. Log your flights, track your progre
 ```
 Hobbs/
 ├── apps/
-│   └── api/             # Backend API
+│   ├── api/             # Backend API (Fastify)
+│   └── web/             # Web app (React + Vite)
 ├── packages/
 │   └── shared/          # Code shared across apps (types, flight-time logic)
 ├── db/
@@ -103,17 +104,24 @@ Hobbs/
 
    The seed is safe to rerun: it inserts new airports and updates changed ones.
 
-6. Start the API in watch mode:
+6. Start the API and the web app (two terminals):
 
    ```bash
    pnpm dev
    ```
+
+   ```bash
+   pnpm dev:web
+   ```
+
+   Open http://localhost:5173. Vite forwards `/api/*` requests to the API on port 3000.
 
 ### Useful commands
 
 | Command | What it does |
 |---|---|
 | `pnpm dev` | Run the API in watch mode |
+| `pnpm dev:web` | Run the web app at localhost:5173 |
 | `pnpm -r typecheck` | Type-check every package |
 | `docker compose up -d` | Start the database in the background |
 | `docker compose down` | Stop the database (data is kept) |
