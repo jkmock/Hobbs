@@ -4,17 +4,7 @@ import { pool } from "../db.js";
 import { SignupSchema, LoginSchema }from "@hobbs/shared";
 import { hashPassword, verifyPassword } from "../passwords.js";
 import { createSession, deleteSession, validateSession } from "../sessions.js"
-import { SESSION_COOKIE } from "../auth.js";
-
-function cookieOptions(expires: Date) {
-  return {
-    httpOnly: true,                                  // JavaScript can't read it (XSS protection)
-    secure: process.env.NODE_ENV === "production",   // HTTPS only in production
-    sameSite: "lax" as const,                        // not sent on cross-site requests (CSRF protection)
-    path: "/",
-    expires,
-  };
-}
+import { SESSION_COOKIE, cookieOptions } from "../auth.js";
 
 export default async function authRoutes(app: FastifyInstance) {
   app.post("/auth/signup", async (request, reply) => {

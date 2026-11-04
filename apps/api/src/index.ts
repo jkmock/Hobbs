@@ -7,6 +7,7 @@ import airportRoutes from "./routes/airports.js";
 import instructorRoutes from "./routes/instructors.js";
 import flightRoutes from "./routes/flights.js";
 import authRoutes from "./routes/auth.js";
+import googleRoutes from "./routes/google.js";
 import { registerAuth } from "./auth.js";
 
 const app = Fastify({ logger: true });
@@ -55,5 +56,6 @@ app.register(aircraftRoutes);
 app.register(instructorRoutes);
 app.register(flightRoutes);
 app.register(authRoutes);
+app.register(googleRoutes);
 
 await app.listen({ port: 3000 });

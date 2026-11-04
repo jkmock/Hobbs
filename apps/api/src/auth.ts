@@ -3,6 +3,17 @@ import { validateSession } from "./sessions.js";
 
 export const SESSION_COOKIE = "session";
 
+// Settings for the session cookie. Used by password login, signup, and Google login.
+export function cookieOptions(expires: Date) {
+  return {
+    httpOnly: true,                                  // JavaScript can't read it (XSS protection)
+    secure: process.env.NODE_ENV === "production",   // HTTPS only in production
+    sameSite: "lax" as const,                        // not sent on cross-site requests (CSRF protection)
+    path: "/",
+    expires,
+  };
+}
+
 // Add a userId field to Fastify's request type, for the whole app
 declare module "fastify" {
   interface FastifyRequest {
