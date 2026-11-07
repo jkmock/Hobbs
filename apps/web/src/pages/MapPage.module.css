@@ -1,0 +1,17 @@
+.mapCard { padding: 6px; }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 16px 0 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.stats > div { padding: 12px 14px; }
+.stats > div + div { border-left: 1px solid var(--line); }
+
+.stats dt { font-size: 12px; color: var(--ink-2); }
+.stats dd { margin: 2px 0 0; font-size: 22px; }
+.stats small { font-size: 13px; color: var(--ink-3); }

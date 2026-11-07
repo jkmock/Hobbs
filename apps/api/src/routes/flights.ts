@@ -50,11 +50,22 @@ const FLIGHT_COLUMNS = `
   night_landings_tg         AS "nightLandingsTg",
   instrument_approaches     AS "instrumentApproaches",
   notes,
+  (SELECT tail_number FROM aircraft a WHERE a.aircraft_id = flights.aircraft_id) AS "tailNumber",
+  (SELECT first_name || ' ' || last_name FROM instructors i
+    WHERE i.instructor_id = flights.instructor_id)                              AS "instructorName",
   created_at                AS "createdAt",
   updated_at                AS "updatedAt"
 `;
 
-type Leg = { order: number; origin: string; destination: string };
+type Point = { lat: number; lon: number };
+type Leg = {
+  order: number;
+  origin: string;
+  destination: string;
+  originPoint: Point;
+  destinationPoint: Point;
+  distanceNm: number; // great-circle distance between the two airports
+};
 
 // Load the legs for several flights in ONE query, grouped by flight id
 async function loadLegs(flightIds: string[]): Promise<Map<string, Leg[]>> {
@@ -62,7 +73,12 @@ async function loadLegs(flightIds: string[]): Promise<Map<string, Leg[]>> {
     `SELECT fl.flight_id,
             fl.leg_order       AS "order",
             origin.airport_ident AS origin,
-            dest.airport_ident   AS destination
+            dest.airport_ident   AS destination,
+            ST_Y(origin.airport_location::geometry) AS origin_lat,
+            ST_X(origin.airport_location::geometry) AS origin_lon,
+            ST_Y(dest.airport_location::geometry)   AS dest_lat,
+            ST_X(dest.airport_location::geometry)   AS dest_lon,
+            round((ST_Distance(origin.airport_location, dest.airport_location) / 1852)::numeric, 1) AS distance_nm
      FROM flight_legs fl
      JOIN airports origin ON origin.airport_id = fl.origin_id
      JOIN airports dest   ON dest.airport_id   = fl.destination_id
@@ -74,7 +90,14 @@ async function loadLegs(flightIds: string[]): Promise<Map<string, Leg[]>> {
   const legsByFlight = new Map<string, Leg[]>();
   for (const row of result.rows) {
     const legs = legsByFlight.get(row.flight_id) ?? [];
-    legs.push({ order: row.order, origin: row.origin, destination: row.destination });
+    legs.push({
+      order: row.order,
+      origin: row.origin,
+      destination: row.destination,
+      originPoint: { lat: row.origin_lat, lon: row.origin_lon },
+      destinationPoint: { lat: row.dest_lat, lon: row.dest_lon },
+      distanceNm: row.distance_nm,
+    });
     legsByFlight.set(row.flight_id, legs);
   }
   return legsByFlight;
@@ -227,7 +250,7 @@ export default async function flightRoutes(app: FastifyInstance) {
 
       return reply.code(201).send({
         ...flight,
-        legs: body.legs.map((leg, index) => ({ order: index + 1, ...leg })),
+        legs: (await loadLegs([flight.id])).get(flight.id) ?? [],
       });
     } catch (err) {
       await client.query("ROLLBACK");
@@ -360,7 +383,7 @@ export default async function flightRoutes(app: FastifyInstance) {
 
       return reply.code(200).send({
         ...flight,
-        legs: body.legs.map((leg, index) => ({ order: index + 1, ...leg })),
+        legs: (await loadLegs([flight.id])).get(flight.id) ?? [],
       });
     } catch (err) {
       await client.query("ROLLBACK");

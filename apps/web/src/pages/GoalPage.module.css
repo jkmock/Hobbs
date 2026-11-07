@@ -1,0 +1,14 @@
+.totalCard { padding: 16px; }
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px;
+}
+
+.footnote {
+  margin-top: 20px;
+  font-size: 12px;
+  color: var(--ink-3);
+}

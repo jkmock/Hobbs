@@ -2,9 +2,13 @@ import { Link } from 'react-router'
 
 export default function NotFoundPage() {
   return (
-    <section>
-      <h1>Page not found</h1>
-      <Link to="/">Back to your logbook</Link>
-    </section>
+    <div className="app page">
+      <div className="empty">
+        <p>That page doesn't exist.</p>
+        <Link to="/" className="btn">
+          Back to Hobbs
+        </Link>
+      </div>
+    </div>
   )
 }

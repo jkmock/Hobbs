@@ -1,35 +1,53 @@
 import { createBrowserRouter } from 'react-router'
-import Layout from './components/Layout'
+import { BareLayout, TabLayout } from './components/AppLayout'
 import RequireAuth from './components/RequireAuth'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
-import LogbookPage from './pages/LogbookPage'
-import FlightFormPage from './pages/FlightFormPage'
-import AircraftPage from './pages/AircraftPage'
-import InstructorsPage from './pages/InstructorsPage'
+import HomePage from './pages/HomePage'
+import FlightsPage from './pages/FlightsPage'
+import MapPage from './pages/MapPage'
+import GoalPage from './pages/GoalPage'
+import ProfilePage from './pages/ProfilePage'
+import FriendsPage from './pages/FriendsPage'
+import SettingsPage from './pages/SettingsPage'
+import LogFlightPage from './pages/log-flight/LogFlightPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 export const router = createBrowserRouter([
+  // Public
   {
-    element: <Layout />,
+    element: <BareLayout />,
     children: [
-      // Public
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
-
-      // Logged in only
-      {
-        element: <RequireAuth />,
-        children: [
-          { path: '/', element: <LogbookPage /> },
-          { path: '/flights/new', element: <FlightFormPage /> },
-          { path: '/flights/:id/edit', element: <FlightFormPage /> },
-          { path: '/aircraft', element: <AircraftPage /> },
-          { path: '/instructors', element: <InstructorsPage /> },
-        ],
-      },
-
-      { path: '*', element: <NotFoundPage /> },
     ],
   },
+
+  // Logged in only
+  {
+    element: <RequireAuth />,
+    children: [
+      {
+        element: <TabLayout />,
+        children: [
+          { path: '/', element: <HomePage /> },
+          { path: '/flights', element: <FlightsPage /> },
+          { path: '/map', element: <MapPage /> },
+          { path: '/goal', element: <GoalPage /> },
+          { path: '/profile', element: <ProfilePage /> },
+        ],
+      },
+      {
+        element: <BareLayout />,
+        children: [
+          { path: '/flights/new', element: <LogFlightPage /> },
+          { path: '/flights/:id/edit', element: <LogFlightPage /> },
+          { path: '/friends', element: <FriendsPage /> },
+          { path: '/settings', element: <SettingsPage /> },
+        ],
+      },
+    ],
+  },
+
+  { path: '*', element: <NotFoundPage /> },
 ])

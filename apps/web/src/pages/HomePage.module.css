@@ -1,0 +1,4 @@
+.given { color: var(--accent); }
+
+.static { cursor: default; color: var(--ink-2); }
+.static:hover { background: transparent; }

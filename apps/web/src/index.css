@@ -1,50 +1,182 @@
-/* Minimal base styles. Restyle freely. */
+/*
+  Design tokens. The palette borrows from VFR sectional charts:
+  warm paper, near-black ink, and sectional magenta as the one accent.
+
+  Each color is light-dark(light value, dark value). Which one applies follows
+  `color-scheme`: the system setting by default, or the choice made in Settings
+  (data-theme on <html>, set in src/lib/theme.ts).
+*/
 :root {
-  --bg: #ffffff;
-  --text: #1a1a1a;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --accent: #2563eb;
   color-scheme: light dark;
-  font-family: system-ui, -apple-system, sans-serif;
-  line-height: 1.5;
+  --paper: light-dark(#f3f1ea, #121315);
+  --surface: light-dark(#fbfaf6, #1a1c1f);
+  --map: light-dark(#e9e5d9, #16181b);
+  --ink: light-dark(#17191c, #ecebe6);
+  --ink-2: light-dark(#5d6168, #a3a6ab);
+  --ink-3: light-dark(#8c9096, #74777c);
+  --line: light-dark(#e1ddd2, #2a2d31);
+  --line-strong: light-dark(#cbc6b8, #3a3d42);
+  --accent: light-dark(#b3245e, #ec6f9e);
+  --accent-soft: light-dark(#f3dce5, #3a1f2a);
+  --good: light-dark(#2e7a4c, #5bbf83);
+  --danger: light-dark(#b4382c, #e5675a);
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --font-sans: 'Archivo Variable', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --tabbar-height: 64px;
+
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #111318;
-    --text: #e5e7eb;
-    --muted: #9ca3af;
-    --border: #2a2e37;
-    --accent: #60a5fa;
-  }
-}
+/* A choice in Settings overrides the system setting. */
+:root[data-theme='light'] { color-scheme: light; }
+:root[data-theme='dark'] { color-scheme: dark; }
 
 * { box-sizing: border-box; }
 
+html { background: var(--paper); }
+
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--paper);
+  min-height: 100dvh;
 }
 
-a { color: var(--accent); }
+a { color: inherit; }
 
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-}
+h1, h2, h3, p { margin: 0; }
 
-.header nav { display: flex; gap: 16px; align-items: center; }
-.header nav a { text-decoration: none; color: var(--muted); }
-.header nav a.active { color: var(--text); font-weight: 600; }
-.brand { font-weight: 700; font-size: 1.2rem; text-decoration: none; color: var(--text); }
+button, input, select, textarea { font: inherit; color: inherit; }
 
-.main {
-  max-width: 800px;
+/* The app is a single phone-width column, centered on larger screens. */
+.app {
+  max-width: 520px;
+  min-height: 100dvh;
   margin: 0 auto;
-  padding: 24px 16px;
+  background: var(--paper);
+}
+
+@media (min-width: 560px) {
+  .app { border-inline: 1px solid var(--line); }
+}
+
+.page { padding: 20px 16px 32px; }
+.page--tabs { padding-bottom: calc(var(--tabbar-height) + 32px + env(safe-area-inset-bottom)); }
+
+.stack { display: flex; flex-direction: column; gap: 12px; }
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.muted { color: var(--ink-2); }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin: 24px 0 10px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 550;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--ink-3); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+
+.btn--primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.btn--primary:hover { border-color: var(--ink); opacity: 0.9; }
+
+.btn--ghost { background: transparent; border-color: transparent; }
+.btn--ghost:hover { background: var(--line); border-color: transparent; }
+
+.btn--danger { color: var(--danger); }
+.btn--block { width: 100%; }
+.btn--lg { height: 48px; font-size: 16px; }
+.btn--sm { height: 30px; padding: 0 10px; font-size: 13px; }
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  color: var(--ink);
+}
+.icon-btn:hover { background: var(--line); }
+
+/* Form fields */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > span { font-size: 13px; font-weight: 550; color: var(--ink-2); }
+
+.input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 15px;
+}
+textarea.input { height: auto; min-height: 88px; padding: 10px 12px; resize: vertical; }
+.input::placeholder { color: var(--ink-3); }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.input:focus-visible { outline-offset: 0; border-color: var(--accent); }
+
+.error-text { color: var(--danger); font-size: 13px; }
+
+.empty {
+  padding: 28px 20px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  text-align: center;
+  color: var(--ink-2);
+}
+.empty .btn { margin-top: 14px; }
+
+.notice {
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 13px;
+  color: var(--ink);
 }

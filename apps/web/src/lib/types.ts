@@ -1,5 +1,5 @@
 // Shapes of the JSON the API sends back. Request bodies use the Zod types
-// from @hobbs/shared instead (e.g. z.infer<typeof CreateFlightSchema>).
+// from @hobbs/shared instead (e.g. CreateFlight).
 
 export type User = {
   id: string
@@ -8,7 +8,70 @@ export type User = {
   lastName: string
 }
 
-// TODO (step 6+): add Flight, Leg, Aircraft, Instructor to match the API's *_COLUMNS.
+export type Point = { lat: number; lon: number }
+
+export type Leg = {
+  order: number
+  origin: string
+  destination: string
+  originPoint: Point
+  destinationPoint: Point
+  distanceNm: number
+}
+
+export type Flight = {
+  id: string
+  aircraftId: string
+  tailNumber: string
+  instructorId: string | null
+  instructorName: string | null
+  flightDate: string // YYYY-MM-DD
+  departureTime: string | null
+  arrivalTime: string | null
+  totalTime: number
+  dualReceivedTime: number
+  soloTime: number
+  picTime: number
+  crossCountryTime: number
+  nightTime: number
+  actualInstrumentTime: number
+  simulatedInstrumentTime: number
+  dayLandingsFs: number
+  dayLandingsTg: number
+  nightLandingsFs: number
+  nightLandingsTg: number
+  instrumentApproaches: number
+  notes: string | null
+  legs: Leg[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type Aircraft = {
+  id: string
+  tailNumber: string
+  make: string
+  model: string
+  year: number | null
+  aircraftClass: 'single_engine_land' | 'multi_engine_land'
+  isTailwheel: boolean
+  isComplex: boolean
+  isHighPerf: boolean
+}
+
+export type Instructor = {
+  id: string
+  firstName: string
+  lastName: string
+}
+
+export type Airport = {
+  ident: string
+  name: string
+  type: string
+  latitude: number
+  longitude: number
+}
 
 export type Page<T> = {
   items: T[]

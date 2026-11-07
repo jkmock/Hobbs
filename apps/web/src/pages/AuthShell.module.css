@@ -1,0 +1,68 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 56px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+/* A Hobbs meter readout: whole hours, then tenths on an inverted drum. */
+.meter {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 6px;
+  background: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 500;
+}
+.meter > span {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 30px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ink) 80%, var(--paper));
+  color: var(--paper);
+}
+.meter > .tenths { background: var(--paper); color: var(--ink); }
+
+.wordmark {
+  margin-top: 10px;
+  font-size: 34px;
+  font-weight: 720;
+  letter-spacing: -0.03em;
+}
+
+.title { font-size: 20px; font-weight: 650; }
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.footer {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--ink-2);
+}

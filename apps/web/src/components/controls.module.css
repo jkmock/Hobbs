@@ -1,0 +1,85 @@
+/* Stepper */
+.stepperRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+}
+.stepperRow + .stepperRow { border-top: 1px solid var(--line); }
+
+.stepperLabel {
+  display: flex;
+  flex-direction: column;
+  font-size: 15px;
+}
+
+.stepper {
+  display: flex;
+  flex-shrink: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface);
+}
+.stepper.invalid { border-color: var(--danger); }
+
+.stepper button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.stepper button:hover { background: var(--line); }
+
+.stepper input {
+  width: 54px;
+  border: 0;
+  border-inline: 1px solid var(--line);
+  background: transparent;
+  text-align: center;
+  font-size: 15px;
+}
+.stepper input:focus-visible { outline: none; background: var(--accent-soft); }
+
+/* Segmented control */
+.segmented {
+  display: flex;
+  padding: 3px;
+  gap: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--line);
+}
+
+.segmented button {
+  flex: 1;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.segmented button[aria-checked='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+}
+
+/* Avatar */
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}

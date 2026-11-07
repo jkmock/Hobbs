@@ -7,7 +7,7 @@ export default function RequireAuth() {
   const { data: user, isPending } = useMe()
   const location = useLocation()
 
-  if (isPending) return <p>Loading…</p>
+  if (isPending) return <p className="app page muted">Loading…</p>
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
 
   return <Outlet />

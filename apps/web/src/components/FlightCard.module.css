@@ -1,0 +1,75 @@
+.card { overflow: hidden; }
+
+.link {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.link:hover { background: color-mix(in srgb, var(--surface) 92%, var(--ink)); }
+
+.meta {
+  display: flex;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.meta strong { color: var(--ink); font-weight: 600; }
+.meta strong + span::before { content: '· '; }
+
+.routeBlock { display: flex; flex-direction: column; gap: 2px; }
+
+.route {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ident {
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* The line between the two airports, with the time on it. */
+.rule {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.rule::before,
+.rule::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line-strong);
+}
+
+.via { font-size: 12px; color: var(--ink-3); text-align: center; }
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.tags li { display: inline-flex; align-items: center; gap: 5px; }
+.tags li:first-child { font-family: var(--font-mono); color: var(--ink); }
+
+.footer {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--line);
+}

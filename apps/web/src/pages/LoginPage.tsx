@@ -1,22 +1,66 @@
-import { Link } from 'react-router'
+import { useState, type FormEvent } from 'react'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
+import { LoginSchema } from '@hobbs/shared'
+import { useLogin, useMe } from '../hooks/useAuth'
+import AuthShell from './AuthShell'
 
-// TODO (step 5): build the login form.
-//  - email + password inputs (controlled with useState)
-//  - validate with LoginSchema.safeParse() from @hobbs/shared before sending
-//  - call useLogin().mutate(...), show its error message on failure
-//  - on success, navigate to location.state?.from ?? '/'
-//  - if useMe() already has a user, <Navigate to="/" />
 export default function LoginPage() {
+  const { data: user } = useMe()
+  const login = useLogin()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
+
+  // Where RequireAuth sent us from, so login returns there.
+  const from = (location.state as { from?: string } | null)?.from ?? '/'
+
+  if (user) return <Navigate to={from} replace />
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    const parsed = LoginSchema.safeParse({ email, password })
+    if (!parsed.success) return setFormError('Enter your email and password.')
+    setFormError(null)
+    login.mutate(parsed.data, { onSuccess: () => navigate(from, { replace: true }) })
+  }
+
   return (
-    <section>
-      <h1>Log in</h1>
-
-      {/* A plain link, not fetch(): the browser must leave the page and go to Google. */}
-      <a href="/api/auth/google">Sign in with Google</a>
-
-      <p>
-        No account? <Link to="/signup">Sign up</Link>
-      </p>
-    </section>
+    <AuthShell
+      title="Log in"
+      footer={
+        <>
+          New to Hobbs? <Link to="/signup">Create an account</Link>
+        </>
+      }
+    >
+      <form className="stack" onSubmit={submit} noValidate>
+        <label className="field">
+          <span>Email</span>
+          <input
+            className="input"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </label>
+        <label className="field">
+          <span>Password</span>
+          <input
+            className="input"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </label>
+        {(formError ?? login.error) && <p className="error-text">{formError ?? login.error?.message}</p>}
+        <button className="btn btn--primary btn--lg btn--block" disabled={login.isPending}>
+          {login.isPending ? 'Logging in…' : 'Log in'}
+        </button>
+      </form>
+    </AuthShell>
   )
 }

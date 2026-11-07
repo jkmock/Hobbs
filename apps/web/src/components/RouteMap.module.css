@@ -1,0 +1,45 @@
+.map {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-sm);
+}
+
+.background { fill: var(--map); }
+
+.grid {
+  stroke: var(--line-strong);
+  stroke-width: 0.5;
+  opacity: 0.7;
+}
+
+.leg {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.pattern {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+
+.airport {
+  fill: var(--surface);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  fill: var(--ink);
+  /* A halo in the map color keeps labels readable over grid lines. */
+  paint-order: stroke;
+  stroke: var(--map);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}

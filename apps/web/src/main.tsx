@@ -2,8 +2,12 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from 'react-router'
-import { router } from './router'
+import '@fontsource-variable/archivo'
+import '@fontsource/ibm-plex-mono/400.css'
+import '@fontsource/ibm-plex-mono/500.css'
+// Global styles before any component, so component CSS modules can override them.
 import './index.css'
+import { router } from './router'
 
 // Caches API responses. staleTime: reuse cached data for 30s before refetching.
 const queryClient = new QueryClient({
