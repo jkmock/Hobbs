@@ -4,9 +4,7 @@
 
 A logbook and social app for student pilots. Log your flights, track your progress toward the FAA private pilot checkride requirements, see your routes on a map, and share flights with friends.
 
-> 🚧 **Early development.** The monorepo, local database, and migrations are set up; the schema, API, and frontend are in progress.
-
-## Planned features
+## Planned Features
 
 - **Logbook:** record flights with aircraft, route, and time by category (dual, solo, cross-country, night, instrument), plus landings
 - **Checkride progress:** track progress toward the 14 CFR 61.109 private pilot requirements
@@ -23,23 +21,6 @@ A logbook and social app for student pilots. Log your flights, track your progre
 | Database | PostgreSQL 17 + PostGIS 3.5 (Docker) |
 | Migrations | dbmate (plain SQL) |
 | Monorepo | pnpm workspaces |
-
-## Project structure
-
-```
-Hobbs/
-├── apps/
-│   ├── api/             # Backend API (Fastify)
-│   └── web/             # Web app (React + Vite)
-├── packages/
-│   └── shared/          # Code shared across apps (types, flight-time logic)
-├── db/
-│   ├── migrations/      # SQL migrations, applied in timestamp order
-│   ├── schema.sql       # Auto-generated snapshot of the current schema
-│   └── seeds/           # Data loading scripts (airports)
-├── docker-compose.yaml  # Local Postgres + PostGIS
-└── .env.example         # Template for local environment variables
-```
 
 ## Getting started
 
