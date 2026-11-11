@@ -1,4 +1,4 @@
-.card { overflow: hidden; }
+.card { position: relative; overflow: hidden; }
 
 /* Navy card: the tokens are redefined so everything inside, map included, turns white-on-navy. */
 .navy {
@@ -13,7 +13,15 @@
   color: var(--ink);
 }
 
-.link {
+.cover {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.body {
+  position: relative;
+  pointer-events: none; /* clicks fall through to the cover link */
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -22,7 +30,17 @@
   text-decoration: none;
 }
 
-a.link:hover { background: color-mix(in srgb, var(--surface) 92%, var(--ink)); }
+.card:has(.cover:hover) { background: color-mix(in srgb, var(--surface) 92%, var(--ink)); }
+
+.mapButton {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: zoom-in;
+  pointer-events: auto;
+}
 
 .meta {
   display: flex;
@@ -90,6 +108,7 @@ a.link:hover { background: color-mix(in srgb, var(--surface) 92%, var(--ink)); }
 .tags li { display: inline-flex; align-items: center; gap: 5px; }
 
 .footer {
+  position: relative;
   display: flex;
   gap: 4px;
   padding: 6px 8px;

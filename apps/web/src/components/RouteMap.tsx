@@ -4,7 +4,7 @@ import styles from './RouteMap.module.css'
 // A small chart of a route, drawn as SVG from the airport coordinates.
 // Phase 6 replaces the full-screen map with MapLibre; cards can keep using this.
 
-type RouteLeg = Pick<Leg, 'origin' | 'destination' | 'originPoint' | 'destinationPoint'>
+type RouteLeg = Pick<Leg, 'origin' | 'destination' | 'originPoint' | 'destinationPoint' | 'track'>
 
 type Props = {
   legs: RouteLeg[]
@@ -25,7 +25,9 @@ export default function RouteMap({ legs, height = 150 }: Props) {
   if (airports.size === 0) return null
 
   // Equirectangular projection: shrink longitude by cos(latitude) so shapes look right.
-  const points = [...airports.values()]
+  // Fit the airports and any FlightAware track, which can wander past them.
+  const trackPoints = legs.flatMap((leg) => (leg.track ?? []).map(([lon, lat]) => ({ lat, lon })))
+  const points = [...airports.values(), ...trackPoints]
   const lats = points.map((p) => p.lat)
   const midLat = (Math.min(...lats) + Math.max(...lats)) / 2
   const k = Math.cos((midLat * Math.PI) / 180)
@@ -69,7 +71,14 @@ export default function RouteMap({ legs, height = 150 }: Props) {
       ))}
 
       {legs.map((leg, i) =>
-        leg.origin === leg.destination ? (
+        leg.track && leg.track.length >= 2 ? (
+          // The path actually flown, from FlightAware.
+          <polyline
+            key={i}
+            points={leg.track.map(([lon, lat]) => `${toX(lon).toFixed(1)},${toY(lat).toFixed(1)}`).join(' ')}
+            className={styles.track}
+          />
+        ) : leg.origin === leg.destination ? (
           // Pattern work or a local flight: a dashed ring around the airport.
           <circle
             key={i}

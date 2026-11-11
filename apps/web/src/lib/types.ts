@@ -17,6 +17,20 @@ export type Leg = {
   originPoint: Point
   destinationPoint: Point
   distanceNm: number
+  faFlightId?: string | null // set when imported from FlightAware
+  track?: [number, number][] | null // [lon, lat] positions FlightAware recorded
+}
+
+// A flight FlightAware saw for a tail number (GET /flightaware/recent).
+// origin/destination are idents we know, or null; the *Code fields are FlightAware's, for display.
+export type RecentFlight = {
+  faFlightId: string
+  origin: string | null
+  destination: string | null
+  originCode: string | null
+  destinationCode: string | null
+  departedAt: string
+  arrivedAt: string | null
 }
 
 export type Flight = {

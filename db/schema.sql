@@ -141,7 +141,22 @@ CREATE TABLE public.flight_legs (
     origin_id uuid NOT NULL,
     destination_id uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    fa_flight_id text,
+    track public.geography(LineString,4326),
     CONSTRAINT flight_legs_leg_order_check CHECK ((leg_order >= 1))
+);
+
+
+--
+-- Name: flightaware_usage; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.flightaware_usage (
+    usage_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    endpoint text NOT NULL,
+    cost_usd numeric(8,4) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT flightaware_usage_cost_usd_check CHECK ((cost_usd >= (0)::numeric))
 );
 
 
@@ -227,6 +242,17 @@ CREATE TABLE public.sessions (
 
 
 --
+-- Name: user_aircraft; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_aircraft (
+    user_id uuid NOT NULL,
+    aircraft_id uuid NOT NULL,
+    added_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: user_identities; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -304,6 +330,14 @@ ALTER TABLE ONLY public.flight_legs
 
 
 --
+-- Name: flightaware_usage flightaware_usage_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flightaware_usage
+    ADD CONSTRAINT flightaware_usage_pkey PRIMARY KEY (usage_id);
+
+
+--
 -- Name: flights flights_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -360,6 +394,14 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: user_aircraft user_aircraft_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_aircraft
+    ADD CONSTRAINT user_aircraft_pkey PRIMARY KEY (user_id, aircraft_id);
+
+
+--
 -- Name: user_identities user_identities_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -402,6 +444,13 @@ CREATE INDEX flight_legs_destination_idx ON public.flight_legs USING btree (dest
 --
 
 CREATE INDEX flight_legs_origin_idx ON public.flight_legs USING btree (origin_id);
+
+
+--
+-- Name: flightaware_usage_created_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX flightaware_usage_created_idx ON public.flightaware_usage USING btree (created_at);
 
 
 --
@@ -539,6 +588,22 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: user_aircraft user_aircraft_aircraft_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_aircraft
+    ADD CONSTRAINT user_aircraft_aircraft_id_fkey FOREIGN KEY (aircraft_id) REFERENCES public.aircraft(aircraft_id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_aircraft user_aircraft_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_aircraft
+    ADD CONSTRAINT user_aircraft_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
 -- Name: user_identities user_identities_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -560,4 +625,7 @@ ALTER TABLE ONLY public.user_identities
 INSERT INTO public.schema_migrations (version) VALUES
     ('20261012160800'),
     ('20261013003421'),
-    ('20261103045707');
+    ('20261103045707'),
+    ('20261111180000'),
+    ('20261111190000'),
+    ('20261111200000');

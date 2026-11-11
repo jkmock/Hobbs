@@ -28,7 +28,7 @@ export const LANDING_FIELDS = [
 export type TimeField = (typeof TIME_FIELDS)[number][0]
 export type LandingField = (typeof LANDING_FIELDS)[number][0]
 
-export type DraftLeg = { origin: string; destination: string }
+export type DraftLeg = { origin: string; destination: string; faFlightId?: string } // faFlightId: imported from FlightAware
 
 export type Draft = {
   aircraftId: string
@@ -77,7 +77,7 @@ export function draftFromFlight(f: Flight): Draft {
     tailNumber: f.tailNumber,
     flightDate: f.flightDate,
     instructorId: f.instructorId ?? '',
-    legs: f.legs.map(({ origin, destination }) => ({ origin, destination })),
+    legs: f.legs.map(({ origin, destination, faFlightId }) => ({ origin, destination, faFlightId: faFlightId ?? undefined })),
     times: mapFields(TIME_FIELDS, (key) => f[key].toFixed(1)),
     landings: mapFields(LANDING_FIELDS, (key) => String(f[key])),
     notes: f.notes ?? '',

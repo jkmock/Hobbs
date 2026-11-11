@@ -1,8 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { pool } from "../db.js";
+import { z } from "zod";
 
 import { CreateAircraftSchema, UpdateAircraftSchema, AircraftSearchSchema, IdParamsSchema } from "@hobbs/shared";
-import { requireAuth } from "../auth.js";
+import { getCurrentUserId, requireAuth } from "../auth.js";
 
 // Shared column list: every aircraft endpoint returns this exact shape
 const AIRCRAFT_COLUMNS = `
@@ -20,6 +21,45 @@ const AIRCRAFT_COLUMNS = `
 
 export default async function aircraftRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
+  // The aircraft this user has added or logged a flight in, most recently used first.
+  app.get("/aircraft/mine", async (request) => {
+    const result = await pool.query(
+      `WITH used AS (
+         SELECT aircraft_id, added_at AS last_used FROM user_aircraft WHERE user_id = $1
+         UNION ALL
+         SELECT aircraft_id, max(flight_date)::timestamptz FROM flights WHERE user_id = $1 GROUP BY aircraft_id
+       )
+       SELECT ${AIRCRAFT_COLUMNS}
+       FROM aircraft
+       JOIN (SELECT aircraft_id, max(last_used) AS last_used FROM used GROUP BY aircraft_id) u USING (aircraft_id)
+       ORDER BY u.last_used DESC, tail_number`,
+      [getCurrentUserId(request)],
+    );
+    return result.rows;
+  });
+
+  // Adds an aircraft that's already in Hobbs (someone created its tail number) to this user's list.
+  app.post("/aircraft/mine", async (request, reply) => {
+    const body = z.object({ aircraftId: z.uuid() }).safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({ error: "Invalid request", issues: body.error.issues });
+    }
+
+    const result = await pool.query(
+      `WITH linked AS (
+         INSERT INTO user_aircraft (user_id, aircraft_id)
+         SELECT $1, aircraft_id FROM aircraft WHERE aircraft_id = $2
+         ON CONFLICT DO NOTHING
+       )
+       SELECT ${AIRCRAFT_COLUMNS} FROM aircraft WHERE aircraft_id = $2`,
+      [getCurrentUserId(request), body.data.aircraftId],
+    );
+    if (result.rows.length === 0) {
+      return reply.code(404).send({ error: "Aircraft not found" });
+    }
+    return result.rows[0];
+  });
+
   app.get("/aircraft/:id", async (request, reply) => {
     const params = IdParamsSchema.safeParse(request.params);
     if (!params.success) {
@@ -84,7 +124,12 @@ export default async function aircraftRoutes(app: FastifyInstance) {
           body.isHighPerf ?? false,
         ],
       );
-      return reply.code(201).send(result.rows[0]);
+      const aircraft = result.rows[0];
+      await pool.query(
+        `INSERT INTO user_aircraft (user_id, aircraft_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [getCurrentUserId(request), aircraft.id],
+      );
+      return reply.code(201).send(aircraft);
     } catch (err) {
       if ((err as { code?: string }).code === "23505") {
         return reply.code(409).send({ error: "Aircraft with this tail number already exists" });

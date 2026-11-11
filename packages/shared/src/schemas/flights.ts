@@ -11,6 +11,8 @@ const AirportIdent = z
 const LegSchema = z.object({
   origin: AirportIdent,
   destination: AirportIdent,
+  // Set when the leg was imported from FlightAware; the API fetches its track on save.
+  faFlightId: z.string().min(1).max(100).optional(),
 });
 
 const FlightBase = z.object({

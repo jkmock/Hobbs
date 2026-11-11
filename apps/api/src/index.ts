@@ -6,6 +6,7 @@ import aircraftRoutes from "./routes/aircraft.js";
 import airportRoutes from "./routes/airports.js";
 import instructorRoutes from "./routes/instructors.js";
 import flightRoutes from "./routes/flights.js";
+import flightAwareRoutes from "./routes/flightaware.js";
 import authRoutes from "./routes/auth.js";
 import googleRoutes from "./routes/google.js";
 import { registerAuth } from "./auth.js";
@@ -55,6 +56,7 @@ app.register(airportRoutes);
 app.register(aircraftRoutes);
 app.register(instructorRoutes);
 app.register(flightRoutes);
+app.register(flightAwareRoutes);
 app.register(authRoutes);
 app.register(googleRoutes);
 

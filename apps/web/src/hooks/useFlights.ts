@@ -52,7 +52,10 @@ export function useSaveFlight(id: string | undefined) {
       id
         ? api<Flight>(`/flights/${id}`, { method: 'PUT', body })
         : api<Flight>('/flights', { method: 'POST', body }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['flights'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['flights'] })
+      queryClient.invalidateQueries({ queryKey: ['aircraft', 'mine'] }) // a newly flown aircraft joins "Your aircraft"
+    },
   })
 }
 

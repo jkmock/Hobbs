@@ -5,6 +5,8 @@ import { z } from "zod";
 import { CreateFlightSchema, UpdateFlightSchema, IdParamsSchema, FlightListQuerySchema } from "@hobbs/shared";
 
 import { getCurrentUserId, requireAuth } from "../auth.js";
+import { flightTrack } from "../flightaware.js";
+import type { PoolClient } from "pg";
 
 // A cursor is the sort key of the last flight on a page: date, exact created_at, and id.
 // It's encoded as an opaque base64url string so clients treat it as a token, not data.
@@ -65,6 +67,8 @@ type Leg = {
   originPoint: Point;
   destinationPoint: Point;
   distanceNm: number; // great-circle distance between the two airports
+  faFlightId: string | null;
+  track: [number, number][] | null; // [lon, lat] positions from FlightAware
 };
 
 // Load the legs for several flights in ONE query, grouped by flight id
@@ -78,7 +82,9 @@ async function loadLegs(flightIds: string[]): Promise<Map<string, Leg[]>> {
             ST_X(origin.airport_location::geometry) AS origin_lon,
             ST_Y(dest.airport_location::geometry)   AS dest_lat,
             ST_X(dest.airport_location::geometry)   AS dest_lon,
-            round((ST_Distance(origin.airport_location, dest.airport_location) / 1852)::numeric, 1) AS distance_nm
+            round((ST_Distance(origin.airport_location, dest.airport_location) / 1852)::numeric, 1) AS distance_nm,
+            fl.fa_flight_id,
+            ST_AsGeoJSON(fl.track)::json -> 'coordinates' AS track
      FROM flight_legs fl
      JOIN airports origin ON origin.airport_id = fl.origin_id
      JOIN airports dest   ON dest.airport_id   = fl.destination_id
@@ -97,10 +103,65 @@ async function loadLegs(flightIds: string[]): Promise<Map<string, Leg[]>> {
       originPoint: { lat: row.origin_lat, lon: row.origin_lon },
       destinationPoint: { lat: row.dest_lat, lon: row.dest_lon },
       distanceNm: row.distance_nm,
+      faFlightId: row.fa_flight_id,
+      track: row.track,
     });
     legsByFlight.set(row.flight_id, legs);
   }
   return legsByFlight;
+}
+
+// Tracks for the legs imported from FlightAware, keyed by FlightAware flight id.
+// A track already stored (say, when an edited flight is saved again) is reused, so each
+// one is paid for once. A failed fetch only means that leg has no track.
+async function tracksFor(
+  legs: { faFlightId?: string | undefined }[],
+  log: { warn: (obj: unknown, msg: string) => void },
+): Promise<Map<string, string>> {
+  const ids = [...new Set(legs.map((l) => l.faFlightId).filter((id): id is string => !!id))];
+  const tracks = new Map<string, string>(); // id -> GeoJSON LineString
+  if (ids.length === 0) return tracks;
+
+  const stored = await pool.query(
+    `SELECT DISTINCT ON (fa_flight_id) fa_flight_id, ST_AsGeoJSON(track) AS geojson
+     FROM flight_legs WHERE fa_flight_id = ANY($1) AND track IS NOT NULL`,
+    [ids],
+  );
+  for (const row of stored.rows) tracks.set(row.fa_flight_id, row.geojson);
+
+  // One at a time, so each fetch's budget check counts the ones before it.
+  for (const id of ids.filter((id) => !tracks.has(id))) {
+    try {
+      const coordinates = await flightTrack(id);
+      if (coordinates.length >= 2) tracks.set(id, JSON.stringify({ type: "LineString", coordinates }));
+    } catch (err) {
+      log.warn({ err, faFlightId: id }, "FlightAware track fetch failed");
+    }
+  }
+  return tracks;
+}
+
+async function insertLegs(
+  client: PoolClient,
+  flightId: string,
+  legs: { origin: string; destination: string; faFlightId?: string | undefined }[],
+  airportIds: Map<string, string>,
+  tracks: Map<string, string>,
+) {
+  for (const [index, leg] of legs.entries()) {
+    await client.query(
+      `INSERT INTO flight_legs (flight_id, leg_order, origin_id, destination_id, fa_flight_id, track)
+       VALUES ($1, $2, $3, $4, $5, ST_GeomFromGeoJSON($6)::geography)`,
+      [
+        flightId,
+        index + 1,
+        airportIds.get(leg.origin),
+        airportIds.get(leg.destination),
+        leg.faFlightId ?? null,
+        (leg.faFlightId && tracks.get(leg.faFlightId)) ?? null,
+      ],
+    );
+  }
 }
 
 export default async function flightRoutes(app: FastifyInstance) {
@@ -199,7 +260,10 @@ export default async function flightRoutes(app: FastifyInstance) {
       }
     }
 
-    // 4. Insert the flight and its legs in one transaction
+    // 4. FlightAware tracks, fetched before the transaction so it isn't held open on the network
+    const tracks = await tracksFor(body.legs, request.log);
+
+    // 5. Insert the flight and its legs in one transaction
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -238,13 +302,7 @@ export default async function flightRoutes(app: FastifyInstance) {
       );
       const flight = flightResult.rows[0];
 
-      for (const [index, leg] of body.legs.entries()) {
-        await client.query(
-          `INSERT INTO flight_legs (flight_id, leg_order, origin_id, destination_id)
-          VALUES ($1, $2, $3, $4)`,
-          [flight.id, index + 1, airportIds.get(leg.origin), airportIds.get(leg.destination)],
-        );
-      }
+      await insertLegs(client, flight.id, body.legs, airportIds, tracks);
 
       await client.query("COMMIT");
 
@@ -306,7 +364,10 @@ export default async function flightRoutes(app: FastifyInstance) {
       }
     }
 
-    // 4. Insert the flight and its legs in one transaction
+    // 4. FlightAware tracks, fetched before the transaction so it isn't held open on the network
+    const tracks = await tracksFor(body.legs, request.log);
+
+    // 5. Insert the flight and its legs in one transaction
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -371,13 +432,7 @@ export default async function flightRoutes(app: FastifyInstance) {
         [flight.id],
       );
 
-      for (const [index, leg] of body.legs.entries()) {
-        await client.query(
-          `INSERT INTO flight_legs (flight_id, leg_order, origin_id, destination_id)
-          VALUES ($1, $2, $3, $4)`,
-          [flight.id, index + 1, airportIds.get(leg.origin), airportIds.get(leg.destination)],
-        );
-      }
+      await insertLegs(client, flight.id, body.legs, airportIds, tracks);
 
       await client.query("COMMIT");
 

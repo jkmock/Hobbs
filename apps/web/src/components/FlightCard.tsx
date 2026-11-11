@@ -1,10 +1,13 @@
-import type { ReactNode } from 'react'
+import { lazy, Suspense, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Gauge, GraduationCap, Moon, Plane, Route, User, type LucideIcon } from 'lucide-react'
 import type { Flight } from '../lib/types'
 import { formatDate, formatHours } from '../lib/format'
 import RouteMap from './RouteMap'
 import styles from './FlightCard.module.css'
+
+// The chart library is large, so it loads only when someone opens a chart.
+const ChartViewer = lazy(() => import('./ChartViewer'))
 
 // The fields a card needs. Real flights and the sample social feed both fit this shape.
 export type FlightSummary = Pick<
@@ -34,8 +37,16 @@ type Props = {
 
 export default function FlightCard({ flight, pilot, to, footer, navy }: Props) {
   const tags = tagsFor(flight)
-  const body = (
-    <>
+  const [chartOpen, setChartOpen] = useState(false)
+  const first = flight.legs[0]
+  const last = flight.legs.at(-1)
+  const routeName = first && last ? `${first.origin} to ${last.destination}` : 'Flight'
+
+  return (
+    <article className={`card ${styles.card} ${navy ? styles.navy : ''}`}>
+      {/* The link covers the whole card; the map button and footer sit above it. */}
+      {to && <Link to={to} className={styles.cover} aria-label={`${routeName}, ${formatDate(flight.flightDate)}`} />}
+      <div className={styles.body}>
       <p className={styles.meta}>
         {pilot && <strong>{pilot}</strong>}
         <span>{formatDate(flight.flightDate)}</span>
@@ -45,7 +56,16 @@ export default function FlightCard({ flight, pilot, to, footer, navy }: Props) {
         </span>
       </p>
       <RouteHeader flight={flight} />
-      <RouteMap legs={flight.legs} />
+      {flight.legs.length > 0 && (
+        <button
+          type="button"
+          className={styles.mapButton}
+          onClick={() => setChartOpen(true)}
+          aria-label={`Open ${routeName} on the sectional chart`}
+        >
+          <RouteMap legs={flight.legs} />
+        </button>
+      )}
       {tags.length > 0 && (
         <ul className={styles.tags}>
           {tags.map(({ icon: Icon, label }) => (
@@ -56,19 +76,13 @@ export default function FlightCard({ flight, pilot, to, footer, navy }: Props) {
           ))}
         </ul>
       )}
-    </>
-  )
-
-  return (
-    <article className={`card ${styles.card} ${navy ? styles.navy : ''}`}>
-      {to ? (
-        <Link to={to} className={styles.link}>
-          {body}
-        </Link>
-      ) : (
-        <div className={styles.link}>{body}</div>
-      )}
+      </div>
       {footer && <div className={styles.footer}>{footer}</div>}
+      {chartOpen && (
+        <Suspense fallback={null}>
+          <ChartViewer legs={flight.legs} title={routeName} onClose={() => setChartOpen(false)} />
+        </Suspense>
+      )}
     </article>
   )
 }

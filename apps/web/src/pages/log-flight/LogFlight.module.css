@@ -96,6 +96,19 @@
 .option .tail { font-family: var(--font-mono); font-size: 15px; width: 84px; }
 .option .detail { flex: 1; color: var(--ink-2); font-size: 14px; }
 
+.found {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.found .tail { font-family: var(--font-mono); font-size: 15px; }
+.found .detail { color: var(--ink-2); font-size: 14px; }
+
+.selectButton { min-width: 96px; } /* same width whether it says Select or Selected */
+
 .selected { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .selected:hover { border-color: var(--ink); }
 
@@ -142,3 +155,33 @@
   font-size: 13px;
   color: var(--ink-2);
 }
+
+/* FlightAware recent flights: each row is one toggle button. */
+.recentFlight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+li:last-child > .recentFlight { border-bottom: 0; }
+
+.checkbox {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 6px;
+  color: #fff;
+}
+.checkbox[data-checked] { background: var(--accent); border-color: var(--accent); }
+
+.recentRoute { display: flex; flex-direction: column; gap: 2px; font-size: 15px; }
+.recentWhen { font-size: 13px; color: var(--ink-2); }

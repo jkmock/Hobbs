@@ -19,6 +19,14 @@
   stroke-linecap: round;
 }
 
+.track {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .pattern {
   fill: none;
   stroke: var(--accent);
