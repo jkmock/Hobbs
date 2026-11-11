@@ -29,9 +29,7 @@ export default function HomePage() {
         }
       />
 
-      <p className="notice">Sample feed. Your friends' real flights show up here once follows are built.</p>
-
-      <div className="stack" style={{ marginTop: 16 }}>
+      <div className="stack">
         {SAMPLE_FEED.map((item) => {
           const hasGiven = given.has(item.id)
           return (
