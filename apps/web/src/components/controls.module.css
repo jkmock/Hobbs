@@ -11,7 +11,7 @@
 .stepperLabel {
   display: flex;
   flex-direction: column;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .stepper {
@@ -33,7 +33,7 @@
   background: transparent;
   cursor: pointer;
 }
-.stepper button:hover { background: var(--line); }
+@media (hover: hover) { .stepper button:hover { background: var(--line); } }
 
 .stepper input {
   width: 54px;

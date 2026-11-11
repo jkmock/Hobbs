@@ -14,14 +14,14 @@
 }
 
 .leg {
-  stroke: var(--accent);
+  stroke: var(--highlight);
   stroke-width: 2;
   stroke-linecap: round;
 }
 
 .track {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--highlight);
   stroke-width: 1.75;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -29,7 +29,7 @@
 
 .pattern {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--highlight);
   stroke-width: 1.5;
   stroke-dasharray: 3 3;
 }

@@ -19,7 +19,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #1b2f57;
+  background: var(--accent-light-mode);
   color: #fff;
 }
 

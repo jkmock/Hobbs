@@ -74,7 +74,8 @@ export default function SectionalMap({ legs, interactive = false }: Props) {
             type: 'line',
             source: 'route',
             layout: { 'line-cap': 'round', 'line-join': 'round' },
-            paint: { 'line-color': '#1b2f57', 'line-width': 3 },
+            // MapLibre can't read CSS variables, so take the stylesheet's accent color.
+            paint: { 'line-color': accentColor(container.current), 'line-width': 3 },
           },
         ],
       },
@@ -170,3 +171,6 @@ function routeGeoJson(legs: RouteLeg[]): GeoJSONSourceSpecification['data'] {
 }
 
 const hasTrack = (leg: RouteLeg) => (leg.track?.length ?? 0) >= 2
+
+// The chart is light in both modes, so the route uses the light-mode accent.
+const accentColor = (el: Element) => getComputedStyle(el).getPropertyValue('--accent-light-mode').trim() || '#1b2f57'

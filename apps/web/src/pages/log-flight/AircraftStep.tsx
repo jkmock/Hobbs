@@ -11,7 +11,7 @@ import {
   useMyAircraft,
 } from '../../hooks/useLookups'
 import type { Aircraft } from '../../lib/types'
-import type { StepProps } from './draft'
+import { emptyLeg, type StepProps } from './draft'
 import RecentFlights from './RecentFlights'
 import styles from './LogFlight.module.css'
 
@@ -39,7 +39,7 @@ export default function AircraftStep({ draft, update, errors }: StepProps) {
   const toggle = (a: { id: string; tailNumber: string }) => {
     if (a.id !== draft.aircraftId) return select(a)
     const kept = draft.legs.filter((leg) => !leg.faFlightId)
-    update({ aircraftId: '', tailNumber: '', legs: kept.length > 0 ? kept : [{ origin: '', destination: '' }] })
+    update({ aircraftId: '', tailNumber: '', legs: kept.length > 0 ? kept : [emptyLeg()] })
   }
 
   return (

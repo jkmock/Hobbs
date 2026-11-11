@@ -2,7 +2,7 @@ import { Check, Radar } from 'lucide-react'
 import { useRecentFlights } from '../../hooks/useLookups'
 import { ApiError } from '../../lib/api'
 import type { RecentFlight } from '../../lib/types'
-import type { DraftLeg, StepProps } from './draft'
+import { emptyLeg, type DraftLeg, type StepProps } from './draft'
 import styles from './LogFlight.module.css'
 
 // "N123AB's Recent Flights": flights FlightAware saw for the chosen aircraft.
@@ -27,13 +27,15 @@ export default function RecentFlights({ draft, update }: Pick<StepProps, 'draft'
     const imported: DraftLeg[] = picked.map((f) => ({
       origin: f.origin ?? '',
       destination: f.destination ?? '',
+      // Takeoff to landing, so a little under the Hobbs time; the pilot can adjust it.
+      time: f.arrivedAt ? airHours(f.departedAt, f.arrivedAt).toFixed(1) : '',
       faFlightId: f.faFlightId,
     }))
 
     const legs = [...kept, ...imported]
     const first = picked[0]
     update({
-      legs: legs.length > 0 ? legs : [{ origin: '', destination: '' }],
+      legs: legs.length > 0 ? legs : [emptyLeg()],
       ...(first && { flightDate: localDate(first.departedAt) }),
     })
   }
@@ -116,11 +118,13 @@ function localDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-CA')
 }
 
+const airHours = (from: string, to: string) =>
+  Math.round(((new Date(to).getTime() - new Date(from).getTime()) / 3_600_000) * 10) / 10
+
 function formatWhen(f: RecentFlight): string {
   const departed = new Date(f.departedAt)
   const date = departed.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
   const time = departed.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
   if (!f.arrivedAt) return `${date} · ${time}`
-  const hours = (new Date(f.arrivedAt).getTime() - departed.getTime()) / 3_600_000
-  return `${date} · ${time} · ${hours.toFixed(1)} h`
+  return `${date} · ${time} · ${airHours(f.departedAt, f.arrivedAt).toFixed(1)} h`
 }

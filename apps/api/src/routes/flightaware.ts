@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { pool } from "../db.js";
+import { resolveAirports } from "../airports.js";
 import { requireAuth } from "../auth.js";
 import { FlightAwareBudgetExceeded, FlightAwareNotConfigured, recentFlights } from "../flightaware.js";
 
@@ -34,20 +34,18 @@ export default async function flightAwareRoutes(app: FastifyInstance) {
       return reply.code(502).send({ error: "Couldn't reach FlightAware" });
     }
 
+    // FlightAware gives ICAO, FAA and other codes; take the first one that's a known airport.
     const codes = [...new Set(flights.flatMap((f) => [...f.originCodes, ...f.destinationCodes]))];
-    const known = await pool.query<{ airport_ident: string }>(
-      `SELECT airport_ident FROM airports WHERE airport_ident = ANY($1)`,
-      [codes],
-    );
-    const ours = new Set(known.rows.map((r) => r.airport_ident));
-    const match = (candidates: string[]) => candidates.find((c) => ours.has(c)) ?? null;
+    const resolved = await resolveAirports(codes);
+    const match = (candidates: string[]) =>
+      candidates.map((c) => resolved.get(c.toUpperCase())?.code).find(Boolean) ?? null;
 
     return flights.map((f) => ({
       faFlightId: f.faFlightId,
       origin: match(f.originCodes),
       destination: match(f.destinationCodes),
-      originCode: f.originCodes[0] ?? null,
-      destinationCode: f.destinationCodes[0] ?? null,
+      originCode: match(f.originCodes) ?? f.originCodes[0] ?? null,
+      destinationCode: match(f.destinationCodes) ?? f.destinationCodes[0] ?? null,
       departedAt: f.departedAt,
       arrivedAt: f.arrivedAt,
     }));

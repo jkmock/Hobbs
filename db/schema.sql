@@ -125,8 +125,10 @@ CREATE TABLE public.airports (
     airport_location public.geography(Point,4326) NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    faa_code text,
     CONSTRAINT airports_airport_ident_check CHECK ((airport_ident = upper(airport_ident))),
-    CONSTRAINT airports_airport_type_check CHECK ((airport_type = ANY (ARRAY['small_airport'::text, 'medium_airport'::text, 'large_airport'::text, 'closed'::text])))
+    CONSTRAINT airports_airport_type_check CHECK ((airport_type = ANY (ARRAY['small_airport'::text, 'medium_airport'::text, 'large_airport'::text, 'closed'::text]))),
+    CONSTRAINT airports_faa_code_check CHECK ((faa_code = upper(faa_code)))
 );
 
 
@@ -143,7 +145,9 @@ CREATE TABLE public.flight_legs (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     fa_flight_id text,
     track public.geography(LineString,4326),
-    CONSTRAINT flight_legs_leg_order_check CHECK ((leg_order >= 1))
+    leg_time numeric(3,1),
+    CONSTRAINT flight_legs_leg_order_check CHECK ((leg_order >= 1)),
+    CONSTRAINT flight_legs_leg_time_check CHECK (((leg_time >= (0)::numeric) AND (leg_time <= (24)::numeric)))
 );
 
 
@@ -426,6 +430,13 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: airports_faa_code_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX airports_faa_code_idx ON public.airports USING btree (faa_code);
+
+
+--
 -- Name: airports_location_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -628,4 +639,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261103045707'),
     ('20261111180000'),
     ('20261111190000'),
-    ('20261111200000');
+    ('20261111200000'),
+    ('20261111210000'),
+    ('20261111220000');

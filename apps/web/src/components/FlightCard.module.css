@@ -1,17 +1,5 @@
 .card { position: relative; overflow: hidden; }
 
-/* Navy card: the tokens are redefined so everything inside, map included, turns white-on-navy. */
-.navy {
-  --surface: #1b2f57;
-  --map: #233a68;
-  --ink: #ffffff;
-  --ink-2: rgb(255 255 255 / 0.78);
-  --ink-3: rgb(255 255 255 / 0.6);
-  --line: rgb(255 255 255 / 0.14);
-  --line-strong: rgb(255 255 255 / 0.28);
-  --accent: #9fc0ff;
-  color: var(--ink);
-}
 
 .cover {
   position: absolute;
@@ -30,7 +18,7 @@
   text-decoration: none;
 }
 
-.card:has(.cover:hover) { background: color-mix(in srgb, var(--surface) 92%, var(--ink)); }
+@media (hover: hover) { .card:has(.cover:hover) { background: color-mix(in srgb, var(--surface) 92%, var(--ink)); } }
 
 .mapButton {
   display: block;

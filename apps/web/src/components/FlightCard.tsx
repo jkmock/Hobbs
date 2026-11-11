@@ -43,7 +43,7 @@ export default function FlightCard({ flight, pilot, to, footer, navy }: Props) {
   const routeName = first && last ? `${first.origin} to ${last.destination}` : 'Flight'
 
   return (
-    <article className={`card ${styles.card} ${navy ? styles.navy : ''}`}>
+    <article className={`card ${styles.card} ${navy ? 'card--navy' : ''}`}>
       {/* The link covers the whole card; the map button and footer sit above it. */}
       {to && <Link to={to} className={styles.cover} aria-label={`${routeName}, ${formatDate(flight.flightDate)}`} />}
       <div className={styles.body}>

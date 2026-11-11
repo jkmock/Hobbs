@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, Trash2, X } from 'lucide-react'
 import { CreateFlightSchema } from '@hobbs/shared'
 import { useDeleteFlight, useFlight, useSaveFlight } from '../../hooks/useFlights'
-import { draftFromFlight, emptyDraft, friendlyMessage, STEPS, toInput, type Draft } from './draft'
+import { applyPatch, draftFromFlight, emptyDraft, friendlyMessage, STEPS, toInput, type Draft } from './draft'
 import AircraftStep from './AircraftStep'
 import RouteStep from './RouteStep'
 import TimesStep from './TimesStep'
@@ -32,7 +32,7 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
   const [step, setStep] = useState(0)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const update = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }))
+  const update = (patch: Partial<Draft>) => setDraft((d) => applyPatch(d, patch))
   const isLast = step === STEPS.length - 1
 
   // Validates the whole flight, keeps only errors from the given steps,

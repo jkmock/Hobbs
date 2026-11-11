@@ -6,6 +6,7 @@ import { CreateFlightSchema, UpdateFlightSchema, IdParamsSchema, FlightListQuery
 
 import { getCurrentUserId, requireAuth } from "../auth.js";
 import { flightTrack } from "../flightaware.js";
+import { DISPLAY_CODE, resolveAirports } from "../airports.js";
 import type { PoolClient } from "pg";
 
 // A cursor is the sort key of the last flight on a page: date, exact created_at, and id.
@@ -69,6 +70,7 @@ type Leg = {
   distanceNm: number; // great-circle distance between the two airports
   faFlightId: string | null;
   track: [number, number][] | null; // [lon, lat] positions from FlightAware
+  time: number | null; // flight time for this leg, in hours
 };
 
 // Load the legs for several flights in ONE query, grouped by flight id
@@ -76,14 +78,15 @@ async function loadLegs(flightIds: string[]): Promise<Map<string, Leg[]>> {
   const result = await pool.query(
     `SELECT fl.flight_id,
             fl.leg_order       AS "order",
-            origin.airport_ident AS origin,
-            dest.airport_ident   AS destination,
+            ${DISPLAY_CODE("origin")} AS origin, -- RDU rather than KRDU, as pilots write it
+            ${DISPLAY_CODE("dest")}   AS destination,
             ST_Y(origin.airport_location::geometry) AS origin_lat,
             ST_X(origin.airport_location::geometry) AS origin_lon,
             ST_Y(dest.airport_location::geometry)   AS dest_lat,
             ST_X(dest.airport_location::geometry)   AS dest_lon,
             round((ST_Distance(origin.airport_location, dest.airport_location) / 1852)::numeric, 1) AS distance_nm,
             fl.fa_flight_id,
+            fl.leg_time,
             ST_AsGeoJSON(fl.track)::json -> 'coordinates' AS track
      FROM flight_legs fl
      JOIN airports origin ON origin.airport_id = fl.origin_id
@@ -105,6 +108,7 @@ async function loadLegs(flightIds: string[]): Promise<Map<string, Leg[]>> {
       distanceNm: row.distance_nm,
       faFlightId: row.fa_flight_id,
       track: row.track,
+      time: row.leg_time,
     });
     legsByFlight.set(row.flight_id, legs);
   }
@@ -144,14 +148,14 @@ async function tracksFor(
 async function insertLegs(
   client: PoolClient,
   flightId: string,
-  legs: { origin: string; destination: string; faFlightId?: string | undefined }[],
+  legs: { origin: string; destination: string; faFlightId?: string | undefined; time?: number | undefined }[],
   airportIds: Map<string, string>,
   tracks: Map<string, string>,
 ) {
   for (const [index, leg] of legs.entries()) {
     await client.query(
-      `INSERT INTO flight_legs (flight_id, leg_order, origin_id, destination_id, fa_flight_id, track)
-       VALUES ($1, $2, $3, $4, $5, ST_GeomFromGeoJSON($6)::geography)`,
+      `INSERT INTO flight_legs (flight_id, leg_order, origin_id, destination_id, fa_flight_id, track, leg_time)
+       VALUES ($1, $2, $3, $4, $5, ST_GeomFromGeoJSON($6)::geography, $7)`,
       [
         flightId,
         index + 1,
@@ -159,6 +163,7 @@ async function insertLegs(
         airportIds.get(leg.destination),
         leg.faFlightId ?? null,
         (leg.faFlightId && tracks.get(leg.faFlightId)) ?? null,
+        leg.time ?? null,
       ],
     );
   }
@@ -235,16 +240,11 @@ export default async function flightRoutes(app: FastifyInstance) {
     const body = parsed.data;
     const userId = getCurrentUserId(request);
 
-    // 2. Look up all airports in one query
-    const idents = [...new Set(body.legs.flatMap((leg) => [leg.origin, leg.destination]))];
-    const airportResult = await pool.query(
-      `SELECT airport_ident, airport_id FROM airports WHERE airport_ident = ANY($1)`,
-      [idents],
-    );
-    const airportIds = new Map<string, string>(
-      airportResult.rows.map((row) => [row.airport_ident, row.airport_id]),
-    );
-    const unknown = idents.filter((ident) => !airportIds.has(ident));
+    // 2. Look up all airports in one query. Pilots may type RDU or KRDU; see resolveAirports.
+    const codes = [...new Set(body.legs.flatMap((leg) => [leg.origin, leg.destination]))];
+    const resolved = await resolveAirports(codes);
+    const airportIds = new Map<string, string>([...resolved].map(([code, airport]) => [code, airport.id]));
+    const unknown = codes.filter((code) => !airportIds.has(code));
     if (unknown.length > 0) {
       return reply.code(400).send({ error: `Unknown airport(s): ${unknown.join(", ")}` });
     }
@@ -339,16 +339,11 @@ export default async function flightRoutes(app: FastifyInstance) {
     const params = paramsParsed.data;
     const userId = getCurrentUserId(request);
 
-    // 2. Look up all airports in one query
-    const idents = [...new Set(body.legs.flatMap((leg) => [leg.origin, leg.destination]))];
-    const airportResult = await pool.query(
-      `SELECT airport_ident, airport_id FROM airports WHERE airport_ident = ANY($1)`,
-      [idents],
-    );
-    const airportIds = new Map<string, string>(
-      airportResult.rows.map((row) => [row.airport_ident, row.airport_id]),
-    );
-    const unknown = idents.filter((ident) => !airportIds.has(ident));
+    // 2. Look up all airports in one query. Pilots may type RDU or KRDU; see resolveAirports.
+    const codes = [...new Set(body.legs.flatMap((leg) => [leg.origin, leg.destination]))];
+    const resolved = await resolveAirports(codes);
+    const airportIds = new Map<string, string>([...resolved].map(([code, airport]) => [code, airport.id]));
+    const unknown = codes.filter((code) => !airportIds.has(code));
     if (unknown.length > 0) {
       return reply.code(400).send({ error: `Unknown airport(s): ${unknown.join(", ")}` });
     }

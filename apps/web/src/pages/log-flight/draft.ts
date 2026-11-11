@@ -28,7 +28,8 @@ export const LANDING_FIELDS = [
 export type TimeField = (typeof TIME_FIELDS)[number][0]
 export type LandingField = (typeof LANDING_FIELDS)[number][0]
 
-export type DraftLeg = { origin: string; destination: string; faFlightId?: string } // faFlightId: imported from FlightAware
+// time: flight time in hours, as typed ('' = not entered). faFlightId: imported from FlightAware.
+export type DraftLeg = { origin: string; destination: string; time: string; faFlightId?: string }
 
 export type Draft = {
   aircraftId: string
@@ -37,6 +38,7 @@ export type Draft = {
   instructorId: string // '' = no instructor
   legs: DraftLeg[]
   times: Record<TimeField, string>
+  totalFromLegs: boolean // total time follows the sum of the leg times until the pilot changes it
   landings: Record<LandingField, string>
   notes: string
 }
@@ -58,14 +60,38 @@ export const STEPS = [
 const mapFields = <K extends string>(fields: readonly (readonly [K, string])[], value: (key: K) => string) =>
   Object.fromEntries(fields.map(([key]) => [key, value(key)])) as Record<K, string>
 
+export const emptyLeg = (patch: Partial<DraftLeg> = {}): DraftLeg => ({ origin: '', destination: '', time: '', ...patch })
+
+// Sum of leg times, rounded to tenths (floating point would give 2.4000000000000004).
+export function legTotal(times: number[]): number {
+  return Math.round(times.reduce((sum, t) => sum + t, 0) * 10) / 10
+}
+
+export const draftLegTotal = (legs: DraftLeg[]) => legTotal(legs.map((l) => Number(l.time) || 0))
+
+// Every change to the draft goes through here. While totalFromLegs is on, editing leg times
+// updates the total; typing a different total by hand turns it off.
+export function applyPatch(d: Draft, patch: Partial<Draft>): Draft {
+  const next = { ...d, ...patch }
+  const sum = draftLegTotal(next.legs)
+
+  if (patch.times && patch.times.totalTime !== d.times.totalTime) {
+    next.totalFromLegs = Number(patch.times.totalTime) === sum && sum > 0
+  } else if (patch.legs && next.totalFromLegs && sum > 0) {
+    next.times = { ...next.times, totalTime: sum.toFixed(1) }
+  }
+  return next
+}
+
 export function emptyDraft(): Draft {
   return {
     aircraftId: '',
     tailNumber: '',
     flightDate: todayIso(),
     instructorId: '',
-    legs: [{ origin: '', destination: '' }],
+    legs: [emptyLeg()],
     times: mapFields(TIME_FIELDS, () => '0.0'),
+    totalFromLegs: true,
     landings: mapFields(LANDING_FIELDS, () => '0'),
     notes: '',
   }
@@ -77,8 +103,15 @@ export function draftFromFlight(f: Flight): Draft {
     tailNumber: f.tailNumber,
     flightDate: f.flightDate,
     instructorId: f.instructorId ?? '',
-    legs: f.legs.map(({ origin, destination, faFlightId }) => ({ origin, destination, faFlightId: faFlightId ?? undefined })),
+    legs: f.legs.map(({ origin, destination, faFlightId, time }) => ({
+      origin,
+      destination,
+      time: time != null ? time.toFixed(1) : '',
+      faFlightId: faFlightId ?? undefined,
+    })),
     times: mapFields(TIME_FIELDS, (key) => f[key].toFixed(1)),
+    // Keep following the legs only if the saved total still matches them.
+    totalFromLegs: f.legs.every((l) => l.time != null) && legTotal(f.legs.map((l) => l.time ?? 0)) === f.totalTime,
     landings: mapFields(LANDING_FIELDS, (key) => String(f[key])),
     notes: f.notes ?? '',
   }
@@ -91,7 +124,12 @@ export function toInput(d: Draft): unknown {
     aircraftId: d.aircraftId,
     flightDate: d.flightDate,
     instructorId: d.instructorId || undefined,
-    legs: d.legs,
+    legs: d.legs.map((leg) => ({
+      origin: leg.origin,
+      destination: leg.destination,
+      faFlightId: leg.faFlightId,
+      time: number(leg.time),
+    })),
     ...Object.fromEntries(TIME_FIELDS.map(([key]) => [key, number(d.times[key])])),
     ...Object.fromEntries(LANDING_FIELDS.map(([key]) => [key, number(d.landings[key])])),
     notes: d.notes.trim() || undefined,
@@ -104,6 +142,7 @@ export function friendlyMessage(issue: { path: PropertyKey[]; code: string; mess
   if (field === 'aircraftId') return 'Choose an aircraft'
   if (field === 'flightDate') return 'Enter the date of the flight'
   if (field === 'totalTime' && issue.code === 'too_small') return 'Enter the total time'
+  if (field === 'legs' && legField === 'time') return issue.code === 'invalid_type' ? 'Enter a number' : 'Use tenths of an hour, like 1.3'
   if (field === 'legs' && legField) return 'Enter an airport code'
   if (issue.code === 'invalid_type') return 'Enter a number'
   if (issue.code === 'not_multiple_of') return 'Use tenths of an hour, like 1.3'

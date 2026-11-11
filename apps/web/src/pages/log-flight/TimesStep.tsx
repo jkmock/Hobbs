@@ -1,5 +1,5 @@
 import { Segmented, Stepper } from '../../components/controls'
-import { TIME_FIELDS, useLegDistances, type StepProps, type TimeField } from './draft'
+import { draftLegTotal, TIME_FIELDS, useLegDistances, type StepProps, type TimeField } from './draft'
 import styles from './LogFlight.module.css'
 
 type FlightType = 'dual' | 'solo'
@@ -18,9 +18,19 @@ export default function TimesStep({ draft, update, errors }: StepProps) {
     update({
       times:
         type === 'dual'
-          ? { ...t, dualReceivedTime: t.totalTime, soloTime: '0.0' }
+          ? {
+              ...t,
+              dualReceivedTime: t.totalTime,
+              soloTime: '0.0',
+              // Dual never adds PIC. It only takes back PIC the Solo shortcut filled in
+              // (PIC equal to solo); PIC entered by hand is left alone.
+              picTime: t.picTime === t.soloTime ? '0.0' : t.picTime,
+            }
           : { ...t, soloTime: t.totalTime, picTime: t.totalTime, dualReceivedTime: '0.0' },
     })
+
+  const legSum = draftLegTotal(draft.legs)
+  const legsWithTime = draft.legs.filter((l) => Number(l.time) > 0).length
 
   const isCrossCountryRoute = distances.some((nm) => nm != null && nm > 50)
   const suggestCrossCountry = isCrossCountryRoute && Number(t.crossCountryTime) === 0 && Number(t.totalTime) > 0
@@ -34,8 +44,27 @@ export default function TimesStep({ draft, update, errors }: StepProps) {
           onChange={(v) => setTime('totalTime', v)}
           error={errors.totalTime}
         />
+        {legSum > 0 &&
+          (draft.totalFromLegs ? (
+            <p className={styles.totalSource}>
+              Sum of {legsWithTime === 1 ? 'your leg' : `your ${legsWithTime} legs`}. Change it if your Hobbs time differs.
+            </p>
+          ) : (
+            Number(t.totalTime) !== legSum && (
+              <p className={styles.totalSource}>
+                Your legs add up to <span className="mono">{legSum.toFixed(1)}</span>.{' '}
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  onClick={() => update({ times: { ...t, totalTime: legSum.toFixed(1) } })}
+                >
+                  Use leg total
+                </button>
+              </p>
+            )
+          ))}
         <div className="field">
-          <span className="muted" style={{ fontSize: 13 }}>
+          <span className="muted" style={{ fontSize: 14.5 }}>
             Fill from total
           </span>
           <Segmented<FlightType>

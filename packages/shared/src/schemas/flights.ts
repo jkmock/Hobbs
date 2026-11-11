@@ -13,6 +13,7 @@ const LegSchema = z.object({
   destination: AirportIdent,
   // Set when the leg was imported from FlightAware; the API fetches its track on save.
   faFlightId: z.string().min(1).max(100).optional(),
+  time: Tenths.optional(), // flight time for this leg, in hours
 });
 
 const FlightBase = z.object({

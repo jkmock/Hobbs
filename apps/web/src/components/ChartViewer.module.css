@@ -15,9 +15,9 @@
   height: 44px;
   border: 0;
   border-radius: 50%;
-  background: #1b2f57;
+  background: var(--accent-light-mode);
   color: #fff;
   box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
   cursor: pointer;
 }
-.close:hover { background: #24407a; }
+@media (hover: hover) { .close:hover { background: color-mix(in srgb, var(--accent-light-mode) 85%, white); } }

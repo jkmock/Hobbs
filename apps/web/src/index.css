@@ -2,6 +2,12 @@
   Design tokens. The palette borrows from VFR sectional charts:
   warm paper, near-black ink, and dark navy as the one accent.
 
+  The accent is set in two variables, one per mode: --accent-light-mode (the dark
+  navy of the Social cards) and --accent-dark-mode (a lighter blue that reads on the
+  dark background). --accent picks between them; tints (--accent-soft, --highlight)
+  are mixed from it. Things that always sit on a light or navy surface whatever the
+  mode (the sectional chart, the navy cards) use --accent-light-mode directly.
+
   Each color is light-dark(light value, dark value). Which one applies follows
   `color-scheme`: the system setting by default, or the choice made in Settings
   (data-theme on <html>, set in src/lib/theme.ts).
@@ -16,8 +22,14 @@
   --ink-3: light-dark(#8c9096, #74777c);
   --line: light-dark(#e1ddd2, #2a2d31);
   --line-strong: light-dark(#cbc6b8, #3a3d42);
-  --accent: light-dark(#1b2f57, #8aa8e0);
-  --accent-soft: light-dark(#dfe5f0, #1c2638);
+  --accent-light-mode: #0f1f40;
+  --accent-dark-mode: #8aa8e0;
+  --accent: light-dark(var(--accent-light-mode), var(--accent-dark-mode));
+  /* Text and icons on an accent fill: white on the navy, dark on the light dark-mode blue. */
+  --on-accent: light-dark(#ffffff, #10141c);
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  /* Accent-colored marks that sit on an accent background (a navy card) use this lighter tint. */
+  --highlight: var(--accent);
   --good: light-dark(#2e7a4c, #5bbf83);
   --danger: light-dark(#b4382c, #e5675a);
 
@@ -84,6 +96,30 @@ button, input, select, textarea { font: inherit; color: inherit; }
   border-radius: var(--radius);
 }
 
+/* Navy card (feed cards, flight legs). The tokens are redefined so everything inside,
+   inputs and maps included, turns white-on-navy, in both light and dark mode. */
+.card--navy {
+  --surface: var(--accent-light-mode);
+  --map: color-mix(in srgb, var(--accent-light-mode) 88%, white);
+  --ink: #ffffff;
+  --ink-2: rgb(255 255 255 / 0.78);
+  --ink-3: rgb(255 255 255 / 0.6);
+  --line: rgb(255 255 255 / 0.14);
+  --line-strong: rgb(255 255 255 / 0.28);
+  --highlight: color-mix(in srgb, var(--accent-light-mode) 35%, white);
+  --accent: var(--highlight); /* focus rings and accent text, visible on navy */
+  color: var(--ink);
+  border-color: transparent;
+}
+
+/* Inputs on a navy card are light grey boxes with dark text, in both modes. */
+.card--navy .input {
+  background: #e4e6ea;
+  border-color: #e4e6ea;
+  color: #17191c;
+}
+.card--navy .input::placeholder { color: #7d8189; }
+
 .section-title {
   font-size: 13px;
   font-weight: 600;
@@ -108,18 +144,20 @@ button, input, select, textarea { font: inherit; color: inherit; }
   cursor: pointer;
   white-space: nowrap;
 }
-.btn:hover { border-color: var(--ink-3); }
+/* Hover styles only where there's a real pointer: on phones a tapped button keeps its
+   hover style until something else is tapped, so it looks stuck selected. */
+@media (hover: hover) { .btn:hover { border-color: var(--ink-3); } }
 .btn:disabled { opacity: 0.5; cursor: default; }
 
 .btn--primary {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--paper);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
-.btn--primary:hover { border-color: var(--ink); opacity: 0.9; }
+@media (hover: hover) { .btn--primary:hover { border-color: var(--accent); opacity: 0.9; } }
 
 .btn--ghost { background: transparent; border-color: transparent; }
-.btn--ghost:hover { background: var(--line); border-color: transparent; }
+@media (hover: hover) { .btn--ghost:hover { background: var(--line); border-color: transparent; } }
 
 .btn--danger { color: var(--danger); }
 .btn--block { width: 100%; }
@@ -137,11 +175,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
   cursor: pointer;
   color: var(--ink);
 }
-.icon-btn:hover { background: var(--line); }
+@media (hover: hover) { .icon-btn:hover { background: var(--line); } }
 
 /* Form fields */
 .field { display: flex; flex-direction: column; gap: 6px; }
-.field > span { font-size: 13px; font-weight: 550; color: var(--ink-2); }
+.field > span { font-size: 14.5px; font-weight: 550; color: var(--ink-2); }
 
 .input {
   width: 100%;

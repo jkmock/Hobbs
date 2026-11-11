@@ -19,6 +19,7 @@ export type Leg = {
   distanceNm: number
   faFlightId?: string | null // set when imported from FlightAware
   track?: [number, number][] | null // [lon, lat] positions FlightAware recorded
+  time?: number | null // flight time for this leg, in hours
 }
 
 // A flight FlightAware saw for a tail number (GET /flightaware/recent).
