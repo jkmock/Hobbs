@@ -38,6 +38,7 @@ export default function HomePage() {
             <FlightCard
               key={item.id}
               flight={item.flight}
+              navy
               pilot={`${item.pilot.firstName} ${item.pilot.lastName}`}
               footer={
                 <>

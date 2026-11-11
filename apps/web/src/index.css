@@ -1,6 +1,6 @@
 /*
   Design tokens. The palette borrows from VFR sectional charts:
-  warm paper, near-black ink, and sectional magenta as the one accent.
+  warm paper, near-black ink, and dark navy as the one accent.
 
   Each color is light-dark(light value, dark value). Which one applies follows
   `color-scheme`: the system setting by default, or the choice made in Settings
@@ -16,8 +16,8 @@
   --ink-3: light-dark(#8c9096, #74777c);
   --line: light-dark(#e1ddd2, #2a2d31);
   --line-strong: light-dark(#cbc6b8, #3a3d42);
-  --accent: light-dark(#b3245e, #ec6f9e);
-  --accent-soft: light-dark(#f3dce5, #3a1f2a);
+  --accent: light-dark(#1b2f57, #8aa8e0);
+  --accent-soft: light-dark(#dfe5f0, #1c2638);
   --good: light-dark(#2e7a4c, #5bbf83);
   --danger: light-dark(#b4382c, #e5675a);
 

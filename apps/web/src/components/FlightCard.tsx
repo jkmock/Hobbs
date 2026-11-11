@@ -29,9 +29,10 @@ type Props = {
   pilot?: string // shown in the social feed
   to?: string // makes the card a link
   footer?: ReactNode
+  navy?: boolean // navy background with white text
 }
 
-export default function FlightCard({ flight, pilot, to, footer }: Props) {
+export default function FlightCard({ flight, pilot, to, footer, navy }: Props) {
   const body = (
     <>
       <p className={styles.meta}>
@@ -52,7 +53,7 @@ export default function FlightCard({ flight, pilot, to, footer }: Props) {
   )
 
   return (
-    <article className={`card ${styles.card}`}>
+    <article className={`card ${styles.card} ${navy ? styles.navy : ''}`}>
       {to ? (
         <Link to={to} className={styles.link}>
           {body}
