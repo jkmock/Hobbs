@@ -33,22 +33,29 @@ type Props = {
 }
 
 export default function FlightCard({ flight, pilot, to, footer, navy }: Props) {
+  const tags = tagsFor(flight)
   const body = (
     <>
       <p className={styles.meta}>
         {pilot && <strong>{pilot}</strong>}
         <span>{formatDate(flight.flightDate)}</span>
+        <span className={`mono ${styles.tail}`}>
+          <Plane size={14} strokeWidth={1.75} aria-hidden />
+          {flight.tailNumber}
+        </span>
       </p>
       <RouteHeader flight={flight} />
       <RouteMap legs={flight.legs} />
-      <ul className={styles.tags}>
-        {tagsFor(flight).map(({ icon: Icon, label }) => (
-          <li key={label}>
-            <Icon size={14} strokeWidth={1.75} aria-hidden />
-            {label}
-          </li>
-        ))}
-      </ul>
+      {tags.length > 0 && (
+        <ul className={styles.tags}>
+          {tags.map(({ icon: Icon, label }) => (
+            <li key={label}>
+              <Icon size={14} strokeWidth={1.75} aria-hidden />
+              {label}
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   )
 
@@ -93,7 +100,7 @@ function RouteHeader({ flight }: { flight: FlightSummary }) {
 }
 
 function tagsFor(f: FlightSummary): { icon: LucideIcon; label: string }[] {
-  const tags: { icon: LucideIcon; label: string }[] = [{ icon: Plane, label: f.tailNumber }]
+  const tags: { icon: LucideIcon; label: string }[] = []
   if (f.dualReceivedTime > 0) tags.push({ icon: GraduationCap, label: 'Dual' })
   if (f.soloTime > 0) tags.push({ icon: User, label: 'Solo' })
   else if (f.picTime > 0) tags.push({ icon: User, label: 'PIC' })

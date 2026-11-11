@@ -26,12 +26,22 @@ a.link:hover { background: color-mix(in srgb, var(--surface) 92%, var(--ink)); }
 
 .meta {
   display: flex;
+  align-items: baseline;
   gap: 6px;
   font-size: 13px;
   color: var(--ink-2);
 }
-.meta strong { color: var(--ink); font-weight: 600; }
+.meta strong { color: var(--ink); font-size: 16px; font-weight: 650; }
 .meta strong + span::before { content: '· '; }
+
+/* Tail number sits at the top right of the card. */
+.tail {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  color: var(--ink);
+}
 
 .routeBlock { display: flex; flex-direction: column; gap: 2px; }
 
@@ -53,7 +63,7 @@ a.link:hover { background: color-mix(in srgb, var(--surface) 92%, var(--ink)); }
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ink-2);
   white-space: nowrap;
 }
@@ -78,7 +88,6 @@ a.link:hover { background: color-mix(in srgb, var(--surface) 92%, var(--ink)); }
   color: var(--ink-2);
 }
 .tags li { display: inline-flex; align-items: center; gap: 5px; }
-.tags li:first-child { font-family: var(--font-mono); color: var(--ink); }
 
 .footer {
   display: flex;

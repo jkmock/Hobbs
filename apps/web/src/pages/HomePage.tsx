@@ -19,7 +19,7 @@ export default function HomePage() {
     })
 
   return (
-    <div className="page page--tabs">
+    <div className={`page page--tabs ${styles.home}`}>
       <PageHeader
         title="Social"
         action={
