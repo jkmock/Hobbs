@@ -34,11 +34,14 @@
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 15px; /* the date and tail number */
+  font-size: 18px; /* the date and tail number */
   color: var(--accent); /* the date, blue like the route */
 }
 .meta strong { color: var(--ink); font-size: 16px; font-weight: 650; }
 .meta strong + span::before { content: '· '; }
+
+/* Like a finished step's label on the log-flight step indicator (.steps button[data-done]). */
+.date { font-weight: 550; color: var(--ink); }
 
 /* Tail number sits at the top right of the card. */
 .tail {
@@ -108,7 +111,7 @@
   white-space: nowrap;
 }
 
-.via { font-size: 14px; color: var(--accent); /* blue like the route */ text-align: center; }
+.via { font-size: 18px; color: var(--accent); /* blue like the route */ text-align: center; }
 
 .tags {
   display: flex;
@@ -141,4 +144,33 @@
   height: 66%;
   width: 1px;
   background: var(--line-strong);
+}
+
+/* Props and Comments (FlightReactions): display only for now, so no hover or pointer. */
+.reaction { cursor: default; color: var(--ink-2); }
+.reaction:hover { background: transparent; }
+
+/* Comments when it opens the card's comments: same look, but clickable. */
+.reactionButton { color: var(--ink-2); }
+.reactionButton[aria-expanded='true'] { color: var(--ink); }
+
+/* Under the footer, inside the card: slides open (growing from no height, fading in) and
+   shut. A grid row going from 0fr to 1fr animates to the content's own height. */
+.belowSlide {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 200ms ease;
+}
+.belowSlide[data-open='true'] { grid-template-rows: 1fr; opacity: 1; }
+.belowClip { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .belowSlide { transition: opacity 150ms ease; } }
+
+/* Opens under the footer, inside the card. */
+.below {
+  position: relative;
+  padding: 14px;
+  border-top: 1px solid var(--line);
 }

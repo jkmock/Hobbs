@@ -6,8 +6,9 @@
   border-radius: var(--radius-sm);
 }
 
-/* The map fills the box. */
-.fill {
+/* The map (or its picture) fills the box. `.box .fill` so it beats FlightMap's own .wrap,
+   whichever stylesheet loads last. */
+.box .fill {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -15,7 +16,7 @@
 }
 
 /* Small maps don't take input; taps go to whatever the map sits in (e.g. open full screen). */
-.fill { pointer-events: none; }
+.box .fill { pointer-events: none; }
 
 /* The map stays hidden while it loads, so it switches in finished rather than drawing in pieces. */
 .loading { opacity: 0; }

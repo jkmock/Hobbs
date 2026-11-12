@@ -1,0 +1,69 @@
+/* Under the flight's card, as far below it as the first label used to be. */
+.cards { margin-top: 20px; }
+
+/* The cards float a little off the page, like the flights list. */
+.cards :global(.card) {
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.18), 0 1px 3px rgb(0 0 0 / 0.12);
+}
+
+/* A label sitting just above its card. Each pops in, one after another: a fade and a grow
+   from 98% with a slight overshoot, starting once the flight's card has popped (--pop-start,
+   set by FlightsPage). */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transform-origin: 50% 0;
+  animation: pop 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--pop-start, 100ms) + var(--pop-order, 0) * 60ms);
+}
+@keyframes pop {
+  0% { opacity: 0; transform: scale(0.98); }
+  60% { opacity: 1; transform: scale(1.004); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .group { animation: fade 200ms ease both; animation-delay: 0ms; }
+}
+@keyframes fade {
+  from { opacity: 0; }
+}
+.group + .group { margin-top: 8px; }
+
+/* Like a finished step's label on the log-flight step indicator (.steps button[data-done]),
+   inset 4px the same way. */
+.label { padding-left: 4px; font-size: 18px; font-weight: 550; color: var(--ink); }
+
+.leg {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* the same gap as between the flight card's route and map */
+  padding: 30px 14px 14px; /* room for the summary above the arrow */
+}
+
+/* The leg's mini map, like the flight card's (.mapButton in FlightCard.module.css). */
+.mapButton {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: zoom-in;
+}
+
+/* Rows like the profile's Stats card. */
+.stats { margin: 0; padding: 6px 16px 16px; }
+.stats > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.stats > div:last-child { border-bottom: 0; padding-bottom: 0; }
+.stats dt { color: var(--ink-2); font-size: 14px; }
+.stats dd { margin: 0; color: var(--ink); font-size: 15px; }
+
+.notes { padding: 16px; font-size: 15px; white-space: pre-wrap; }
+

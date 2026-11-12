@@ -4,7 +4,9 @@
   height: 100%;
 }
 
-.map {
+/* `.wrap .map` so it beats MapLibre's own .maplibregl-map (position: relative), whichever
+   stylesheet loads last. */
+.wrap .map {
   position: absolute;
   inset: 0;
   background: #e9e5d9;

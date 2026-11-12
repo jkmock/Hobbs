@@ -5,6 +5,19 @@
   background: #e9e5d9;
 }
 
+/* Opening out of a mini map (and shrinking back into it): the overlay is cut down to the mini
+   map's box, then opened out to the full screen. */
+.animated { transition: clip-path 700ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+/* Opening from a mini map: there but invisible while it draws (the mini map shows meanwhile). */
+.waiting { opacity: 0; pointer-events: none; }
+
+/* The buttons fade in once it has opened out, and out as it closes. */
+.controls { position: absolute; inset: 0; z-index: 2; pointer-events: none; transition: opacity 200ms ease; }
+.controls > * { pointer-events: auto; }
+.controlsHidden { opacity: 0; }
+.controlsHidden > * { pointer-events: none; }
+
 .close {
   position: absolute;
   top: calc(12px + env(safe-area-inset-top));

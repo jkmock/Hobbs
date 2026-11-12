@@ -6,6 +6,12 @@
   padding-bottom: env(safe-area-inset-bottom);
   background: var(--surface);
   border-top: 1px solid var(--line);
+  transition: margin-bottom 250ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 200ms ease;
+}
+/* Slid off the bottom (on a flight's page); the page above grows into its space. */
+.tabbarHidden {
+  margin-bottom: calc(-1 * (var(--tabbar-height) + env(safe-area-inset-bottom)));
+  opacity: 0;
 }
 
 .tab {

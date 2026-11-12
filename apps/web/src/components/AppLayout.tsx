@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useMatch } from 'react-router'
 import { BookOpen, CircleUser, Flag, House, Map } from 'lucide-react'
 import styles from './AppLayout.module.css'
 
@@ -12,10 +12,12 @@ const TABS = [
 
 // Pages with the bottom tab bar.
 export function TabLayout() {
+  // A flight's page (part of My flights) is full screen, so the tab bar slides away.
+  const onFlight = useMatch('/flights/:id') !== null
   return (
     <div className="app">
       <Outlet />
-      <nav className={styles.tabbar} aria-label="Main">
+      <nav className={`${styles.tabbar} ${onFlight ? styles.tabbarHidden : ''}`} aria-label="Main" inert={onFlight}>
         {TABS.map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={to} end={to === '/'} className={styles.tab}>
             <Icon size={21} strokeWidth={1.75} aria-hidden />

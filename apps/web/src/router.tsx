@@ -31,7 +31,8 @@ export const router = createBrowserRouter([
         element: <TabLayout />,
         children: [
           { path: '/', element: <HomePage /> },
-          { path: '/flights', element: <FlightsPage /> },
+          // A flight's page is My flights showing just that flight, so its card stays put.
+          { path: '/flights', element: <FlightsPage />, children: [{ path: ':id' }] },
           { path: '/map', element: <MapPage /> },
           { path: '/goal', element: <GoalPage /> },
           { path: '/profile', element: <ProfilePage /> },

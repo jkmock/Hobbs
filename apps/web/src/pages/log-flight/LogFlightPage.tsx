@@ -101,7 +101,11 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
   function submit() {
     const { data, firstBadStep } = check(STEPS.map((_, i) => i))
     if (firstBadStep !== null) return setStep(firstBadStep)
-    if (data) save.mutate(data, { onSuccess: () => navigate('/flights') })
+    if (!data) return
+    save.mutate(data, {
+      // A new flight pops into My flights (see FlightsPage); an edited one goes back to its page.
+      onSuccess: (saved) => (id ? navigate(`/flights/${id}`) : navigate('/flights', { state: { newFlightId: saved.id } })),
+    })
   }
 
   function remove() {
