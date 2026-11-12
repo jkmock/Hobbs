@@ -74,6 +74,8 @@ export default function FlightCard({ flight, pilot, to, footer, below, belowOpen
           type="button"
           className={styles.mapButton}
           onClick={(e) => setChartFrom(e.currentTarget)}
+          // Tapping the map opens it; it doesn't press and pop the card around it.
+          onPointerDown={(e) => e.stopPropagation()}
           aria-label={`Open ${routeName} on the map`}
         >
           <LiveRouteMap legs={flight.legs} />

@@ -12,11 +12,16 @@ import FriendsPage from './pages/FriendsPage'
 import SettingsPage from './pages/SettingsPage'
 import LogFlightPage from './pages/log-flight/LogFlightPage'
 import NotFoundPage from './pages/NotFoundPage'
+import ErrorPage from './pages/ErrorPage'
+
+// A crash inside a layout shows the error in place of the page, keeping the layout around it.
+const nestedError = <ErrorPage nested />
 
 export const router = createBrowserRouter([
   // Public
   {
     element: <BareLayout />,
+    errorElement: <ErrorPage />,
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
@@ -26,29 +31,44 @@ export const router = createBrowserRouter([
   // Logged in only
   {
     element: <RequireAuth />,
+    errorElement: <ErrorPage />,
     children: [
       {
         element: <TabLayout />,
         children: [
-          { path: '/', element: <HomePage /> },
-          // A flight's page is My flights showing just that flight, so its card stays put.
-          { path: '/flights', element: <FlightsPage />, children: [{ path: ':id' }] },
-          { path: '/map', element: <MapPage /> },
-          { path: '/goal', element: <GoalPage /> },
-          { path: '/profile', element: <ProfilePage /> },
+          {
+            errorElement: nestedError,
+            children: [
+              { path: '/', element: <HomePage /> },
+              // A flight's page is My flights showing just that flight, so its card stays put.
+              {
+                path: '/flights',
+                element: <FlightsPage />,
+                children: [{ path: ':id' }],
+              },
+              { path: '/map', element: <MapPage /> },
+              { path: '/goal', element: <GoalPage /> },
+              { path: '/profile', element: <ProfilePage /> },
+            ],
+          },
         ],
       },
       {
         element: <BareLayout />,
         children: [
-          { path: '/flights/new', element: <LogFlightPage /> },
-          { path: '/flights/:id/edit', element: <LogFlightPage /> },
-          { path: '/friends', element: <FriendsPage /> },
-          { path: '/settings', element: <SettingsPage /> },
+          {
+            errorElement: nestedError,
+            children: [
+              { path: '/flights/new', element: <LogFlightPage /> },
+              { path: '/flights/:id/edit', element: <LogFlightPage /> },
+              { path: '/friends', element: <FriendsPage /> },
+              { path: '/settings', element: <SettingsPage /> },
+            ],
+          },
         ],
       },
     ],
   },
 
-  { path: '*', element: <NotFoundPage /> },
+  { path: '*', element: <NotFoundPage />, errorElement: <ErrorPage /> },
 ])

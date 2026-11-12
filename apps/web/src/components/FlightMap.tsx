@@ -3,7 +3,7 @@ import {
   LngLatBounds,
   Map as MapLibreMap,
   Marker,
-  NavigationControl,
+  MercatorCoordinate,
   setWorkerCount,
   setWorkerUrl,
   type GeoJSONSource,
@@ -253,7 +253,7 @@ function createMap(
   const map = new MapLibreMap({
     container: el,
     interactive,
-    attributionControl: interactive ? { compact: true } : false,
+    attributionControl: false,
     minZoom: 2,
     maxZoom: 15,
     dragRotate: false,
@@ -282,7 +282,6 @@ function createMap(
   })
 
   if (interactive) {
-    map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right')
     map.touchZoomRotate.disableRotation()
   }
   if (base === 'sectional') {
@@ -301,17 +300,35 @@ export type ScreenBox = { top: number; left: number; right: number; bottom: numb
 // alone, so it doesn't need the mini map to have loaded.
 function miniCamera(map: MapLibreMap, legs: RouteLeg[], box: ScreenBox) {
   const { clientWidth: width, clientHeight: height } = map.getContainer()
-  const fit = legs.length > 0 ? fitOptions(false) : { padding: { top: 8, bottom: 8, left: 8, right: 8 }, maxZoom: undefined }
-  const camera = map.cameraForBounds(legs.length > 0 ? boundsFor(legs) : US_BOUNDS, {
-    padding: {
-      top: box.top + fit.padding.top,
-      bottom: height - box.bottom + fit.padding.bottom,
-      left: box.left + fit.padding.left,
-      right: width - box.right + fit.padding.right,
-    },
-    maxZoom: fit.maxZoom,
+  const fit = legs.length > 0 ? fitOptions(false) : { padding: { top: 8, bottom: 8, left: 8, right: 8 } }
+  const bounds = legs.length > 0 ? boundsFor(legs) : LngLatBounds.convert(US_BOUNDS)
+  const padding = {
+    top: box.top + fit.padding.top,
+    bottom: height - box.bottom + fit.padding.bottom,
+    left: box.left + fit.padding.left,
+    right: width - box.right + fit.padding.right,
+  }
+  const camera = map.cameraForBounds(bounds, {
+    padding,
+    // Only when there is one: an explicit `maxZoom: undefined` overrides MapLibre's default
+    // and its math comes out NaN (the US map, with no legs, crashed this way).
+    ...('maxZoom' in fit && { maxZoom: fit.maxZoom }),
   })
-  return camera ?? { center: map.getCenter(), zoom: map.getZoom() }
+  if (!camera) return { center: map.getCenter(), zoom: map.getZoom() }
+
+  // When the fit is further out than the map goes (the whole US in a phone-width mini map),
+  // the mini map sits at the minimum zoom with the bounds' middle in the middle of its padded
+  // area. MapLibre would clamp this zoom too, but keep a center worked out for the smaller
+  // zoom, landing the map off from the mini map's view. Recenter for the minimum zoom instead.
+  const minZoom = map.getMinZoom()
+  if ((camera.zoom ?? minZoom) >= minZoom) return camera
+  const ne = MercatorCoordinate.fromLngLat(bounds.getNorthEast())
+  const sw = MercatorCoordinate.fromLngLat(bounds.getSouthWest())
+  const worldSize = 512 * 2 ** minZoom // pixels across the whole world at this zoom
+  const dx = (padding.left + width - padding.right) / 2 - width / 2
+  const dy = (padding.top + height - padding.bottom) / 2 - height / 2
+  const center = new MercatorCoordinate((ne.x + sw.x) / 2 - dx / worldSize, (ne.y + sw.y) / 2 - dy / worldSize).toLngLat()
+  return { ...camera, center, zoom: minZoom }
 }
 
 type Route = { legs: RouteLeg[]; airports: LoneAirport[] }
