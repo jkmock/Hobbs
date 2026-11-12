@@ -26,7 +26,7 @@ export function Stepper({ label, value, onChange, step = 0.1, max = 24, error }:
         {label}
         {error && <span className="error-text">{error}</span>}
       </label>
-      <div className={`${styles.stepper} ${error ? styles.invalid : ''}`}>
+      <div className={`${styles.stepper} ${Number(value) ? styles.filled : ''} ${error ? styles.invalid : ''}`}>
         <button type="button" onClick={() => bump(-1)} aria-label={`Decrease ${label}`}>
           <Minus size={16} />
         </button>
@@ -51,9 +51,10 @@ type SegmentedProps<T extends string> = {
   options: { value: T; label: string }[]
   value: T | null
   onChange: (value: T) => void
+  onClear?: () => void // when given, tapping the selected option unselects it
 }
 
-export function Segmented<T extends string>({ label, options, value, onChange }: SegmentedProps<T>) {
+export function Segmented<T extends string>({ label, options, value, onChange, onClear }: SegmentedProps<T>) {
   return (
     <div className={styles.segmented} role="radiogroup" aria-label={label}>
       {options.map((option) => (
@@ -62,7 +63,7 @@ export function Segmented<T extends string>({ label, options, value, onChange }:
           type="button"
           role="radio"
           aria-checked={value === option.value}
-          onClick={() => onChange(option.value)}
+          onClick={() => (onClear && value === option.value ? onClear() : onChange(option.value))}
         >
           {option.label}
         </button>

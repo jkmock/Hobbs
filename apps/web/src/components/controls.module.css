@@ -22,6 +22,8 @@
   overflow: hidden;
   background: var(--surface);
 }
+/* A box with something other than 0 in it is outlined in the accent, so entered times stand out. */
+.stepper.filled { border-color: var(--accent); }
 .stepper.invalid { border-color: var(--danger); }
 
 .stepper button {
@@ -51,10 +53,13 @@
   padding: 3px;
   gap: 3px;
   border-radius: var(--radius-sm);
-  background: var(--line);
+  /* A light outlined track, so only the selected option is filled. */
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
 }
 
 .segmented button {
+  position: relative; /* for the divider */
   flex: 1;
   height: 32px;
   border: 0;
@@ -66,9 +71,23 @@
   cursor: pointer;
 }
 
+/* A short divider between two options, in the border color, not reaching the top or bottom.
+   Hidden next to the selected option, whose fill already separates them. */
+.segmented button + button::before {
+  content: '';
+  position: absolute;
+  left: -2px; /* the middle of the 3px gap */
+  top: 25%;
+  bottom: 25%;
+  width: 1px;
+  background: var(--line-strong);
+}
+.segmented button[aria-checked='true'] + button::before,
+.segmented button + button[aria-checked='true']::before { display: none; }
+
 .segmented button[aria-checked='true'] {
-  background: var(--surface);
-  color: var(--ink);
+  background: var(--accent);
+  color: var(--on-accent);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
 }
 

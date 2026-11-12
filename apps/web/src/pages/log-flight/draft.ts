@@ -39,6 +39,9 @@ export type Draft = {
   legs: DraftLeg[]
   times: Record<TimeField, string>
   totalFromLegs: boolean // total time follows the sum of the leg times until the pilot changes it
+  // The Solo/Dual shortcut that's selected. While set, solo/dual (and PIC for solo) follow the
+  // total time; editing any of those by hand clears it.
+  flightType: FlightType | null
   landings: Record<LandingField, string>
   notes: string
 }
@@ -80,7 +83,38 @@ export function applyPatch(d: Draft, patch: Partial<Draft>): Draft {
   } else if (patch.legs && next.totalFromLegs && sum > 0) {
     next.times = { ...next.times, totalTime: sum.toFixed(1) }
   }
+
+  // Typing in Dual, Solo or PIC yourself turns the shortcut off.
+  if (patch.times && !('flightType' in patch)) {
+    const handEdited = (['dualReceivedTime', 'soloTime', 'picTime'] as const).some(
+      (key) => patch.times![key] !== d.times[key],
+    )
+    if (handEdited) next.flightType = null
+  }
+  // Otherwise the selected shortcut keeps its times matching the total.
+  if (next.flightType) next.times = fillFromTotal(next.times, next.flightType)
   return next
+}
+
+export type FlightType = 'solo' | 'dual'
+
+// Most training flights are all solo or all dual. Solo is also PIC. Dual never adds PIC; it
+// only takes back PIC that matched solo (what Solo filled in), so PIC typed by hand stays.
+function fillFromTotal(t: Draft['times'], type: FlightType): Draft['times'] {
+  if (type === 'solo') return { ...t, soloTime: t.totalTime, picTime: t.totalTime, dualReceivedTime: '0.0' }
+  return {
+    ...t,
+    dualReceivedTime: t.totalTime,
+    soloTime: '0.0',
+    picTime: t.picTime === t.soloTime ? '0.0' : t.picTime,
+  }
+}
+
+// For a saved flight: which shortcut its times look like, if either.
+function flightTypeOf(t: Draft['times']): FlightType | null {
+  const dual = Number(t.dualReceivedTime) > 0
+  const solo = Number(t.soloTime) > 0
+  return dual && !solo ? 'dual' : solo && !dual ? 'solo' : null
 }
 
 export function emptyDraft(): Draft {
@@ -92,12 +126,14 @@ export function emptyDraft(): Draft {
     legs: [emptyLeg()],
     times: mapFields(TIME_FIELDS, () => '0.0'),
     totalFromLegs: true,
+    flightType: null, // neither Solo nor Dual Received until the pilot picks one
     landings: mapFields(LANDING_FIELDS, () => '0'),
     notes: '',
   }
 }
 
 export function draftFromFlight(f: Flight): Draft {
+  const times = mapFields(TIME_FIELDS, (key) => f[key].toFixed(1))
   return {
     aircraftId: f.aircraftId,
     tailNumber: f.tailNumber,
@@ -109,9 +145,10 @@ export function draftFromFlight(f: Flight): Draft {
       time: time != null ? time.toFixed(1) : '',
       faFlightId: faFlightId ?? undefined,
     })),
-    times: mapFields(TIME_FIELDS, (key) => f[key].toFixed(1)),
+    times,
     // Keep following the legs only if the saved total still matches them.
     totalFromLegs: f.legs.every((l) => l.time != null) && legTotal(f.legs.map((l) => l.time ?? 0)) === f.totalTime,
+    flightType: flightTypeOf(times),
     landings: mapFields(LANDING_FIELDS, (key) => String(f[key])),
     notes: f.notes ?? '',
   }
