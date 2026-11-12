@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, type PointerEvent, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router'
 import { Gauge, GraduationCap, MessageCircle, Moon, Plane, Route, Star, User, type LucideIcon } from 'lucide-react'
 import type { Flight } from '../lib/types'
@@ -75,7 +75,7 @@ export default function FlightCard({ flight, pilot, to, footer, below, belowOpen
           className={styles.mapButton}
           onClick={(e) => setChartFrom(e.currentTarget)}
           // Tapping the map opens it; it doesn't press and pop the card around it.
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={stopPress}
           aria-label={`Open ${routeName} on the map`}
         >
           <LiveRouteMap legs={flight.legs} />
@@ -92,10 +92,16 @@ export default function FlightCard({ flight, pilot, to, footer, below, belowOpen
         </ul>
       )}
       </div>
-      {footer && <div className={styles.footer}>{footer}</div>}
+      {/* Props and comments are controls of their own: pressing them doesn't press and pop
+          the card around them. */}
+      {footer && (
+        <div className={styles.footer} onPointerDown={stopPress}>
+          {footer}
+        </div>
+      )}
       {/* Kept while closed so it can slide shut as well as open. */}
       {below && (
-        <div className={styles.belowSlide} data-open={belowOpen} inert={!belowOpen}>
+        <div className={styles.belowSlide} data-open={belowOpen} inert={!belowOpen} onPointerDown={stopPress}>
           <div className={styles.belowClip}>
             <div className={styles.below}>{below}</div>
           </div>
@@ -109,6 +115,9 @@ export default function FlightCard({ flight, pilot, to, footer, below, belowOpen
     </article>
   )
 }
+
+// Keeps a press on a control inside the card from pressing the card itself.
+const stopPress = (e: PointerEvent) => e.stopPropagation()
 
 // A hold longer than this isn't a tap: letting go just releases the card.
 const LONG_PRESS_MS = 450
