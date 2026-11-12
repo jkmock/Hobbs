@@ -36,7 +36,12 @@
   --radius: 12px;
   --radius-sm: 8px;
   --font-sans: 'Archivo Variable', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  /* Numbers, times, tail numbers and airport codes: the text font with fixed-width digits
+     (font-variant-numeric: tabular-nums wherever it's used), so columns of numbers line up.
+     Archivo's zero is plain, without the dot a monospace font usually has. */
+  --font-mono: 'Archivo Variable', system-ui, sans-serif;
+  /* Tail numbers: monospace, with a plain zero (no dot or slash). */
+  --font-tail: 'Azeret Mono', ui-monospace, monospace;
   --tabbar-height: 64px;
 
   font-family: var(--font-sans);
@@ -106,6 +111,9 @@ input, textarea { -webkit-user-select: text; user-select: text; }
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
+
+/* A tail number (N90KM), wherever it's shown or typed. */
+.tail-number { font-family: var(--font-tail); font-variant-numeric: normal; }
 
 .muted { color: var(--ink-2); }
 

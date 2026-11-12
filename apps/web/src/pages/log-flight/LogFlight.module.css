@@ -221,7 +221,7 @@
 /* The last row sits on the card's own 16px padding, so the bottom matches the sides. */
 .option:last-child { border-bottom: 0; padding-bottom: 0; }
 /* Wide enough for a 6-character tail (N172SP); a longer one pushes make/model over. */
-.option .tail { font-family: var(--font-mono); font-size: 15px; min-width: 60px; }
+.option .tail { font-family: var(--font-tail); font-size: 15px; min-width: 60px; }
 .option .detail { flex: 1; color: var(--ink-2); font-size: 14px; }
 
 .found {
@@ -232,7 +232,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
 }
-.found .tail { font-family: var(--font-mono); font-size: 15px; }
+.found .tail { font-family: var(--font-tail); font-size: 15px; }
 .found .detail { color: var(--ink-2); font-size: 14px; }
 
 /* Same width as Add aircraft (.headButton), whether it says Select or Selected. */
@@ -441,7 +441,9 @@
   border-left: 9px solid var(--accent);
 }
 
-.airportInput { text-transform: uppercase; font-family: var(--font-mono); letter-spacing: 0.04em; }
+.airportInput { text-transform: uppercase; font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+/* The tail number field when adding an aircraft (after .airportInput, so its font wins). */
+.tailInput { font-family: var(--font-tail); font-variant-numeric: normal; }
 .airportInput::placeholder { text-transform: none; letter-spacing: 0; }
 
 

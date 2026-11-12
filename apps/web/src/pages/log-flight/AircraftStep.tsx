@@ -76,7 +76,7 @@ export default function AircraftStep({ draft, update, errors }: StepProps) {
     <>
       <section className={`card ${styles.panel} ${styles.totalCard}`}>
         <DateField
-          label="Date"
+          label="Flight Date"
           value={draft.flightDate}
           onChange={(flightDate) => update({ flightDate })}
           error={errors.flightDate}
@@ -87,7 +87,15 @@ export default function AircraftStep({ draft, update, errors }: StepProps) {
 
       <section className={`card ${styles.panel}`}>
         <div className={styles.panelHead}>
-          <h2>{editingAircraft ? `Edit ${editingAircraft.tailNumber}` : 'My Aircraft'}</h2>
+          <h2>
+            {editingAircraft ? (
+              <>
+                Edit <span className="tail-number">{editingAircraft.tailNumber}</span>
+              </>
+            ) : (
+              'My Aircraft'
+            )}
+          </h2>
           {!adding && !editingAircraft && (
             <div className={styles.headActions}>
               {/* In edit mode, Done takes Add aircraft's place. */}
@@ -241,7 +249,7 @@ function AddAircraft({
       <label className="field">
         <span>Tail number</span>
         <input
-          className={`input ${styles.airportInput}`}
+          className={`input ${styles.airportInput} ${styles.tailInput}`}
           value={tail}
           autoFocus
           maxLength={10}

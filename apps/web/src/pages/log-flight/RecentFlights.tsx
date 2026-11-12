@@ -44,7 +44,7 @@ export default function RecentFlights({ draft, update }: Pick<StepProps, 'draft'
     <section className={`card ${styles.panel}`}>
       <div className={styles.panelHead}>
         <h2>
-          <span className="mono">{draft.tailNumber}</span>'s Recent Flights
+          <span className="tail-number">{draft.tailNumber}</span>'s Recent Flights
         </h2>
       </div>
 

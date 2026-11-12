@@ -51,7 +51,7 @@ export default function FlightCard({ flight, pilot, to, footer, navy }: Props) {
       <p className={styles.meta}>
         {pilot && <strong>{pilot}</strong>}
         <span>{formatDate(flight.flightDate)}</span>
-        <span className={`mono ${styles.tail}`}>
+        <span className={`tail-number ${styles.tail}`}>
           <Plane size={14} strokeWidth={1.75} aria-hidden />
           {flight.tailNumber}
         </span>

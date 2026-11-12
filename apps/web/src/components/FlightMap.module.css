@@ -26,6 +26,7 @@
   left: 14px;
   top: -14px;
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
   font-size: 12px;
   font-weight: 600;
   color: var(--accent-light-mode);
