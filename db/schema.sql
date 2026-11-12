@@ -152,6 +152,17 @@ CREATE TABLE public.flight_legs (
 
 
 --
+-- Name: flightaware_tracks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.flightaware_tracks (
+    fa_flight_id text NOT NULL,
+    track public.geography(LineString,4326),
+    fetched_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: flightaware_usage; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -192,6 +203,7 @@ CREATE TABLE public.flights (
     notes text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    sic_time numeric(4,1) DEFAULT 0 NOT NULL,
     CONSTRAINT arrival_after_departure CHECK ((arrival_time > departure_time)),
     CONSTRAINT dual_and_solo_time_sum CHECK (((dual_received_time + solo_time) <= total_time)),
     CONSTRAINT flights_check CHECK (((dual_received_time >= (0)::numeric) AND (dual_received_time <= total_time))),
@@ -201,6 +213,7 @@ CREATE TABLE public.flights (
     CONSTRAINT flights_check4 CHECK (((night_time >= (0)::numeric) AND (night_time <= total_time))),
     CONSTRAINT flights_check5 CHECK (((actual_instrument_time >= (0)::numeric) AND (actual_instrument_time <= total_time))),
     CONSTRAINT flights_check6 CHECK (((simulated_instrument_time >= (0)::numeric) AND (simulated_instrument_time <= total_time))),
+    CONSTRAINT flights_check7 CHECK (((sic_time >= (0)::numeric) AND (sic_time <= total_time))),
     CONSTRAINT flights_day_landings_fs_check CHECK ((day_landings_fs >= 0)),
     CONSTRAINT flights_day_landings_tg_check CHECK ((day_landings_tg >= 0)),
     CONSTRAINT flights_instrument_approaches_check CHECK ((instrument_approaches >= 0)),
@@ -252,7 +265,8 @@ CREATE TABLE public.sessions (
 CREATE TABLE public.user_aircraft (
     user_id uuid NOT NULL,
     aircraft_id uuid NOT NULL,
-    added_at timestamp with time zone DEFAULT now() NOT NULL
+    added_at timestamp with time zone DEFAULT now() NOT NULL,
+    removed_at timestamp with time zone
 );
 
 
@@ -331,6 +345,14 @@ ALTER TABLE ONLY public.flight_legs
 
 ALTER TABLE ONLY public.flight_legs
     ADD CONSTRAINT flight_legs_pkey PRIMARY KEY (leg_id);
+
+
+--
+-- Name: flightaware_tracks flightaware_tracks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flightaware_tracks
+    ADD CONSTRAINT flightaware_tracks_pkey PRIMARY KEY (fa_flight_id);
 
 
 --
@@ -641,4 +663,7 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261111190000'),
     ('20261111200000'),
     ('20261111210000'),
-    ('20261111220000');
+    ('20261111220000'),
+    ('20261112120000'),
+    ('20261112130000'),
+    ('20261112140000');
