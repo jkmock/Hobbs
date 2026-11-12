@@ -1,4 +1,4 @@
-import { Check, Radar } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { useRecentFlights } from '../../hooks/useLookups'
 import { ApiError } from '../../lib/api'
 import type { RecentFlight } from '../../lib/types'
@@ -46,7 +46,6 @@ export default function RecentFlights({ draft, update }: Pick<StepProps, 'draft'
         <h2>
           <span className="mono">{draft.tailNumber}</span>'s Recent Flights
         </h2>
-        <Radar size={18} strokeWidth={1.75} aria-hidden style={{ color: 'var(--ink-3)' }} />
       </div>
 
       {recent.isPending && <p className="muted" style={{ fontSize: 14 }}>Checking FlightAware…</p>}
@@ -101,7 +100,7 @@ export default function RecentFlights({ draft, update }: Pick<StepProps, 'draft'
 
 function errorMessage(error: Error): string {
   if (error instanceof ApiError && error.status === 503) {
-    return "FlightAware isn't connected, so enter the route by hand."
+    return 'No recent flights found. Enter flight manually.'
   }
   if (error instanceof ApiError && error.status === 429) {
     const body = error.body as { resetsOn?: string } | null

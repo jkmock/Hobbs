@@ -19,46 +19,49 @@ export default function HomePage() {
     })
 
   return (
-    <div className={`page page--tabs ${styles.home}`}>
+    <>
       <PageHeader
         title="Social"
+        className={styles.home}
         action={
           <Link to="/friends" className="icon-btn" aria-label="Friends">
             <Users size={22} strokeWidth={1.75} />
           </Link>
         }
       />
+      <div className="page">
 
-      <div className="stack">
-        {SAMPLE_FEED.map((item) => {
-          const hasGiven = given.has(item.id)
-          return (
-            <FlightCard
-              key={item.id}
-              flight={item.flight}
-              navy
-              pilot={`${item.pilot.firstName} ${item.pilot.lastName}`}
-              footer={
-                <>
-                  <button
-                    type="button"
-                    className={`btn btn--ghost btn--sm ${hasGiven ? styles.given : ''}`}
-                    aria-pressed={hasGiven}
-                    onClick={() => toggleProps(item.id)}
-                  >
-                    <Star size={16} strokeWidth={1.75} fill={hasGiven ? 'currentColor' : 'none'} />
-                    <span className="mono">{item.props + (hasGiven ? 1 : 0)}</span> Props
-                  </button>
-                  <span className={`btn btn--ghost btn--sm ${styles.static}`}>
-                    <MessageCircle size={16} strokeWidth={1.75} />
-                    <span className="mono">{item.comments}</span> Comments
-                  </span>
-                </>
-              }
-            />
-          )
-        })}
+        <div className="stack">
+          {SAMPLE_FEED.map((item) => {
+            const hasGiven = given.has(item.id)
+            return (
+              <FlightCard
+                key={item.id}
+                flight={item.flight}
+                navy
+                pilot={`${item.pilot.firstName} ${item.pilot.lastName}`}
+                footer={
+                  <>
+                    <button
+                      type="button"
+                      className={`btn btn--ghost btn--sm ${hasGiven ? styles.given : ''}`}
+                      aria-pressed={hasGiven}
+                      onClick={() => toggleProps(item.id)}
+                    >
+                      <Star size={16} strokeWidth={1.75} fill={hasGiven ? 'currentColor' : 'none'} />
+                      <span className="mono">{item.props + (hasGiven ? 1 : 0)}</span> Props
+                    </button>
+                    <span className={`btn btn--ghost btn--sm ${styles.static}`}>
+                      <MessageCircle size={16} strokeWidth={1.75} />
+                      <span className="mono">{item.comments}</span> Comments
+                    </span>
+                  </>
+                }
+              />
+            )
+          })}
+        </div>
       </div>
-    </div>
+    </>
   )
 }

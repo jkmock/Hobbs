@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import RouteMap from './RouteMap'
-import type { RouteLeg } from './FlightMap'
+import type { LoneAirport, RouteLeg } from './FlightMap'
 import styles from './LiveRouteMap.module.css'
 
 // The map library is large, so it loads only when a map is first shown.
@@ -8,6 +8,7 @@ const FlightMap = lazy(() => import('./FlightMap'))
 
 type Props = {
   legs: RouteLeg[]
+  airports?: LoneAirport[] // airports to mark on their own, without a route line
   height?: number // of the drawn fallback; the map keeps the same 360-wide shape
 }
 
@@ -15,7 +16,7 @@ type Props = {
 // Each live map is a WebGL canvas and phones only allow a handful at once, so it's only live
 // while on screen (or about to be); otherwise, and while the map code loads, the simple
 // drawn RouteMap stands in at the same size.
-export default function LiveRouteMap({ legs, height = 150 }: Props) {
+export default function LiveRouteMap({ legs, airports, height = 150 }: Props) {
   const box = useRef<HTMLDivElement>(null)
   const [onScreen, setOnScreen] = useState(false)
 
@@ -34,7 +35,7 @@ export default function LiveRouteMap({ legs, height = 150 }: Props) {
     <div ref={box} className={styles.box} style={{ aspectRatio: `360 / ${height}` }}>
       {onScreen ? (
         <Suspense fallback={drawn}>
-          <FlightMap legs={legs} className={styles.fill} />
+          <FlightMap legs={legs} airports={airports} className={styles.fill} />
         </Suspense>
       ) : (
         drawn

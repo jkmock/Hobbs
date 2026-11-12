@@ -33,7 +33,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="page">
+    <>
       <PageHeader
         title="Settings"
         leading={
@@ -42,68 +42,70 @@ export default function SettingsPage() {
           </Link>
         }
       />
+      <div className="page">
 
-      <h2 className="section-title">Appearance</h2>
-      <Segmented<Theme>
-        label="Theme"
-        value={theme}
-        onChange={setTheme}
-        options={[
-          { value: 'system', label: 'System' },
-          { value: 'light', label: 'Light' },
-          { value: 'dark', label: 'Dark' },
-        ]}
-      />
+        <h2 className="section-title">Appearance</h2>
+        <Segmented<Theme>
+          label="Theme"
+          value={theme}
+          onChange={setTheme}
+          options={[
+            { value: 'system', label: 'System' },
+            { value: 'light', label: 'Light' },
+            { value: 'dark', label: 'Dark' },
+          ]}
+        />
 
-      <h2 className="section-title">Instructors</h2>
-      <div className="card">
-        {instructors.length === 0 && <p className={`muted ${styles.row}`}>No instructors yet.</p>}
-        {instructors.map((instructor) => (
-          <div key={instructor.id} className={styles.row}>
-            <span>
-              {instructor.firstName} {instructor.lastName}
-            </span>
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label={`Remove ${instructor.firstName} ${instructor.lastName}`}
-              onClick={() => deleteInstructor.mutate(instructor.id)}
-            >
-              <X size={18} />
+        <h2 className="section-title">Instructors</h2>
+        <div className="card">
+          {instructors.length === 0 && <p className={`muted ${styles.row}`}>No instructors yet.</p>}
+          {instructors.map((instructor) => (
+            <div key={instructor.id} className={styles.row}>
+              <span>
+                {instructor.firstName} {instructor.lastName}
+              </span>
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label={`Remove ${instructor.firstName} ${instructor.lastName}`}
+                onClick={() => deleteInstructor.mutate(instructor.id)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+          ))}
+          <form className={styles.addRow} onSubmit={addInstructor}>
+            <input
+              className="input"
+              placeholder="First name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              aria-label="Instructor first name"
+            />
+            <input
+              className="input"
+              placeholder="Last name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              aria-label="Instructor last name"
+            />
+            <button className="btn" disabled={createInstructor.isPending}>
+              Add
             </button>
-          </div>
-        ))}
-        <form className={styles.addRow} onSubmit={addInstructor}>
-          <input
-            className="input"
-            placeholder="First name"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            aria-label="Instructor first name"
-          />
-          <input
-            className="input"
-            placeholder="Last name"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            aria-label="Instructor last name"
-          />
-          <button className="btn" disabled={createInstructor.isPending}>
-            Add
-          </button>
-        </form>
-      </div>
-      {deleteInstructor.error && <p className="error-text">{deleteInstructor.error.message}</p>}
-      {createInstructor.error && <p className="error-text">{createInstructor.error.message}</p>}
+          </form>
+        </div>
+        {deleteInstructor.error && <p className="error-text">{deleteInstructor.error.message}</p>}
+        {createInstructor.error && <p className="error-text">{createInstructor.error.message}</p>}
 
-      <h2 className="section-title">Account</h2>
-      <button
-        type="button"
-        className="btn btn--block btn--danger"
-        onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/login') })}
-      >
-        <LogOut size={16} /> Log out
-      </button>
-    </div>
+        <h2 className="section-title">Account</h2>
+        <button
+          type="button"
+          className="btn btn--block btn--danger"
+          onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/login') })}
+        >
+          <LogOut size={16} /> Log out
+        </button>
+      </div>
+    </>
   )
 }

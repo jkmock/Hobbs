@@ -1,5 +1,6 @@
 import { Plus, X } from 'lucide-react'
 import LiveRouteMap from '../../components/LiveRouteMap'
+import { Stepper } from '../../components/controls'
 import type { Airport } from '../../lib/types'
 import { textWidth, useFontsReady } from '../../lib/textWidth'
 import { emptyLeg, useLegDistances, type DraftLeg, type StepProps } from './draft'
@@ -7,7 +8,7 @@ import styles from './LogFlight.module.css'
 
 const FONT_SANS = getComputedStyle(document.documentElement).getPropertyValue('--font-sans') || 'sans-serif'
 
-export default function RouteStep({ draft, update, errors }: StepProps) {
+export default function RouteStep({ draft, update, errors, clearError }: StepProps) {
   const { find, distances } = useLegDistances(draft.legs)
 
   const setLeg = (index: number, patch: Partial<DraftLeg>) =>
@@ -35,96 +36,105 @@ export default function RouteStep({ draft, update, errors }: StepProps) {
     ]
   })
 
+  // Airports of legs still missing their other end (the first one typed, say), marked on the
+  // map as dots as soon as the code matches. They don't move the map; only finished legs do.
+  const inPreview = new Set(preview.flatMap((leg) => [leg.origin, leg.destination]))
+  const lone = new Map<string, { ident: string; point: { lat: number; lon: number } }>()
+  for (const leg of draft.legs) {
+    if (find(leg.origin) && find(leg.destination)) continue
+    for (const airport of [find(leg.origin), find(leg.destination)]) {
+      if (airport && !inPreview.has(airport.ident)) {
+        lone.set(airport.ident, { ident: airport.ident, point: { lat: airport.latitude, lon: airport.longitude } })
+      }
+    }
+  }
+  const loneAirports = [...lone.values()]
+
   return (
     <>
-      {/* Pinned to the top while the legs scroll under it. Before any leg is complete it holds
-          its place with an empty frame, so nothing jumps when the route first appears. */}
+      {/* Stays put above the legs, which scroll on their own. */}
       <div className={styles.routePreview}>
         <div className={`card ${styles.routePreviewCard}`}>
-          {preview.length > 0 ? (
-            <LiveRouteMap legs={preview} height={170} />
-          ) : (
-            <p className={styles.routePreviewEmpty}>Your route will show here</p>
-          )}
+          {/* Shows the continental US until a leg's two airports are known. */}
+          <LiveRouteMap legs={preview} airports={loneAirports} height={170} />
         </div>
       </div>
-      {draft.legs.map((leg, i) => {
-        const nm = distances[i]
-        return (
-          <div key={i} className={styles.legGroup}>
-            {/* Above the card. The remove button only appears once there's a second leg. */}
-            <div className={styles.legHead}>
-              <span className={styles.legTitle}>Leg {i + 1}:</span>
-              {draft.legs.length > 1 && (
-                <button type="button" className="icon-btn" aria-label={`Remove leg ${i + 1}`} onClick={() => removeLeg(i)}>
-                  <X size={18} />
-                </button>
-              )}
-            </div>
-          <section className={`card card--navy ${styles.leg}`}>
-            <div className={styles.route}>
-              <AirportField
-                label="Origin"
-                align="start"
-                value={leg.origin}
-                problem={airportProblem(find(leg.origin), errors[`legs.${i}.origin`])}
-                onChange={(origin) => setLeg(i, { origin })}
-              />
-              <div className={styles.routeMiddle}>
-                <span className={styles.routeLine}>
-                  {/* Distance over the arrow, out of the layout so it moves nothing. */}
-                  {nm != null && (
-                    <span className={styles.routeDistance}>{nm === 0 ? 'Local' : `${Math.round(nm)} nm`}</span>
-                  )}
-                </span>
+      <div className={styles.routeLegs}>
+        {draft.legs.map((leg, i) => {
+          const nm = distances[i]
+          return (
+            <div key={i} className={styles.legGroup}>
+              {/* Above the card. The remove button only appears once there's a second leg. */}
+              <div className={styles.legHead}>
+                <span className={styles.legTitle}>Leg {i + 1}:</span>
+                {draft.legs.length > 1 && (
+                  <button type="button" className="icon-btn" aria-label={`Remove leg ${i + 1}`} onClick={() => removeLeg(i)}>
+                    <X size={18} />
+                  </button>
+                )}
               </div>
-              <AirportField
-                label="Dest"
-                align="end"
-                value={leg.destination}
-                problem={airportProblem(find(leg.destination), errors[`legs.${i}.destination`])}
-                onChange={(destination) => setLeg(i, { destination })}
-              />
+            <section className={`card ${styles.leg}`}>
+              <div className={styles.legTop}>
+                <div className={styles.route}>
+                  <AirportField
+                    label="Origin"
+                    align="start"
+                    value={leg.origin}
+                    problem={airportProblem(find(leg.origin), errors[`legs.${i}.origin`])}
+                    onChange={(origin) => setLeg(i, { origin })}
+                    onFocus={() => clearError(`legs.${i}.origin`)}
+                  />
+                  <div className={styles.routeMiddle}>
+                    <span className={styles.routeLine}>
+                      {/* Distance over the arrow, out of the layout so it moves nothing. */}
+                      {nm != null && (
+                        <span className={styles.routeDistance}>{nm === 0 ? 'Local' : `${Math.round(nm)} nm`}</span>
+                      )}
+                    </span>
+                  </div>
+                  <AirportField
+                    label="Dest"
+                    align="end"
+                    value={leg.destination}
+                    problem={airportProblem(find(leg.destination), errors[`legs.${i}.destination`])}
+                    onChange={(destination) => setLeg(i, { destination })}
+                    onFocus={() => clearError(`legs.${i}.destination`)}
+                  />
+                </div>
+              </div>
+              <div className={styles.legBottom}>
+                <Stepper
+                  label="Flight time"
+                  // A new leg's time starts empty; show it as 0.0 like Total time.
+                  value={leg.time === '' ? '0.0' : leg.time}
+                  onChange={(time) => setLeg(i, { time })}
+                  error={errors[`legs.${i}.time`]}
+                  labelClassName={styles.stepLabelText}
+                />
+              </div>
+            </section>
             </div>
-            {/* Its own row, centered on the card, so it stays put whatever the codes' widths. */}
-            <label className={styles.legTime}>
-              Flight Time:
-              <input
-                className={styles.legTimeInput}
-                inputMode="decimal"
-                placeholder="0.0"
-                value={leg.time}
-                onChange={(e) => setLeg(i, { time: e.target.value })}
-                aria-invalid={!!errors[`legs.${i}.time`]}
-                style={{ width: TIME_UNDERLINE_OVERHANG * 2 + textWidth(leg.time || '0.0', TIME_FONT) }}
-              />
-            </label>
-            {errors[`legs.${i}.time`] && <p className="error-text">{errors[`legs.${i}.time`]}</p>}
-          </section>
-          </div>
-        )
-      })}
+          )
+        })}
 
-      {errors.legs && <p className="error-text">{errors.legs}</p>}
+        {errors.legs && <p className="error-text">{errors.legs}</p>}
 
-      {draft.legs.length < 20 && (
-        <button type="button" className={`btn btn--ghost ${styles.addLeg}`} onClick={addLeg}>
-          <Plus size={22} strokeWidth={2.25} aria-hidden /> Add another leg
-        </button>
-      )}
-
+        {draft.legs.length < 20 && (
+          <button type="button" className={`btn btn--ghost ${styles.addLeg}`} onClick={addLeg}>
+            <Plus size={22} strokeWidth={2.25} aria-hidden /> Add another leg
+          </button>
+        )}
+      </div>
     </>
   )
 }
 
-// Fonts of the code and time inputs (see .endpointInput and .legTimeInput), for measuring
-// what's typed: each input is exactly as wide as its text plus an equal overhang on both
-// sides, so the underline sticks out the same amount left and right.
+// Font of the airport code inputs (see .endpointInput), for measuring what's typed: each
+// input is exactly as wide as its text plus an equal overhang on both sides, so the
+// underline sticks out the same amount left and right.
 const CODE_FONT = `700 30px ${FONT_SANS}`
 const CODE_LETTER_SPACING = 0.3 // 0.01em at 30px
 const CODE_UNDERLINE_OVERHANG = 4
-const TIME_FONT = `700 24px ${FONT_SANS}`
-const TIME_UNDERLINE_OVERHANG = 3
 
 type AirportFieldProps = {
   label: string
@@ -132,9 +142,10 @@ type AirportFieldProps = {
   value: string
   problem: string | null // shown under the code, e.g. "Unknown airport"
   onChange: (value: string) => void
+  onFocus: () => void // called only while the box is empty, to drop its "Enter a code"
 }
 
-function AirportField({ label, align, value, problem, onChange }: AirportFieldProps) {
+function AirportField({ label, align, value, problem, onChange, onFocus }: AirportFieldProps) {
   useFontsReady() // measure again once the real font has loaded
   const width = CODE_UNDERLINE_OVERHANG * 2 + textWidth(value || 'RDU', CODE_FONT, CODE_LETTER_SPACING)
   return (
@@ -153,6 +164,10 @@ function AirportField({ label, align, value, problem, onChange }: AirportFieldPr
         aria-invalid={!!problem}
         style={{ width }}
         onChange={(e) => onChange(e.target.value.toUpperCase())}
+        // Clicking into an empty box clears its "Enter a code" right away.
+        onFocus={() => {
+          if (value === '') onFocus()
+        }}
       />
       {/* Positioned out of the layout, so a message never pushes Flight Time down. */}
       {problem && <span className={`error-text ${styles.airportProblem}`}>{problem}</span>}

@@ -12,6 +12,7 @@ import {
 import 'maplibre-gl/dist/maplibre-gl.css'
 // Vite's dependency bundling breaks MapLibre's own worker lookup, so point it at the file.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
+import { legPath } from '../lib/geo'
 import type { Leg } from '../lib/types'
 import { baseLayers, baseSources, GLYPHS, routeLayers, type BaseMap } from '../lib/mapStyle'
 import styles from './FlightMap.module.css'
@@ -26,39 +27,52 @@ setWorkerUrl(workerUrl)
 setWorkerCount(2)
 
 const SECTIONAL_MIN_ZOOM = 6.5 // below about this, MapLibre stops drawing the zoom 8 sectional tiles
-const US_VIEW = { center: [-96, 38] as [number, number], zoom: 3 }
+// With no route to show, frame the continental US (the lower 48), whatever the map's size.
+const US_BOUNDS: [[number, number], [number, number]] = [
+  [-125, 24.5],
+  [-66.9, 49.4],
+]
+const US_FIT = { padding: 8 }
 
 export type RouteLeg = Pick<Leg, 'origin' | 'destination' | 'originPoint' | 'destinationPoint'> &
   Partial<Pick<Leg, 'track'>>
 
+// An airport shown on its own, without a route line: one end of a leg still being typed.
+export type LoneAirport = { ident: string; point: RouteLeg['originPoint'] }
+
 type Props = {
   legs: RouteLeg[]
+  airports?: LoneAirport[] // drawn as dots; they don't move the view, only legs do
   interactive?: boolean
   base?: BaseMap
   className?: string // sizes the map; it fills this box
 }
 
-export default function FlightMap({ legs, interactive = false, base = 'chart', className = '' }: Props) {
+export default function FlightMap({ legs, airports = NO_AIRPORTS, interactive = false, base = 'chart', className = '' }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const [zoomedOut, setZoomedOut] = useState(false)
 
   // Callers often build `legs` fresh on every render (the Route step does), so compare by content.
   const legsKey = useMemo(
-    () => JSON.stringify(legs.map((l) => [l.origin, l.destination, l.originPoint, l.destinationPoint, l.track])),
-    [legs],
+    () =>
+      JSON.stringify([
+        legs.map((l) => [l.origin, l.destination, l.originPoint, l.destinationPoint, l.track]),
+        airports,
+      ]),
+    [legs, airports],
   )
-  // The latest legs, for the effects below (layout effects run before them).
-  const legsRef = useRef(legs)
+  // The latest legs and lone airports, for the effects below (layout effects run before them).
+  const routeRef = useRef({ legs, airports })
   useLayoutEffect(() => {
-    legsRef.current = legs
+    routeRef.current = { legs, airports }
   })
 
   // The map itself: rebuilt only when the base map or interactivity changes.
   useEffect(() => {
     if (!container.current) return
     const navy = getComputedStyle(document.documentElement).getPropertyValue('--accent-light-mode').trim() || '#1b2f57'
-    const initial = legsRef.current
+    const initial = routeRef.current
 
     const map = new MapLibreMap({
       container: container.current,
@@ -74,13 +88,13 @@ export default function FlightMap({ legs, interactive = false, base = 'chart', c
         sources: {
           ...baseSources(base),
           // Part of the initial style so the route draws at once, not after the map tiles load.
-          route: { type: 'geojson', data: routeGeoJson(initial) },
+          route: { type: 'geojson', data: routeGeoJson(initial.legs) },
         },
         layers: [...baseLayers(base), ...routeLayers(base, navy)],
       },
-      ...(initial.length > 0
-        ? { bounds: boundsFor(initial), fitBoundsOptions: fitOptions(interactive) }
-        : US_VIEW),
+      ...(initial.legs.length > 0
+        ? { bounds: boundsFor(initial.legs), fitBoundsOptions: fitOptions(interactive) }
+        : { bounds: US_BOUNDS, fitBoundsOptions: US_FIT }),
     })
     mapRef.current = map
 
@@ -104,11 +118,12 @@ export default function FlightMap({ legs, interactive = false, base = 'chart', c
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    const current = legsRef.current
+    const current = routeRef.current
 
     const apply = () => {
-      ;(map.getSource('route') as GeoJSONSource | undefined)?.setData(routeGeoJson(current))
-      if (current.length > 0) map.fitBounds(boundsFor(current), { ...fitOptions(interactive), duration: 300 })
+      ;(map.getSource('route') as GeoJSONSource | undefined)?.setData(routeGeoJson(current.legs))
+      if (current.legs.length > 0) map.fitBounds(boundsFor(current.legs), { ...fitOptions(interactive), duration: 300 })
+      else map.fitBounds(US_BOUNDS, { ...US_FIT, duration: 300 }) // back to the US when the route is cleared
     }
     if (map.isStyleLoaded()) apply()
     else map.once('load', apply)
@@ -123,7 +138,7 @@ export default function FlightMap({ legs, interactive = false, base = 'chart', c
       el.append(label)
       markers.push(new Marker({ element: el }).setLngLat([point.lon, point.lat]).addTo(map))
     }
-    for (const leg of current) {
+    for (const leg of current.legs) {
       if (leg.origin !== leg.destination || hasTrack(leg)) continue
       const el = document.createElement('div')
       el.className = styles.pattern ?? ''
@@ -149,19 +164,28 @@ const fitOptions = (interactive: boolean) => ({
   maxZoom: 10,
 })
 
-function airportsOf(legs: RouteLeg[]) {
+const NO_AIRPORTS: LoneAirport[] = []
+
+type Route = { legs: RouteLeg[]; airports: LoneAirport[] }
+
+
+// Every airport to mark: both ends of each leg, then the lone ones.
+function airportsOf({ legs, airports: lone }: Route) {
   const airports = new Map<string, RouteLeg['originPoint']>()
   for (const leg of legs) {
     airports.set(leg.origin, leg.originPoint)
     airports.set(leg.destination, leg.destinationPoint)
   }
+  for (const a of lone) airports.set(a.ident, a.point)
   return airports
 }
 
+// The view fits the legs only; lone airports are marked but don't move it.
 function boundsFor(legs: RouteLeg[]): LngLatBounds {
   const bounds = new LngLatBounds()
-  for (const p of airportsOf(legs).values()) bounds.extend([p.lon, p.lat])
-  for (const leg of legs) for (const point of leg.track ?? []) bounds.extend(point)
+  for (const p of airportsOf({ legs, airports: NO_AIRPORTS }).values()) bounds.extend([p.lon, p.lat])
+  // The track or great-circle arc can bow out past the airports.
+  for (const leg of legs) if (leg.origin !== leg.destination || hasTrack(leg)) for (const point of legPath(leg)) bounds.extend(point)
   // A local flight is a single point; give it some area so the fit doesn't max out.
   const sw = bounds.getSouthWest()
   const ne = bounds.getNorthEast()
@@ -182,13 +206,8 @@ function routeGeoJson(legs: RouteLeg[]): GeoJSONSourceSpecification['data'] {
         properties: {},
         geometry: {
           type: 'LineString' as const,
-          // The path actually flown when FlightAware has it, otherwise a straight line.
-          coordinates: hasTrack(leg)
-            ? leg.track!
-            : [
-                [leg.originPoint.lon, leg.originPoint.lat],
-                [leg.destinationPoint.lon, leg.destinationPoint.lat],
-              ],
+          // The path actually flown when FlightAware has it, otherwise the great-circle route.
+          coordinates: legPath(leg),
         },
       })),
   }

@@ -3,6 +3,7 @@
   width: 100%;
   overflow: hidden;
   border-radius: var(--radius-sm);
+  background: var(--map); /* while the map loads, so the frame isn't blank */
 }
 
 /* The map (or the drawn stand-in) fills the box. */

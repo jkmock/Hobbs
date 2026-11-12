@@ -1,3 +1,4 @@
+import { legPath } from '../lib/geo'
 import type { Leg, Point } from '../lib/types'
 import styles from './RouteMap.module.css'
 
@@ -25,8 +26,10 @@ export default function RouteMap({ legs, height = 150 }: Props) {
   if (airports.size === 0) return null
 
   // Equirectangular projection: shrink longitude by cos(latitude) so shapes look right.
-  // Fit the airports and any FlightAware track, which can wander past them.
-  const trackPoints = legs.flatMap((leg) => (leg.track ?? []).map(([lon, lat]) => ({ lat, lon })))
+  // Fit the airports and each leg's line (FlightAware track or great-circle arc),
+  // which can wander past them.
+  const paths = legs.map((leg) => (leg.origin === leg.destination && !hasTrack(leg) ? [] : legPath(leg)))
+  const trackPoints = paths.flatMap((path) => path.map(([lon, lat]) => ({ lat, lon })))
   const points = [...airports.values(), ...trackPoints]
   const lats = points.map((p) => p.lat)
   const midLat = (Math.min(...lats) + Math.max(...lats)) / 2
@@ -71,14 +74,7 @@ export default function RouteMap({ legs, height = 150 }: Props) {
       ))}
 
       {legs.map((leg, i) =>
-        leg.track && leg.track.length >= 2 ? (
-          // The path actually flown, from FlightAware.
-          <polyline
-            key={i}
-            points={leg.track.map(([lon, lat]) => `${toX(lon).toFixed(1)},${toY(lat).toFixed(1)}`).join(' ')}
-            className={styles.track}
-          />
-        ) : leg.origin === leg.destination ? (
+        leg.origin === leg.destination && !hasTrack(leg) ? (
           // Pattern work or a local flight: a dashed ring around the airport.
           <circle
             key={i}
@@ -88,13 +84,11 @@ export default function RouteMap({ legs, height = 150 }: Props) {
             className={styles.pattern}
           />
         ) : (
-          <line
+          // The path actually flown, from FlightAware, or else the great-circle route.
+          <polyline
             key={i}
-            x1={toX(leg.originPoint.lon)}
-            y1={toY(leg.originPoint.lat)}
-            x2={toX(leg.destinationPoint.lon)}
-            y2={toY(leg.destinationPoint.lat)}
-            className={styles.leg}
+            points={paths[i]!.map(([lon, lat]) => `${toX(lon).toFixed(1)},${toY(lat).toFixed(1)}`).join(' ')}
+            className={hasTrack(leg) ? styles.track : styles.leg}
           />
         ),
       )}
@@ -129,3 +123,5 @@ function range(min: number, max: number, step: number): number[] {
   }
   return values
 }
+
+const hasTrack = (leg: RouteLeg) => (leg.track?.length ?? 0) >= 2

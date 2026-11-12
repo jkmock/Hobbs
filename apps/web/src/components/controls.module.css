@@ -17,13 +17,26 @@
 .stepper {
   display: flex;
   flex-shrink: 0;
+  position: relative; /* for the filled ring below */
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--surface);
 }
-/* A box with something other than 0 in it is outlined in the accent, so entered times stand out. */
-.stepper.filled { border-color: var(--accent); }
+/* A box with something other than 0 in it is outlined in the accent, so entered times stand out.
+   A half-pixel ring just inside the 1px border makes 1.5px of blue. It's drawn inside, over the buttons,
+   so the box stays the same size and lines up with the grey ones. */
+.stepper.filled,
+.stepper:has(input:focus-visible) { border-color: var(--accent); }
+.stepper.filled::after,
+.stepper:has(input:focus-visible)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: calc(var(--radius-sm) - 1px);
+  box-shadow: inset 0 0 0 0.5px var(--accent);
+  pointer-events: none;
+}
 .stepper.invalid { border-color: var(--danger); }
 
 .stepper button {
@@ -45,7 +58,147 @@
   text-align: center;
   font-size: 15px;
 }
-.stepper input:focus-visible { outline: none; background: var(--accent-soft); }
+/* Typing keeps the box white; the blue outline above shows which box has focus. */
+.stepper input:focus-visible { outline: none; }
+
+/* Date row: a button the size of a stepper, opening a calendar under it. */
+.dateField { position: relative; flex-shrink: 0; }
+.dateButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px; /* a stepper's 38px buttons plus its border */
+  padding: 0 12px;
+  border: 1px solid var(--accent);
+  box-shadow: inset 0 0 0 0.5px var(--accent); /* 1.5px of blue with the border, like a filled stepper */
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 15px;
+  font-weight: 550;
+  cursor: pointer;
+}
+.dateButton.invalid { border-color: var(--danger); box-shadow: inset 0 0 0 0.5px var(--danger); }
+.dateButton svg { color: var(--ink-2); }
+@media (hover: hover) { .dateButton:hover { background: var(--accent-soft); } }
+
+.calendar {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  width: 292px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.16), 0 2px 6px rgb(0 0 0 / 0.08);
+}
+.calendarHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.calendarMonth { font-size: 15px; font-weight: 650; }
+.calendarNav {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+.calendarNav:disabled { color: var(--ink-3); opacity: 0.4; cursor: default; }
+@media (hover: hover) { .calendarNav:not(:disabled):hover { background: var(--line); } }
+
+.calendarGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.weekday { padding: 4px 0; text-align: center; font-size: 12px; font-weight: 600; color: var(--ink-3); }
+.day {
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  aspect-ratio: 1;
+  justify-self: center;
+  background: transparent;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.day[data-today] { box-shadow: inset 0 0 0 2px var(--accent); font-weight: 650; }
+.day[aria-pressed='true'] { background: var(--accent); color: var(--on-accent); font-weight: 650; box-shadow: none; }
+.day:disabled { color: var(--ink-3); opacity: 0.45; cursor: default; }
+@media (hover: hover) { .day:not(:disabled):not([aria-pressed='true']):hover { background: var(--line); } }
+
+.todayButton { display: block; margin: 6px auto 0; }
+
+/* Select: a button shaped like an .input, opening a list card like the calendar's. */
+.select { position: relative; }
+.selectButton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+.selectValue { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.selectChevron { flex-shrink: 0; color: var(--ink-2); transition: transform 0.15s ease; }
+.selectChevron[data-open] { transform: rotate(180deg); }
+
+.selectList {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.16), 0 2px 6px rgb(0 0 0 / 0.08);
+}
+.selectList[data-above] { top: auto; bottom: calc(100% + 6px); }
+
+.selectOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  cursor: pointer;
+}
+.selectOption[data-active] { background: var(--line); }
+.selectOption[aria-selected='true'] { font-weight: 600; }
+.selectCheck { flex-shrink: 0; color: var(--accent); }
+
+/* The action row ("Add instructor"): below a divider, in the accent color. */
+.selectAction {
+  position: relative;
+  margin-top: 7px;
+  color: var(--accent);
+  font-weight: 550;
+}
+.selectAction::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 4px;
+  right: 4px;
+  height: 1px;
+  background: var(--line);
+}
+.selectActionIcon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px dashed currentColor;
+}
 
 /* Segmented control */
 .segmented {

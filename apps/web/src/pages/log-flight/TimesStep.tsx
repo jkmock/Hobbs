@@ -1,9 +1,8 @@
 import { Segmented, Stepper } from '../../components/controls'
-import { draftLegTotal, TIME_FIELDS, useLegDistances, type FlightType, type StepProps, type TimeField } from './draft'
+import { draftLegTotal, TIME_FIELDS, type FlightType, type StepProps, type TimeField } from './draft'
 import styles from './LogFlight.module.css'
 
 export default function TimesStep({ draft, update, errors }: StepProps) {
-  const { distances } = useLegDistances(draft.legs)
   const t = draft.times
   const setTime = (key: TimeField, value: string) => update({ times: { ...t, [key]: value } })
 
@@ -23,17 +22,15 @@ export default function TimesStep({ draft, update, errors }: StepProps) {
 
   const legSum = draftLegTotal(draft.legs)
 
-  const isCrossCountryRoute = distances.some((nm) => nm != null && nm > 50)
-  const suggestCrossCountry = isCrossCountryRoute && Number(t.crossCountryTime) === 0 && Number(t.totalTime) > 0
-
   return (
     <>
-      <section className={`card ${styles.panel}`}>
+      <section className={`card ${styles.panel} ${styles.totalCard}`}>
         <Stepper
           label="Total time"
           value={t.totalTime}
           onChange={(v) => setTime('totalTime', v)}
           error={errors.totalTime}
+          labelClassName={styles.stepLabelText}
         />
         {/* Only shown once the total no longer matches the legs, to offer putting it back. */}
         {legSum > 0 &&
@@ -52,7 +49,7 @@ export default function TimesStep({ draft, update, errors }: StepProps) {
           )}
       </section>
 
-      <section className={`card ${styles.panel}`} style={{ gap: 0 }}>
+      <section className={`card ${styles.panel} ${styles.timesCard}`}>
         {/* Fills the rows below from the total (see applyPatch in draft.ts). */}
         <div className={`field ${styles.flightType}`}>
           <span>Autofill</span>
@@ -71,19 +68,6 @@ export default function TimesStep({ draft, update, errors }: StepProps) {
           <Stepper key={key} label={label} value={t[key]} onChange={(v) => setTime(key, v)} error={errors[key]} />
         ))}
       </section>
-
-      {suggestCrossCountry && (
-        <div className={`notice ${styles.hint}`}>
-          <span>This route has a leg over 50 nm.</span>
-          <button
-            type="button"
-            className="btn btn--sm"
-            onClick={() => setTime('crossCountryTime', t.totalTime)}
-          >
-            Log as cross-country
-          </button>
-        </div>
-      )}
     </>
   )
 }

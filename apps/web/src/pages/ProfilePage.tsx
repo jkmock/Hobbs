@@ -16,7 +16,7 @@ export default function ProfilePage() {
   if (!user) return null
 
   return (
-    <div className="page page--tabs">
+    <>
       <PageHeader
         title="Profile"
         action={
@@ -25,33 +25,35 @@ export default function ProfilePage() {
           </Link>
         }
       />
+      <div className="page">
 
-      <div className={styles.identity}>
-        <Avatar firstName={user.firstName} lastName={user.lastName} size={88} />
-        <h2>
-          {user.firstName} {user.lastName}
-        </h2>
-        <p className="muted">{user.email}</p>
+        <div className={styles.identity}>
+          <Avatar firstName={user.firstName} lastName={user.lastName} size={88} />
+          <h2>
+            {user.firstName} {user.lastName}
+          </h2>
+          <p className="muted">{user.email}</p>
+        </div>
+
+        <h2 className="section-title">Stats</h2>
+        <dl className={`card ${styles.stats}`}>
+          <div>
+            <dt>Flights</dt>
+            <dd className="mono">{stats.flights}</dd>
+          </div>
+          <div>
+            <dt>Hours</dt>
+            <dd className="mono">{formatHours(stats.hours)}</dd>
+          </div>
+          <div>
+            <dt>Distance</dt>
+            <dd className="mono">
+              {stats.distanceNm.toLocaleString()}
+              <small> nm</small>
+            </dd>
+          </div>
+        </dl>
       </div>
-
-      <h2 className="section-title">Stats</h2>
-      <dl className={`card ${styles.stats}`}>
-        <div>
-          <dt>Flights</dt>
-          <dd className="mono">{stats.flights}</dd>
-        </div>
-        <div>
-          <dt>Hours</dt>
-          <dd className="mono">{formatHours(stats.hours)}</dd>
-        </div>
-        <div>
-          <dt>Distance</dt>
-          <dd className="mono">
-            {stats.distanceNm.toLocaleString()}
-            <small> nm</small>
-          </dd>
-        </div>
-      </dl>
-    </div>
+    </>
   )
 }

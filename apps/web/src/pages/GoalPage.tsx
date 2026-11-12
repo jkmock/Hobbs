@@ -9,34 +9,36 @@ export default function GoalPage() {
   const { total, sections } = privatePilotProgress(flights)
 
   return (
-    <div className="page page--tabs">
+    <>
       <PageHeader title="Private Pilot" subtitle="14 CFR 61.109(a) · airplane single-engine" />
+      <div className="page">
 
-      {isPending ? (
-        <p className="muted">Loading…</p>
-      ) : (
-        <>
-          <div className={`card ${styles.totalCard}`}>
-            <ProgressBar requirement={total} large />
-          </div>
+        {isPending ? (
+          <p className="muted">Loading…</p>
+        ) : (
+          <>
+            <div className={`card ${styles.totalCard}`}>
+              <ProgressBar requirement={total} large />
+            </div>
 
-          {sections.map((section) => (
-            <section key={section.title}>
-              <h2 className="section-title">{section.title}</h2>
-              <div className={`card ${styles.list}`}>
-                {section.items.map((item) => (
-                  <ProgressBar key={item.label} requirement={item} />
-                ))}
-              </div>
-            </section>
-          ))}
+            {sections.map((section) => (
+              <section key={section.title}>
+                <h2 className="section-title">{section.title}</h2>
+                <div className={`card ${styles.list}`}>
+                  {section.items.map((item) => (
+                    <ProgressBar key={item.label} requirement={item} />
+                  ))}
+                </div>
+              </section>
+            ))}
 
-          <p className={styles.footnote}>
-            Checkride prep counts dual time from the last 2 months. Towered-airport takeoffs and landings
-            aren't tracked yet.
-          </p>
-        </>
-      )}
-    </div>
+            <p className={styles.footnote}>
+              Checkride prep counts dual time from the last 2 months. Towered-airport takeoffs and landings
+              aren't tracked yet.
+            </p>
+          </>
+        )}
+      </div>
+    </>
   )
 }

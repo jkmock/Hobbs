@@ -23,7 +23,7 @@
   --line: light-dark(#e1ddd2, #2a2d31);
   --line-strong: light-dark(#cbc6b8, #3a3d42);
   --accent-light-mode: #0f1f40;
-  --accent-dark-mode: #8aa8e0;
+  --accent-dark-mode: #5589e9;
   --accent: light-dark(var(--accent-light-mode), var(--accent-dark-mode));
   /* Text and icons on an accent fill: white on the navy, dark on the light dark-mode blue. */
   --on-accent: light-dark(#ffffff, #10141c);
@@ -66,11 +66,24 @@ h1, h2, h3, p { margin: 0; }
 
 button, input, select, textarea { font: inherit; color: inherit; }
 
+/* Taps shouldn't flash: no mobile tap highlight, and no text selection when a control is
+   tapped or clicked quickly. Text fields stay selectable so their contents can be edited. */
+* { -webkit-tap-highlight-color: transparent; }
+button, a, label, summary, [role='button'] { -webkit-user-select: none; user-select: none; }
+input, textarea { -webkit-user-select: text; user-select: text; }
+
 /* The app is a single phone-width column, centered on larger screens. */
 .app {
+  /* A fixed, screen-sized frame. Headers, the tab bar and footers are rows in it and never
+     move; only the .page inside scrolls. Scrolling the document instead would let iOS
+     rubber-band drag the whole screen, headers included. */
+  position: fixed;
+  inset: 0;
   max-width: 520px;
-  min-height: 100dvh;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--paper);
 }
 
@@ -78,8 +91,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .app { border-inline: 1px solid var(--line); }
 }
 
-.page { padding: 20px 16px 32px; }
-.page--tabs { padding-bottom: calc(var(--tabbar-height) + 32px + env(safe-area-inset-bottom)); }
+.page {
+  /* The scrolling part of a screen; its bounce stays inside it. */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px 16px 32px;
+}
 
 .stack { display: flex; flex-direction: column; gap: 12px; }
 

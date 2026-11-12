@@ -1,10 +1,13 @@
 .header {
+  /* Sits above the scrolling .page, so it never moves. */
+  flex: none;
+  padding: 20px 16px 12px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 20px;
 }
+.header + :global(.page) { padding-top: 8px; }
 
 .titleRow {
   display: flex;

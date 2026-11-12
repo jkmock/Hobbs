@@ -6,11 +6,12 @@ type Props = {
   subtitle?: string
   leading?: ReactNode // e.g. a back button
   action?: ReactNode
+  className?: string
 }
 
-export default function PageHeader({ title, subtitle, leading, action }: Props) {
+export default function PageHeader({ title, subtitle, leading, action, className = '' }: Props) {
   return (
-    <header className={styles.header}>
+    <header className={`${styles.header} ${className}`}>
       <div className={styles.titleRow}>
         {leading}
         <div>

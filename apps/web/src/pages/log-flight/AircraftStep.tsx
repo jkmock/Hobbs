@@ -1,13 +1,11 @@
 import { useDeferredValue, useState, type FormEvent } from 'react'
 import { Check, Plus, Search } from 'lucide-react'
 import { CreateAircraftSchema } from '@hobbs/shared'
-import { Segmented } from '../../components/controls'
+import { DateField, Segmented } from '../../components/controls'
 import {
   useAddMyAircraft,
   useAircraftSearch,
   useCreateAircraft,
-  useCreateInstructor,
-  useInstructors,
   useMyAircraft,
 } from '../../hooks/useLookups'
 import type { Aircraft } from '../../lib/types'
@@ -44,12 +42,23 @@ export default function AircraftStep({ draft, update, errors }: StepProps) {
 
   return (
     <>
+      <section className={`card ${styles.panel} ${styles.totalCard}`}>
+        <DateField
+          label="Date"
+          value={draft.flightDate}
+          onChange={(flightDate) => update({ flightDate })}
+          error={errors.flightDate}
+          labelClassName={styles.dateLabel}
+          buttonClassName={styles.headButton}
+        />
+      </section>
+
       <section className={`card ${styles.panel}`}>
         <div className={styles.panelHead}>
-          <h2>Aircraft</h2>
+          <h2>My Aircraft</h2>
           {!adding && (
-            <button type="button" className="btn btn--sm" onClick={() => setAdding(true)}>
-              <Plus size={15} /> Add aircraft
+            <button type="button" className={`btn btn--primary btn--sm ${styles.headButton}`} onClick={() => setAdding(true)}>
+              <Plus size={18} /> Add aircraft
             </button>
           )}
         </div>
@@ -110,102 +119,13 @@ export default function AircraftStep({ draft, update, errors }: StepProps) {
                 )
               })}
             </ul>
-
-            {term && mine.isSuccess && mine.data.length > 0 && options.length === 0 && (
-              <p className="muted" style={{ fontSize: 14 }}>
-                None of your aircraft match <span className="mono">{term}</span>.{' '}
-                <button type="button" className="btn btn--ghost btn--sm" onClick={() => setAdding(true)}>
-                  Add it
-                </button>
-              </p>
-            )}
           </>
         )}
         {errors.aircraftId && <p className="error-text">{errors.aircraftId}</p>}
       </section>
 
       {draft.aircraftId && !adding && <RecentFlights draft={draft} update={update} />}
-
-      <section className={`card ${styles.panel}`}>
-        <div className={styles.panelHead}>
-          <h2>Flight</h2>
-        </div>
-        <div className={styles.twoCol}>
-          <label className="field">
-            <span>Date</span>
-            <input
-              className="input"
-              type="date"
-              value={draft.flightDate}
-              onChange={(e) => update({ flightDate: e.target.value })}
-            />
-            {errors.flightDate && <span className="error-text">{errors.flightDate}</span>}
-          </label>
-          <InstructorPicker value={draft.instructorId} onChange={(instructorId) => update({ instructorId })} />
-        </div>
-      </section>
     </>
-  )
-}
-
-function InstructorPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
-  const { data: instructors = [] } = useInstructors()
-  const create = useCreateInstructor()
-  const [adding, setAdding] = useState(false)
-  const [name, setName] = useState('')
-
-  const save = () => {
-    const [first, ...rest] = name.trim().split(/\s+/)
-    if (!first || rest.length === 0) return
-    create.mutate(
-      { firstName: first, lastName: rest.join(' ') },
-      {
-        onSuccess: (instructor) => {
-          onChange(instructor.id)
-          setAdding(false)
-          setName('')
-        },
-      },
-    )
-  }
-
-  if (adding) {
-    return (
-      <label className="field">
-        <span>New instructor</span>
-        <input
-          className="input"
-          placeholder="First and last name"
-          value={name}
-          autoFocus
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && save()}
-          onBlur={() => !name.trim() && setAdding(false)}
-        />
-        {create.error && <span className="error-text">{create.error.message}</span>}
-      </label>
-    )
-  }
-
-  return (
-    <label className="field">
-      <span>
-        Instructor <span style={{ fontWeight: 400 }}>(optional)</span>
-      </span>
-      <select
-        className="input"
-        value={value}
-        onChange={(e) => (e.target.value === '__new' ? setAdding(true) : onChange(e.target.value))}
-      >
-        <option value="">None</option>
-        {instructors.map((i) => (
-          <option key={i.id} value={i.id}>
-            {i.firstName} {i.lastName}
-          </option>
-        ))}
-        <option value="__new">Add instructor…</option>
-      </select>
-    </label>
   )
 }
 
@@ -339,9 +259,6 @@ function NewAircraftDetails({
 
   return (
     <form className="stack" onSubmit={submit}>
-      <p className="muted" style={{ fontSize: 14 }}>
-        <span className="mono">{tailNumber}</span> isn't in Hobbs yet. Add its details.
-      </p>
       <div className={styles.twoCol}>
         <label className="field">
           <span>Make</span>

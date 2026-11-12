@@ -39,6 +39,10 @@ export type Draft = {
   legs: DraftLeg[]
   times: Record<TimeField, string>
   totalFromLegs: boolean // total time follows the sum of the leg times until the pilot changes it
+  // Cross-country time follows the route (see crossCountryTime) until the pilot changes it.
+  // null: a saved flight whose airports haven't loaded yet, so it isn't known whether its
+  // cross-country time came from the legs (see syncCrossCountry).
+  crossCountryFromLegs: boolean | null
   // The Solo/Dual shortcut that's selected. While set, solo/dual (and PIC for solo) follow the
   // total time; editing any of those by hand clears it.
   flightType: FlightType | null
@@ -50,14 +54,15 @@ export type StepProps = {
   draft: Draft
   update: (patch: Partial<Draft>) => void
   errors: Record<string, string>
+  clearError: (key: string) => void // e.g. 'legs.0.origin', once the field is being fixed
 }
 
 // Which top-level fields each step owns, to show errors on the right step.
 export const STEPS = [
-  { title: 'Aircraft', fields: ['aircraftId', 'flightDate', 'instructorId'] },
+  { title: 'Aircraft', fields: ['aircraftId', 'flightDate'] },
   { title: 'Route', fields: ['legs'] },
   { title: 'Times', fields: TIME_FIELDS.map(([key]) => key) },
-  { title: 'Landings', fields: [...LANDING_FIELDS.map(([key]) => key), 'notes'] },
+  { title: 'Landings', fields: [...LANDING_FIELDS.map(([key]) => key), 'instructorId', 'notes'] },
 ] as const
 
 const mapFields = <K extends string>(fields: readonly (readonly [K, string])[], value: (key: K) => string) =>
@@ -83,6 +88,9 @@ export function applyPatch(d: Draft, patch: Partial<Draft>): Draft {
   } else if (patch.legs && next.totalFromLegs && sum > 0) {
     next.times = { ...next.times, totalTime: sum.toFixed(1) }
   }
+
+  // Typing a cross-country time yourself stops it following the legs.
+  if (patch.times && patch.times.crossCountryTime !== d.times.crossCountryTime) next.crossCountryFromLegs = false
 
   // Typing in Dual, Solo or PIC yourself turns the shortcut off.
   if (patch.times && !('flightType' in patch)) {
@@ -126,6 +134,7 @@ export function emptyDraft(): Draft {
     legs: [emptyLeg()],
     times: mapFields(TIME_FIELDS, () => '0.0'),
     totalFromLegs: true,
+    crossCountryFromLegs: true,
     flightType: null, // neither Solo nor Dual Received until the pilot picks one
     landings: mapFields(LANDING_FIELDS, () => '0'),
     notes: '',
@@ -148,6 +157,7 @@ export function draftFromFlight(f: Flight): Draft {
     times,
     // Keep following the legs only if the saved total still matches them.
     totalFromLegs: f.legs.every((l) => l.time != null) && legTotal(f.legs.map((l) => l.time ?? 0)) === f.totalTime,
+    crossCountryFromLegs: null, // decided once the airports load (see syncCrossCountry)
     flightType: flightTypeOf(times),
     landings: mapFields(LANDING_FIELDS, (key) => String(f[key])),
     notes: f.notes ?? '',
@@ -195,5 +205,32 @@ export function useLegDistances(legs: DraftLeg[]) {
     const b = find(leg.destination)
     return a && b ? distanceNm({ lat: a.latitude, lon: a.longitude }, { lat: b.latitude, lon: b.longitude }) : null
   })
-  return { find, distances }
+  // From the original departure airport to each leg's landing airport, for cross-country.
+  const start = find(legs[0]?.origin ?? '')
+  const fromStart = legs.map((leg) => {
+    const b = find(leg.destination)
+    return start && b ? distanceNm({ lat: start.latitude, lon: start.longitude }, { lat: b.latitude, lon: b.longitude }) : null
+  })
+  // Still waiting on an airport lookup (a code that wasn't found is null, not undefined).
+  const pending = legs.some((leg) => [leg.origin, leg.destination].some((ident) => find(ident) === undefined && ident.trim().length >= 3))
+  return { find, distances, fromStart, pending }
+}
+
+// The FAA definition (14 CFR 61.1): a flight with a landing more than 50 nm in a straight line
+// from the original departure airport is cross-country, all of it, so the whole total time
+// counts. Each leg's own length doesn't matter. fromStart comes from useLegDistances.
+export const CROSS_COUNTRY_NM = 50
+
+export function crossCountryTime(d: Draft, fromStart: (number | null)[]): string {
+  return fromStart.some((nm) => nm != null && nm > CROSS_COUNTRY_NM) ? d.times.totalTime : '0.0'
+}
+
+// Keeps cross-country time following the route. Returns the same draft when nothing changes.
+export function syncCrossCountry(d: Draft, fromStart: (number | null)[], pending: boolean): Draft {
+  if (pending || d.crossCountryFromLegs === false) return d
+  const computed = crossCountryTime(d, fromStart)
+  // A saved flight: keep following only if its cross-country time matches what the route gives.
+  if (d.crossCountryFromLegs === null) return { ...d, crossCountryFromLegs: Number(computed) === Number(d.times.crossCountryTime) }
+  if (Number(computed) === Number(d.times.crossCountryTime)) return d
+  return { ...d, times: { ...d.times, crossCountryTime: computed } }
 }

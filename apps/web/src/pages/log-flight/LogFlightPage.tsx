@@ -1,9 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState, type KeyboardEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, Trash2, X } from 'lucide-react'
 import { CreateFlightSchema } from '@hobbs/shared'
 import { useDeleteFlight, useFlight, useSaveFlight } from '../../hooks/useFlights'
-import { applyPatch, draftFromFlight, emptyDraft, friendlyMessage, STEPS, toInput, type Draft } from './draft'
+import {
+  applyPatch,
+  draftFromFlight,
+  emptyDraft,
+  friendlyMessage,
+  STEPS,
+  syncCrossCountry,
+  toInput,
+  useLegDistances,
+  type Draft,
+} from './draft'
 import AircraftStep from './AircraftStep'
 import RouteStep from './RouteStep'
 import TimesStep from './TimesStep'
@@ -33,6 +43,30 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const update = (patch: Partial<Draft>) => setDraft((d) => applyPatch(d, patch))
+  const clearError = (key: string) =>
+    setErrors((e) => {
+      if (!(key in e)) return e
+      const { [key]: _, ...rest } = e
+      return rest
+    })
+
+  // Any change to the total time, however it's made (the stepper, typing, "Use leg total",
+  // or the leg times), clears its error. Compared during render, React's pattern for
+  // reacting to a changed value without an effect.
+  const [seenTotal, setSeenTotal] = useState(draft.times.totalTime)
+  if (draft.times.totalTime !== seenTotal) {
+    setSeenTotal(draft.times.totalTime)
+    clearError('totalTime')
+  }
+
+  // Cross-country time is the total time when the route qualifies (see crossCountryTime).
+  // Distances need the airports, which load separately, so this runs after each change
+  // rather than inside applyPatch.
+  const { fromStart, pending } = useLegDistances(draft.legs)
+  useEffect(() => {
+    setDraft((d) => syncCrossCountry(d, fromStart, pending))
+  }, [draft, fromStart.join(), pending])
+
   const isLast = step === STEPS.length - 1
 
   // Validates the whole flight, keeps only errors from the given steps,
@@ -75,6 +109,44 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
 
   const Step = STEP_COMPONENTS[step]!
 
+  // Moving between a step's fields from the keyboard:
+  // - Enter goes to the next field, like Tab. From the last field it just leaves the field
+  //   (which also closes a phone's keyboard); it never changes the step or saves the flight.
+  // - Backspace in an empty field goes back to the previous field, cursor at the end, so
+  //   holding or repeating it keeps deleting back through the fields.
+  // Fields that handle Enter themselves (a form, the notes box, the new-instructor field)
+  // are left alone.
+  function keyboardNav(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.defaultPrevented || e.nativeEvent.isComposing) return
+    if (e.key !== 'Enter' && e.key !== 'Backspace') return
+    const field = e.target as HTMLElement
+    if (!isTextField(field) || field.closest('form')) return
+    const fields = [...e.currentTarget.querySelectorAll<HTMLElement>('input, select')].filter(isTextField)
+    const at = fields.indexOf(field)
+
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      const following = fields[at + 1]
+      if (following) following.focus()
+      else field.blur()
+      return
+    }
+
+    // Backspace: only from an empty text box, and only if there's a field before it.
+    const previous = fields[at - 1]
+    if (!(field instanceof HTMLInputElement) || field.value !== '' || !previous) return
+    e.preventDefault()
+    previous.focus()
+    if (previous instanceof HTMLInputElement) {
+      const end = previous.value.length
+      try {
+        previous.setSelectionRange(end, end)
+      } catch {
+        // some input types (number, date) don't have a cursor to place
+      }
+    }
+  }
+
   return (
     <div className={styles.wizard}>
       <header className={styles.header}>
@@ -106,8 +178,8 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
         ))}
       </ol>
 
-      <div className={styles.body}>
-        <Step draft={draft} update={update} errors={errors} />
+      <div className={styles.body} onKeyDown={keyboardNav}>
+        <Step draft={draft} update={update} errors={errors} clearError={clearError} />
       </div>
 
       <footer className={styles.footer}>
@@ -116,26 +188,33 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
         )}
         <div className={styles.footerButtons}>
           {step > 0 && (
-            <button type="button" className="btn btn--lg" onClick={() => setStep(step - 1)} aria-label="Back">
+            <button type="button" className={`card ${styles.backButton}`} onClick={() => setStep(step - 1)} aria-label="Back">
               <ArrowLeft size={18} />
             </button>
           )}
           {isLast ? (
             <button
               type="button"
-              className="btn btn--primary btn--lg btn--block"
+              className={`card ${styles.nextButton}`}
               onClick={submit}
               disabled={save.isPending}
             >
-              {save.isPending ? 'Saving…' : id ? 'Save changes' : 'Log flight'}
+              {save.isPending ? 'Saving…' : id ? 'Save changes' : 'Log Flight'}
             </button>
           ) : (
-            <button type="button" className="btn btn--primary btn--lg btn--block" onClick={next}>
-              Next: {STEPS[step + 1]!.title}
+            <button type="button" className={`card ${styles.nextButton}`} onClick={next}>
+              Next
             </button>
           )}
         </div>
       </footer>
     </div>
   )
+}
+
+// A field you type into or pick from, that Enter should move on from (not a checkbox or button).
+function isTextField(el: Element): el is HTMLInputElement | HTMLSelectElement {
+  if (el instanceof HTMLSelectElement) return !el.disabled
+  if (!(el instanceof HTMLInputElement) || el.disabled || el.readOnly) return false
+  return !['checkbox', 'radio', 'button', 'submit', 'reset', 'hidden', 'file', 'range', 'color'].includes(el.type)
 }

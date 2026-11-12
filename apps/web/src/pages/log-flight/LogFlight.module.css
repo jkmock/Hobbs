@@ -1,18 +1,24 @@
 .wizard {
-  /* The title row and progress bar stay pinned at the top; things pinned below them start
-     at --pinned-height. */
+  /* Fills the .app frame: the title row, progress bar and footer stay put, and only the
+     step body scrolls. */
   --header-height: 60px;
-  --steps-height: 48px;
-  --pinned-height: calc(var(--header-height) + var(--steps-height));
+  --steps-height: 54px;
+  /* Room the floating buttons take at the bottom, which the scrolling content leaves clear. */
+  --footer-space: calc(64px + 12px + 32px + env(safe-area-inset-bottom)); /* button card + padding */
+  position: relative;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+}
+
+/* Every card in the form floats a little off the page, the same as the leg cards. */
+.wizard :global(.card) {
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.18), 0 1px 3px rgb(0 0 0 / 0.12);
 }
 
 .header {
-  position: sticky;
-  top: 0;
-  z-index: 3;
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -25,10 +31,7 @@
 
 /* Step indicator: four segments, filled up to the current step. */
 .steps {
-  /* Pinned to the top as the step scrolls; the page-colored backing covers what passes under. */
-  position: sticky;
-  top: var(--header-height); /* right under the pinned title row */
-  z-index: 3;
+  flex: none;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   align-items: end;
@@ -42,38 +45,104 @@
 
 .steps button {
   width: 100%;
-  padding: 8px 0 0;
+  /* 8px bar + 8px gap above the label; the label is inset by the bar's corner radius so
+     it lines up with where the rounded end straightens out, not the very tip. */
+  padding: 16px 0 0 4px;
   border: 0;
-  border-top: 3px solid var(--line);
   background: none;
+  position: relative;
   text-align: left;
-  font-size: 12px;
+  font-size: 18px; /* same as the Origin and Dest labels in Route */
   font-weight: 550;
   color: var(--ink-3);
   cursor: pointer;
 }
-.steps button[data-done] { border-top-color: var(--ink); color: var(--ink-2); }
-.steps button[aria-current='step'] { border-top-color: var(--accent); color: var(--ink); }
+/* The segment itself: a rounded bar above the label. */
+.steps button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+}
+.steps button[data-done] { color: var(--ink); }
+.steps button[data-done]::before { background: var(--accent); }
+.steps button[aria-current='step'] { color: var(--ink); }
+/* Current step: a lighter blue than the navy of the finished steps. In dark mode the
+   finished steps are already light blue, so the current one goes paler still. */
+.steps button[aria-current='step']::before {
+  background: light-dark(var(--accent-dark-mode), color-mix(in srgb, var(--accent-dark-mode) 50%, #ffffff));
+}
 
 .body {
+  /* The only part that scrolls, and its bounce stays inside it. */
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 20px 16px 24px;
+  padding: 20px 16px calc(var(--footer-space) + 12px);
 }
 
+/* Just the buttons, floating over the bottom of the content, which scrolls behind them. */
 .footer {
-  position: sticky;
-  bottom: 0;
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  background: var(--paper);
-  border-top: 1px solid var(--line);
+  padding: 12px 16px calc(32px + env(safe-area-inset-bottom)); /* lifted off the bottom edge */
+  pointer-events: none; /* taps between the buttons reach the content */
 }
-.footerButtons { display: flex; gap: 8px; }
+.footer > * { pointer-events: auto; }
+.footer :global(.error-text) {
+  align-self: center;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+/* The Next card is the button itself, as wide as the step's cards; when Back shows, it's
+   its own small card to the left and Next fills the rest. */
+.footerButtons {
+  display: flex;
+  gap: 10px;
+}
+.backButton,
+.nextButton {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  cursor: pointer;
+}
+.backButton { flex: none; width: 64px; padding: 0; color: var(--ink); }
+/* Solid blue with white text at the title's size, regular weight. */
+.nextButton {
+  flex: 1;
+  min-width: 0;
+  padding: 0 16px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+.nextButton:disabled { opacity: 0.6; cursor: default; }
+@media (hover: hover) {
+  .backButton:hover { background: var(--accent-soft); }
+  .nextButton:hover:enabled { opacity: 0.9; }
+}
+.footer :global(.error-text) {
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.18), 0 1px 3px rgb(0 0 0 / 0.12); /* same as the cards */
+}
 
 /* Shared by the step components */
 .panel {
@@ -88,7 +157,17 @@
   align-items: center;
   justify-content: space-between;
 }
-.panelHead h2 { font-size: 17px; font-weight: 650; }
+.panelHead h2 { font-size: 18px; font-weight: 550; color: var(--ink); } /* same as the progress bar labels */
+/* Same text as the finished and current progress bar labels (Total time). */
+.stepLabelText { font-size: 18px; font-weight: 550; color: var(--ink); }
+/* A card's own heading (Landings, Optional), in the same text as the progress bar labels. */
+.cardTitle { font-size: 18px; font-weight: 550; color: var(--ink); }
+/* The Date label above My Aircraft looks like the card headings (and the progress bar labels). */
+.dateLabel { font-size: 18px; font-weight: 550; color: var(--ink); }
+/* Add aircraft and the date button share one size, between the small button (30px) and
+   the date's original 40px, so their edges line up; a longer date (one from another year,
+   "Nov 4, 2025") can still grow wider. */
+.headButton { min-width: 122px; height: 35px; padding-inline: 10px; font-size: 14px; }
 
 .twoCol {
   display: grid;
@@ -109,7 +188,8 @@
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
 }
-.option:last-child { border-bottom: 0; }
+/* The last row sits on the card's own 16px padding, so the bottom matches the sides. */
+.option:last-child { border-bottom: 0; padding-bottom: 0; }
 .option .tail { font-family: var(--font-mono); font-size: 15px; width: 84px; }
 .option .detail { flex: 1; color: var(--ink-2); font-size: 14px; }
 
@@ -133,42 +213,47 @@
 .checks label { display: inline-flex; align-items: center; gap: 6px; }
 .checks input { accent-color: var(--accent); width: 16px; height: 16px; }
 
-/* Route legs: navy cards with white text. */
+/* Route legs: a white card in two parts, split by a line. The top has the route, with the
+   codes, arrow and distance in blue; the bottom holds Flight time. */
 .leg {
-  --leg-padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: var(--leg-padding);
-  /* Top and bottom are shorter than the sides because the text lines bring their own empty
-     space above and below the letters; this makes the visible space the same on all four sides. */
-  padding: calc(var(--leg-padding) - 6px) var(--leg-padding) calc(var(--leg-padding) - 5px);
-  box-shadow: 0 6px 16px rgb(0 0 0 / 0.18), 0 1px 3px rgb(0 0 0 / 0.12); /* evens the space under Flight Time with the space above it */
-  --ink-2: #ffffff;
-  --ink-3: rgb(255 255 255 / 0.75);
+  padding: 0;
 }
+.legTop {
+  --leg-padding: 16px;
+  border-bottom: 1px solid var(--line);
+  /* Top and bottom are shorter than the sides because the text lines bring their own empty
+     space above and below the letters; 10px makes the visible space 16px all around. */
+  padding: calc(var(--leg-padding) - 6px) var(--leg-padding);
+}
+/* "Unknown airport" or "Enter a code" hangs under a code; make room for it while it shows. */
+.legTop:has(.airportProblem) { padding-bottom: 20px; }
+/* Flight time, laid out like the Total time card: the stepper row's own 8px above and below. */
+.legBottom { padding: 8px 16px; }
 
-/* Route map pinned at the top of the Route step. The page-colored backing hides the legs
-   as they scroll up underneath it. */
+/* On the Route step the map stays put above the legs, so the body itself doesn't scroll;
+   the legs below the map do. */
+.body:has(> .routePreview) {
+  overflow: hidden;
+  gap: 0;
+  padding: 0;
+}
 .routePreview {
-  position: sticky;
-  top: var(--pinned-height); /* just below the pinned title and progress bar */
-  z-index: 2;
-  margin: -20px -16px 0; /* reach the top and sides of the step body... */
-  padding: 12px 16px 10px; /* ...then pad the map back in */
-  background: var(--paper);
+  flex: none;
+  padding: 12px 16px 10px;
+}
+.routeLegs {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 16px calc(var(--footer-space) + 12px);
 }
 .routePreviewCard { padding: 6px; }
-.routePreviewEmpty {
-  display: grid;
-  place-items: center;
-  /* The same shape as the map (360 x 170), so it doesn't jump when the route appears. */
-  aspect-ratio: 360 / 170;
-  border-radius: var(--radius-sm);
-  background: var(--map);
-  font-size: 14px;
-  color: var(--ink-3);
-}
-
 /* Same size as the Origin, Dest and Flight Time labels, with the plus centered on the text. */
 .addLeg {
   align-self: center;
@@ -188,7 +273,7 @@
   min-height: 38px; /* room for the remove button, so the card doesn't move when it appears */
   padding-left: 4px;
 }
-.legTitle { font-size: 16px; font-weight: 600; color: var(--ink); }
+.legTitle { font-size: 18px; font-weight: 550; color: var(--ink); } /* same as the progress bar labels */
 
 .leg :global(.field) > span { font-size: 16px; color: #ffffff; }
 .leg :global(.input) { height: 46px; font-size: 18px; }
@@ -212,7 +297,7 @@
 /* The code input plus its problem message, which is centered under the letters. */
 .codeBox { position: relative; display: flex; }
 
-.endpointLabel { font-size: 18px; font-weight: 500; color: #ffffff; }
+.endpointLabel { font-size: 18px; font-weight: 550; color: var(--ink); } /* same as "Leg 1:" */
 
 .endpointInput {
   --underline: transparent;
@@ -232,18 +317,16 @@
   letter-spacing: 0.01em;
   text-transform: uppercase;
   text-align: center;
-  color: #ffffff;
-  caret-color: #ffffff;
+  color: var(--accent);
+  caret-color: var(--accent);
 }
-.endpointInput::placeholder { color: rgb(255 255 255 / 0.3); }
+.endpointInput::placeholder { color: color-mix(in srgb, var(--accent) 30%, transparent); }
 /* No box, so show focus as an underline instead of the usual ring. */
-.endpointInput:focus-visible { outline: none; --underline: rgb(255 255 255 / 0.7); }
+.endpointInput:focus-visible { outline: none; --underline: color-mix(in srgb, var(--accent) 70%, transparent); }
 
 /* An empty box gets a faint underline so it reads as a blank to fill in. */
-.endpointInput:placeholder-shown,
-.legTimeInput:placeholder-shown { --underline: rgb(255 255 255 / 0.35); }
-.endpointInput:placeholder-shown:focus-visible,
-.legTimeInput:placeholder-shown:focus-visible { --underline: rgb(255 255 255 / 0.7); }
+.endpointInput:placeholder-shown { --underline: color-mix(in srgb, var(--accent) 35%, transparent); }
+.endpointInput:placeholder-shown:focus-visible { --underline: color-mix(in srgb, var(--accent) 70%, transparent); }
 
 /* "Unknown airport" under the code it's about. Taken out of the layout so it never moves
    Flight Time. */
@@ -272,8 +355,8 @@
   position: relative;
   display: block;
   height: 1.5px;
-  /* Stops where the arrowhead starts: both are see-through, so an overlap would show. */
-  background: linear-gradient(rgb(255 255 255 / 0.7), rgb(255 255 255 / 0.7)) left / calc(100% - 9px) 100% no-repeat;
+  /* Stops where the arrowhead starts. */
+  background: linear-gradient(var(--accent), var(--accent)) left / calc(100% - 9px) 100% no-repeat;
 }
 /* "57 nm" centered just above the arrow. Positioned out of the layout so it takes no space. */
 .routeDistance {
@@ -284,7 +367,7 @@
   font-size: 13px;
   font-weight: 500;
   line-height: 1;
-  color: #c9ced8;
+  color: var(--accent);
   white-space: nowrap;
 }
 
@@ -297,42 +380,8 @@
   transform: translateY(-50%);
   border-top: 5px solid transparent;
   border-bottom: 5px solid transparent;
-  border-left: 9px solid rgb(255 255 255 / 0.7);
+  border-left: 9px solid var(--accent);
 }
-
-/* "Flight Time: 0.0" just under the line. The number is an input styled as text,
-   with an empty one shown faint like the airport placeholders. */
-.legTime {
-  display: flex;
-  align-self: center; /* centered on the card, not between the codes */
-  /* Pulled up so it sits 28px under the route line rather than under the whole route row:
-     the row runs half a code (30px * 1.1 / 2) below the line, plus the card's row gap. */
-  margin-top: calc(28px + 1.5px - 30px * 1.1 / 2 - var(--leg-padding));
-  align-items: center; /* label centered on the bigger number */
-  gap: 6px;
-  font-size: 18px; /* same as the Origin and Dest labels */
-  font-weight: 500;
-  color: #ffffff;
-  white-space: nowrap;
-}
-
-.legTimeInput {
-  --underline: transparent;
-  padding: 0 3px; /* the underline's overhang on each side; width comes from the measured text */
-  font-size: 24px;
-  border: 0;
-  border-radius: 0;
-  background: linear-gradient(var(--underline), var(--underline)) left calc(100% - 1px) / 100% 1.5px no-repeat;
-  font-family: inherit;
-  font-weight: 700;
-  line-height: 1.1;
-  text-align: center;
-  color: #ffffff;
-  caret-color: #ffffff;
-}
-.legTimeInput::placeholder { color: rgb(255 255 255 / 0.3); }
-.legTimeInput:focus-visible { outline: none; --underline: rgb(255 255 255 / 0.7); }
-.legTimeInput[aria-invalid='true'] { --underline: var(--danger); }
 
 .airportInput { text-transform: uppercase; font-family: var(--font-mono); letter-spacing: 0.04em; }
 .airportInput::placeholder { text-transform: none; letter-spacing: 0; }
@@ -340,20 +389,23 @@
 
 /* Solo / Dual Received, at the top of the times card. */
 .flightType { margin-bottom: 8px; }
+/* "Autofill" label: same text as the time rows' labels, not the smaller grey field label. */
+:global(.field).flightType > span { font-size: 16px; font-weight: 400; color: var(--ink); }
+
+/* Total time card: the stepper row already brings 8px above and below, so the card adds
+   8px more to make 16px, the same as the card's side padding. */
+.totalCard { padding-block: 8px; }
+/* The times card. "Autofill" sits square in the top-left corner: the top padding puts the
+   letters as far from the top edge as the side padding puts them from the left (about 17px).
+   At the bottom, 8px plus the last row's own 8px matches the 16px side padding. */
+.timesCard { gap: 0; padding-top: 11px; padding-bottom: 8px; }
+/* The landings card: its heading, then stepper rows. At the bottom, 8px plus the last row's
+   own 8px matches the 16px side padding. */
+.landingsCard { gap: 0; padding-top: 14px; padding-bottom: 8px; }
 
 /* Under Total time: where the number came from. */
 .totalSource { margin-top: -4px; font-size: 13px; color: var(--ink-2); }
 
-
-
-.hint {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 13px;
-  color: var(--ink-2);
-}
 
 /* FlightAware recent flights: each row is one toggle button. */
 .recentFlight {

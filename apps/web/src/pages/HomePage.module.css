@@ -4,5 +4,5 @@
 .static:hover { background: transparent; }
 
 /* Extra room above the header, and a navy title, on the home page only. */
-:global(.page).home { padding-top: 44px; }
+header.home { padding-top: 44px; }
 .home h1 { color: var(--accent); }
