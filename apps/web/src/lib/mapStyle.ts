@@ -16,6 +16,7 @@ export const CHART_COLORS = {
   state: '#6587a4',
   country: '#85a1b9',
   road: '#3b6a94',
+  county: '#4a7499', // between the land and the state lines, so counties read as the next level down
   runway: '#9db5c9',
   label: '#a9bfd2', // dimmer than our white airport labels, so the route reads first
   labelHalo: '#0d3a63',
@@ -86,11 +87,12 @@ export function baseLayers(base: BaseMap): LayerSpecification[] {
       type: 'line',
       source: 'base',
       'source-layer': 'transportation',
-      minzoom: 6,
+      // One zoom further out than the roads first appeared, so states don't go blank as soon.
+      minzoom: 5,
       filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary']]],
       paint: {
         'line-color': c.road,
-        'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.5, 12, 2],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 6, 0.5, 12, 2],
       },
     },
     {
@@ -101,6 +103,15 @@ export function baseLayers(base: BaseMap): LayerSpecification[] {
       minzoom: 10,
       filter: ['==', ['get', 'class'], 'runway'],
       paint: { 'line-color': c.runway, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.5, 14, 8] },
+    },
+    // Counties: the level of detail after state lines, shown as soon as the tiles carry them.
+    {
+      id: 'counties',
+      type: 'line',
+      source: 'base',
+      'source-layer': 'boundary',
+      filter: ['all', ['==', ['get', 'admin_level'], 6], ['!=', ['get', 'maritime'], 1]],
+      paint: { 'line-color': c.county, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 10, 0.8] },
     },
     {
       id: 'states',
