@@ -37,8 +37,20 @@
   font-size: 18px; /* the date and tail number */
   color: var(--accent); /* the date, blue like the route */
 }
-.meta strong { color: var(--ink); font-size: 16px; font-weight: 650; }
-.meta strong + span::before { content: '· '; }
+
+/* Whose flight, in the social feed: their picture and name above the date, set off by a line
+   across the card (like the footer's), with a little more room than the card's other rows. */
+.pilot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 -14px 2px; /* the line runs the card's full width */
+  padding: 0 14px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--ink);
+}
 
 /* Like a finished step's label on the log-flight step indicator (.steps button[data-done]). */
 .date { font-weight: 550; color: var(--ink); }

@@ -12,8 +12,11 @@ const TABS = [
 
 // Pages with the bottom tab bar.
 export function TabLayout() {
-  // A flight's page (part of My flights) is full screen, so the tab bar slides away.
-  const onFlight = useMatch('/flights/:id') !== null
+  // A flight's page (part of My flights, or of the social feed) is full screen, so the tab
+  // bar slides away.
+  const onMyFlight = useMatch('/flights/:id') !== null
+  const onFeedFlight = useMatch('/feed/:id') !== null
+  const onFlight = onMyFlight || onFeedFlight
   return (
     <div className="app">
       <Outlet />

@@ -6,6 +6,7 @@ import { formatDate, formatHours } from '../lib/format'
 import { pressIn, release } from '../lib/press'
 import { usePress } from '../hooks/usePress'
 import LiveRouteMap from './LiveRouteMap'
+import { Avatar } from './controls'
 import styles from './FlightCard.module.css'
 
 // The chart library is large, so it loads only when someone opens a chart.
@@ -32,7 +33,7 @@ export type FlightSummary = Pick<
 
 type Props = {
   flight: FlightSummary
-  pilot?: string // shown in the social feed
+  pilot?: { firstName: string; lastName: string } // whose flight, in the social feed
   to?: string // makes the card a link
   footer?: ReactNode
   below?: ReactNode // inside the card, under the footer (e.g. the comments)
@@ -60,8 +61,13 @@ export default function FlightCard({ flight, pilot, to, footer, below, belowOpen
       {/* The link covers the whole card; the map button and footer sit above it. */}
       {to && <CoverLink to={to} label={`${routeName}, ${formatDate(flight.flightDate)}`} />}
       <div className={styles.body}>
+      {pilot && (
+        <p className={styles.pilot}>
+          <Avatar firstName={pilot.firstName} lastName={pilot.lastName} size={32} />
+          {pilot.firstName} {pilot.lastName}
+        </p>
+      )}
       <p className={styles.meta}>
-        {pilot && <strong>{pilot}</strong>}
         <span className={styles.date}>{formatDate(flight.flightDate)}</span>
         <span className={`tail-number ${styles.tail}`}>
           <Plane size={18} strokeWidth={1.75} aria-hidden />
@@ -205,26 +211,28 @@ function CoverLink({ to, label }: { to: string; label: string }) {
 }
 
 // Props and Comments, for a card's footer. Hobbs doesn't store props or comments yet, so
-// the counts are 0. Each becomes a button when it has something to do (in the list, opening
+// the counts are 0 except in the sample social feed. Each becomes a button when it has something to do (in the list, opening
 // the flight; on the flight's page, opening its props or comments under the footer).
 type ReactionsProps = {
+  propsCount?: number
+  commentsCount?: number
   propsOpen?: boolean
   commentsOpen?: boolean
   onComments?: () => void
   onProps?: () => void
 }
 
-export function FlightReactions({ propsOpen, commentsOpen, onComments, onProps }: ReactionsProps = {}) {
+export function FlightReactions({ propsCount = 0, commentsCount = 0, propsOpen, commentsOpen, onComments, onProps }: ReactionsProps = {}) {
   const props = (
     <>
       <Star size={16} strokeWidth={1.75} aria-hidden />
-      <span className="mono">0</span> Props
+      <span className="mono">{propsCount}</span> Props
     </>
   )
   const comments = (
     <>
       <MessageCircle size={16} strokeWidth={1.75} aria-hidden />
-      <span className="mono">0</span> Comments
+      <span className="mono">{commentsCount}</span> Comments
     </>
   )
   return (

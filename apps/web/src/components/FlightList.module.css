@@ -1,0 +1,24 @@
+/* A list of flight cards that is also each flight's page: My flights and the social feed
+   (see hooks/useCardExpand). */
+
+/* The cards float a little off the page, like the log-flight form's and the profile's cards. */
+.list > :global(.card) {
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.18), 0 1px 3px rgb(0 0 0 / 0.12);
+}
+
+/* The header (the list's, or Flight). It stands in for PageHeader's own spot in the frame. */
+.header { flex: none; }
+.header + :global(.page) { padding-top: 8px; }
+
+/* Switching between the list and a flight: the parts going away fade out first, then the
+   parts arriving fade in while the card moves. The other cards are taken out entirely on a
+   flight's page. */
+.fadeOut { opacity: 0; transition: opacity 110ms ease; pointer-events: none; }
+.fadeIn { animation: fade-in 250ms ease both; }
+.gone { display: none; }
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+/* Under a card's footer, when its props or comments are open. */
+.panelText { font-size: 14px; color: var(--ink-2); text-align: center; }

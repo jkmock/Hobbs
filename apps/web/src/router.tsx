@@ -39,7 +39,8 @@ export const router = createBrowserRouter([
           {
             errorElement: nestedError,
             children: [
-              { path: '/', element: <HomePage /> },
+              // A feed flight's page is the feed showing just that flight, so its card stays put.
+              { path: '/', element: <HomePage />, children: [{ path: 'feed/:id' }] },
               // A flight's page is My flights showing just that flight, so its card stays put.
               {
                 path: '/flights',

@@ -1,8 +1,7 @@
 // Sample data for the social screens until the API has follows and a feed (Phase 7).
 // Delete this file once /feed and /friends exist.
 
-import type { FlightSummary } from '../components/FlightCard'
-import type { Leg, Point } from '../lib/types'
+import type { Flight, Leg, Point } from '../lib/types'
 import { distanceNm } from '../lib/geo'
 
 const AIRPORTS: Record<string, Point> = {
@@ -26,7 +25,19 @@ function legs(...idents: string[]): Leg[] {
   })
 }
 
+// Everything a flight has, empty, for the samples to fill in.
 const none = {
+  aircraftId: '',
+  instructorId: null,
+  instructorName: null,
+  departureTime: null,
+  arrivalTime: null,
+  dayLandingsFs: 0,
+  dayLandingsTg: 0,
+  instrumentApproaches: 0,
+  notes: null,
+  createdAt: '',
+  updatedAt: '',
   dualReceivedTime: 0,
   soloTime: 0,
   picTime: 0,
@@ -42,7 +53,7 @@ const none = {
 export type FeedItem = {
   id: string
   pilot: { firstName: string; lastName: string }
-  flight: FlightSummary
+  flight: Flight
   props: number
   comments: number
 }
@@ -51,28 +62,28 @@ export const SAMPLE_FEED: FeedItem[] = [
   {
     id: 'f1',
     pilot: { firstName: 'Matthew', lastName: 'Brown' },
-    flight: { ...none, flightDate: '2026-11-03', totalTime: 1.4, tailNumber: 'N123AB', legs: legs('RDU', 'GSO'), picTime: 1.4, crossCountryTime: 1.4, nightTime: 0.6, nightLandingsFs: 1 },
+    flight: { ...none, id: 'f1', flightDate: '2026-11-03', totalTime: 1.4, tailNumber: 'N123AB', legs: legs('RDU', 'GSO'), picTime: 1.4, crossCountryTime: 1.4, nightTime: 0.6, nightLandingsFs: 1 },
     props: 12,
     comments: 3,
   },
   {
     id: 'f2',
     pilot: { firstName: 'Mary', lastName: 'Albright' },
-    flight: { ...none, flightDate: '2026-11-02', totalTime: 2.6, tailNumber: 'N456CD', legs: legs('RDU', 'FAY', 'EWN', 'RDU'), soloTime: 2.6, picTime: 2.6, crossCountryTime: 2.6 },
+    flight: { ...none, id: 'f2', flightDate: '2026-11-02', totalTime: 2.6, tailNumber: 'N456CD', legs: legs('RDU', 'FAY', 'EWN', 'RDU'), soloTime: 2.6, picTime: 2.6, crossCountryTime: 2.6 },
     props: 21,
     comments: 7,
   },
   {
     id: 'f3',
     pilot: { firstName: 'Brian', lastName: 'Garrett' },
-    flight: { ...none, flightDate: '2026-11-01', totalTime: 1.1, tailNumber: 'N872JM', legs: legs('TTA', 'TTA'), dualReceivedTime: 1.1, simulatedInstrumentTime: 0.5 },
+    flight: { ...none, id: 'f3', flightDate: '2026-11-01', totalTime: 1.1, tailNumber: 'N872JM', legs: legs('TTA', 'TTA'), dualReceivedTime: 1.1, simulatedInstrumentTime: 0.5 },
     props: 4,
     comments: 0,
   },
   {
     id: 'f4',
     pilot: { firstName: 'Kim', lastName: 'Sandoval' },
-    flight: { ...none, flightDate: '2026-10-30', totalTime: 1.8, tailNumber: 'N123AB', legs: legs('IGX', 'INT', 'BUY', 'IGX'), dualReceivedTime: 1.8, crossCountryTime: 1.8 },
+    flight: { ...none, id: 'f4', flightDate: '2026-10-30', totalTime: 1.8, tailNumber: 'N123AB', legs: legs('IGX', 'INT', 'BUY', 'IGX'), dualReceivedTime: 1.8, crossCountryTime: 1.8 },
     props: 9,
     comments: 2,
   },
