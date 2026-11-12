@@ -79,6 +79,7 @@
 
 .body {
   /* The only part that scrolls, and its bounce stays inside it. */
+  position: relative; /* for the hidden route map (.routePreviewHidden) */
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -164,90 +165,15 @@
 .cardTitle { font-size: 18px; font-weight: 550; color: var(--ink); }
 /* The Date label above My Aircraft looks like the card headings (and the progress bar labels). */
 .dateLabel { font-size: 18px; font-weight: 550; color: var(--ink); }
-/* Add aircraft and the date button share one size, between the small button (30px) and
-   the date's original 40px, so their edges line up; a longer date (one from another year,
-   "Nov 4, 2025") can still grow wider. */
+/* The Flight Date button: the same size as My Aircraft's Add aircraft (.headButton in
+   MyAircraft.module.css), between the small button (30px) and the date's original 40px, so
+   their edges line up; a longer date (one from another year, "Nov 4, 2025") can still grow wider. */
 .headButton { min-width: 122px; height: 35px; padding-inline: 10px; font-size: 14px; }
-/* Clears the aircraft search. It spans the field's full height with the X centered in it,
-   12px from the right, mirroring the magnifying glass on the left; it's also the tap area. */
-.clearSearch {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 0;
-  display: grid;
-  place-items: center;
-  padding: 0 12px;
-  border: 0;
-  background: none;
-  color: var(--ink-3); /* same as the magnifying glass */
-  cursor: pointer;
-}
-@media (hover: hover) { .clearSearch:hover { color: var(--ink-2); } }
-/* Edit sits to the left of Add aircraft. */
-.headActions { display: flex; align-items: center; gap: 16px; }
-/* A button that is just text: no border or background. */
-.textButton {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--ink-2); /* same grey as an aircraft's make and model */
-  font: inherit;
-  font-size: 14px;
-  font-weight: 550;
-  cursor: pointer;
-}
-@media (hover: hover) { .textButton:hover { opacity: 0.75; } }
-
-.twoCol {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
 .optionList {
   margin: 0;
   padding: 0;
   list-style: none;
 }
-
-.option {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--line);
-}
-/* The last row sits on the card's own 16px padding, so the bottom matches the sides. */
-.option:last-child { border-bottom: 0; padding-bottom: 0; }
-/* Wide enough for a 6-character tail (N172SP); a longer one pushes make/model over. */
-.option .tail { font-family: var(--font-tail); font-size: 15px; min-width: 60px; }
-.option .detail { flex: 1; color: var(--ink-2); font-size: 14px; }
-
-.found {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-}
-.found .tail { font-family: var(--font-tail); font-size: 15px; }
-.found .detail { color: var(--ink-2); font-size: 14px; }
-
-/* Same width as Add aircraft (.headButton), whether it says Select or Selected. */
-.selectButton { min-width: 122px; }
-/* In edit mode, Edit (borderless) and Remove share the Select button's 122px. */
-.rowActions { display: flex; width: 122px; gap: 2px; }
-.removeButton { flex: 1; background: var(--danger); border-color: var(--danger); color: #fff; }
-@media (hover: hover) { .removeButton:hover { border-color: var(--danger); opacity: 0.9; } }
-
-.selected { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-@media (hover: hover) { .selected:hover { border-color: var(--accent); } }
-
-.checks { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; }
-.checks label { display: inline-flex; align-items: center; gap: 6px; }
-.checks input { accent-color: var(--accent); width: 16px; height: 16px; }
 
 /* Route legs: a white card in two parts, split by a line. The top has the route, with the
    codes, arrow and distance in blue; the bottom holds Flight time. */
@@ -278,6 +204,17 @@
 .routePreview {
   flex: none;
   padding: 12px 16px 10px;
+}
+/* The same map on the other steps: invisible and out of the layout, but the same size (and on
+   screen) so it keeps loading and needn't resize when the Route step shows it. */
+.routePreviewHidden {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 12px 16px 10px;
+  visibility: hidden;
+  pointer-events: none;
 }
 .routeLegs {
   flex: 1;
@@ -441,10 +378,6 @@
   border-left: 9px solid var(--accent);
 }
 
-.airportInput { text-transform: uppercase; font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
-/* The tail number field when adding an aircraft (after .airportInput, so its font wins). */
-.tailInput { font-family: var(--font-tail); font-variant-numeric: normal; }
-.airportInput::placeholder { text-transform: none; letter-spacing: 0; }
 
 
 /* Solo / Dual Received, at the top of the times card. */

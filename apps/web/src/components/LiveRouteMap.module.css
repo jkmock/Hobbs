@@ -1,13 +1,12 @@
+/* The box's background (set inline) is the chart's ocean color, shown until the map has loaded. */
 .box {
   position: relative;
   width: 100%;
   overflow: hidden;
   border-radius: var(--radius-sm);
-  background: var(--map); /* while the map loads, so the frame isn't blank */
 }
 
-/* The map (or the drawn stand-in) fills the box. */
-.box > :global(svg),
+/* The map fills the box. */
 .fill {
   position: absolute;
   inset: 0;
@@ -17,3 +16,6 @@
 
 /* Small maps don't take input; taps go to whatever the map sits in (e.g. open full screen). */
 .fill { pointer-events: none; }
+
+/* The map stays hidden while it loads, so it switches in finished rather than drawing in pieces. */
+.loading { opacity: 0; }

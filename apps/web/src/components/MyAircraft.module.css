@@ -1,0 +1,109 @@
+/* "My Aircraft" (MyAircraft.tsx), on the log-flight form's Aircraft step and the profile.
+   It looks the same in both places. */
+
+/* Floats a little off the page, like every card in the log-flight form. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.18), 0 1px 3px rgb(0 0 0 / 0.12);
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.panelHead h2 { font-size: 18px; font-weight: 550; color: var(--ink); } /* same as the form's progress bar labels */
+
+/* Add aircraft / Done, the same size as the Flight Date button above it in the form. */
+.headButton { min-width: 122px; height: 35px; padding-inline: 10px; font-size: 14px; }
+/* Edit sits to the left of Add aircraft. */
+.headActions { display: flex; align-items: center; gap: 16px; }
+/* A button that is just text: no border or background. */
+.textButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2); /* same grey as an aircraft's make and model */
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  cursor: pointer;
+}
+@media (hover: hover) { .textButton:hover { opacity: 0.75; } }
+
+/* The search box and the tail number field. */
+.searchInput { text-transform: uppercase; font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+.searchInput::placeholder { text-transform: none; letter-spacing: 0; }
+/* The tail number field when adding an aircraft (after .searchInput, so its font wins). */
+.tailInput { font-family: var(--font-tail); font-variant-numeric: normal; }
+
+/* Clears the search. It spans the field's full height with the X centered in it, 12px from
+   the right, mirroring the magnifying glass on the left; it's also the tap area. */
+.clearSearch {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--ink-3); /* same as the magnifying glass */
+  cursor: pointer;
+}
+@media (hover: hover) { .clearSearch:hover { color: var(--ink-2); } }
+
+.optionList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+/* The last row sits on the card's own 16px padding, so the bottom matches the sides. */
+.option:last-child { border-bottom: 0; padding-bottom: 0; }
+/* Wide enough for a 6-character tail (N172SP); a longer one pushes make/model over. */
+.option .tail { font-family: var(--font-tail); font-size: 15px; min-width: 60px; }
+/* min-height keeps rows the button's height where there's no Select button (the profile). */
+.option .detail { flex: 1; min-height: 30px; display: flex; align-items: center; color: var(--ink-2); font-size: 14px; }
+
+.found {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.found .tail { font-family: var(--font-tail); font-size: 15px; }
+.found .detail { color: var(--ink-2); font-size: 14px; }
+
+/* Same width as Add aircraft (.headButton), whether it says Select or Selected. */
+.selectButton { min-width: 122px; }
+.selected { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+@media (hover: hover) { .selected:hover { border-color: var(--accent); } }
+
+/* In edit mode, Edit (borderless) and Remove share the Select button's 122px. */
+.rowActions { display: flex; width: 122px; gap: 2px; }
+.removeButton { flex: 1; background: var(--danger); border-color: var(--danger); color: #fff; }
+@media (hover: hover) { .removeButton:hover { border-color: var(--danger); opacity: 0.9; } }
+
+/* The aircraft details form. */
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.checks { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; }
+.checks label { display: inline-flex; align-items: center; gap: 6px; }
+.checks input { accent-color: var(--accent); width: 16px; height: 16px; }

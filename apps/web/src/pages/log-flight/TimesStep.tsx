@@ -21,6 +21,7 @@ export default function TimesStep({ draft, update, errors }: StepProps) {
     })
 
   const legSum = draftLegTotal(draft.legs)
+  const total = Number(t.totalTime) || 0
 
   return (
     <>
@@ -64,9 +65,21 @@ export default function TimesStep({ draft, update, errors }: StepProps) {
             ]}
           />
         </div>
-        {TIME_FIELDS.filter(([key]) => key !== 'totalTime').map(([key, label]) => (
-          <Stepper key={key} label={label} value={t[key]} onChange={(v) => setTime(key, v)} error={errors[key]} />
-        ))}
+        {TIME_FIELDS.filter(([key]) => key !== 'totalTime').map(([key, label]) => {
+          // Tapping the label fills in the whole flight, or clears it if it already is.
+          const isTotal = total > 0 && Number(t[key]) === total
+          return (
+            <Stepper
+              key={key}
+              label={label}
+              value={t[key]}
+              onChange={(v) => setTime(key, v)}
+              error={errors[key]}
+              onLabelClick={() => setTime(key, isTotal ? '0.0' : total.toFixed(1))}
+              labelAction={isTotal ? `Set ${label} to 0` : `Set ${label} to total time`}
+            />
+          )
+        })}
       </section>
     </>
   )

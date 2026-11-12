@@ -16,6 +16,9 @@
 
 .identity p { font-size: 14px; }
 
+/* Same gap above as the Stats heading has. */
+.myAircraft { margin-top: 24px; }
+
 .stats { margin: 0; }
 
 .stats > div {

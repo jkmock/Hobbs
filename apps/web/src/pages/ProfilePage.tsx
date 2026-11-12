@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 import { Settings } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { Avatar } from '../components/controls'
+import MyAircraft from '../components/MyAircraft'
 import { useMe } from '../hooks/useAuth'
 import { useAllFlights } from '../hooks/useFlights'
 import { totals } from '../lib/progress'
@@ -33,6 +34,11 @@ export default function ProfilePage() {
             {user.firstName} {user.lastName}
           </h2>
           <p className="muted">{user.email}</p>
+        </div>
+
+        {/* The same My Aircraft as the log-flight form, without picking one. */}
+        <div className={styles.myAircraft}>
+          <MyAircraft />
         </div>
 
         <h2 className="section-title">Stats</h2>

@@ -46,9 +46,17 @@ type Props = {
   interactive?: boolean
   base?: BaseMap
   className?: string // sizes the map; it fills this box
+  onLoad?: () => void // once the map has first drawn, tiles and all
 }
 
-export default function FlightMap({ legs, airports = NO_AIRPORTS, interactive = false, base = 'chart', className = '' }: Props) {
+export default function FlightMap({
+  legs,
+  airports = NO_AIRPORTS,
+  interactive = false,
+  base = 'chart',
+  className = '',
+  onLoad,
+}: Props) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const [zoomedOut, setZoomedOut] = useState(false)
@@ -64,8 +72,10 @@ export default function FlightMap({ legs, airports = NO_AIRPORTS, interactive = 
   )
   // The latest legs and lone airports, for the effects below (layout effects run before them).
   const routeRef = useRef({ legs, airports })
+  const onLoadRef = useRef(onLoad)
   useLayoutEffect(() => {
     routeRef.current = { legs, airports }
+    onLoadRef.current = onLoad
   })
 
   // The map itself: rebuilt only when the base map or interactivity changes.
@@ -97,6 +107,7 @@ export default function FlightMap({ legs, airports = NO_AIRPORTS, interactive = 
         : { bounds: US_BOUNDS, fitBoundsOptions: US_FIT }),
     })
     mapRef.current = map
+    map.once('load', () => onLoadRef.current?.())
 
     if (interactive) {
       map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right')
@@ -120,13 +131,20 @@ export default function FlightMap({ legs, airports = NO_AIRPORTS, interactive = 
     if (!map) return
     const current = routeRef.current
 
+    // Applied as soon as the route source exists, not after every map tile has loaded
+    // (isStyleLoaded()/'load' wait for tiles, and 'load' only fires once, so an update made
+    // while tiles were still loading used to be held back or lost).
     const apply = () => {
-      ;(map.getSource('route') as GeoJSONSource | undefined)?.setData(routeGeoJson(current.legs))
+      const source = map.getSource('route') as GeoJSONSource | undefined
+      if (!source) {
+        map.once('styledata', apply) // the style is still being set up; try again when it is
+        return
+      }
+      source.setData(routeGeoJson(current.legs))
       if (current.legs.length > 0) map.fitBounds(boundsFor(current.legs), { ...fitOptions(interactive), duration: 300 })
       else map.fitBounds(US_BOUNDS, { ...US_FIT, duration: 300 }) // back to the US when the route is cleared
     }
-    if (map.isStyleLoaded()) apply()
-    else map.once('load', apply)
+    apply()
 
     // Airports and pattern rings are DOM markers.
     const markers: Marker[] = []
@@ -145,6 +163,7 @@ export default function FlightMap({ legs, airports = NO_AIRPORTS, interactive = 
       markers.push(new Marker({ element: el }).setLngLat([leg.originPoint.lon, leg.originPoint.lat]).addTo(map))
     }
     return () => {
+      map.off('styledata', apply)
       for (const m of markers) m.remove()
     }
     // legsKey stands in for legs; base/interactive rebuild the map, which needs fresh markers too.

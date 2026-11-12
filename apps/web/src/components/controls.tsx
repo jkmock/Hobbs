@@ -12,15 +12,32 @@ type StepperProps = {
   max?: number
   error?: string
   labelClassName?: string // extra styling from the page, e.g. a bigger label for Total time
+  // When given, the label is a button that does this (the hours rows: total time <-> 0),
+  // described to screen readers by labelAction, e.g. "Set PIC to total time".
+  onLabelClick?: () => void
+  labelAction?: string
 }
 
-export function Stepper({ label, value, onChange, step = 0.1, max = 24, error, labelClassName = '' }: StepperProps) {
+export function Stepper({
+  label,
+  value,
+  onChange,
+  step = 0.1,
+  max = 24,
+  error,
+  labelClassName = '',
+  onLabelClick,
+  labelAction,
+}: StepperProps) {
   const decimals = step < 1 ? 1 : 0
+  const zero = (0).toFixed(decimals)
   // Focusing the box empties it so you can type straight away (Enter from the field before
   // lands here too). Until something is typed the real value is untouched, and leaving
-  // without typing keeps it.
+  // without typing keeps it. Erasing what you typed leaves it empty while you're in it;
+  // leaving it empty makes it 0. An empty value you're not in (a new leg's time) shows as 0.
   const [blank, setBlank] = useState(false)
-  const before = useRef(value)
+  const [focused, setFocused] = useState(false)
+  const shown = blank ? '' : !focused && value.trim() === '' ? zero : value
   const bump = (direction: 1 | -1) => {
     const current = Number(value) || 0
     const next = Math.min(max, Math.max(0, current + direction * step))
@@ -29,10 +46,19 @@ export function Stepper({ label, value, onChange, step = 0.1, max = 24, error, l
 
   return (
     <div className={styles.stepperRow}>
-      <label className={`${styles.stepperLabel} ${labelClassName}`}>
-        {label}
-        {error && <span className="error-text">{error}</span>}
-      </label>
+      {onLabelClick ? (
+        <div className={`${styles.stepperLabel} ${labelClassName}`}>
+          <button type="button" className={styles.labelButton} onClick={onLabelClick} aria-label={labelAction}>
+            {label}
+          </button>
+          {error && <span className="error-text">{error}</span>}
+        </div>
+      ) : (
+        <label className={`${styles.stepperLabel} ${labelClassName}`}>
+          {label}
+          {error && <span className="error-text">{error}</span>}
+        </label>
+      )}
       <div className={`${styles.stepper} ${Number(value) ? styles.filled : ''} ${error ? styles.invalid : ''}`}>
         <button type="button" onClick={() => bump(-1)} aria-label={`Decrease ${label}`}>
           <Minus size={16} />
@@ -40,19 +66,23 @@ export function Stepper({ label, value, onChange, step = 0.1, max = 24, error, l
         <input
           className="mono"
           inputMode={decimals ? 'decimal' : 'numeric'}
-          value={blank ? '' : value}
+          value={shown}
           onChange={(e) => {
             setBlank(false)
             onChange(e.target.value)
           }}
           onFocus={() => {
-            before.current = value
+            setFocused(true)
             setBlank(true)
           }}
           onBlur={() => {
+            setFocused(false)
             if (blank) return setBlank(false) // nothing typed: keep the value
-            // Typed and then erased: back to what it was (or zero if it was empty).
-            if (value.trim() === '') onChange(before.current.trim() || (0).toFixed(decimals))
+            if (value.trim() === '') return onChange(zero) // typed and then erased: 0
+            // Tidy what was typed into the usual form: 0 -> 0.0, 1 -> 1.0, 1. -> 1.0.
+            // Anything that isn't a number is left for validation to point out.
+            const n = Number(value)
+            if (Number.isFinite(n) && n.toFixed(decimals) !== value) onChange(n.toFixed(decimals))
           }}
           aria-label={label}
         />

@@ -16,6 +16,7 @@ import {
 } from './draft'
 import AircraftStep from './AircraftStep'
 import RouteStep from './RouteStep'
+import RoutePreview from './RoutePreview'
 import TimesStep from './TimesStep'
 import LandingsStep from './LandingsStep'
 import styles from './LogFlight.module.css'
@@ -33,6 +34,7 @@ export default function LogFlightPage() {
 }
 
 const STEP_COMPONENTS = [AircraftStep, RouteStep, TimesStep, LandingsStep]
+const ROUTE_STEP = STEP_COMPONENTS.indexOf(RouteStep)
 
 function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
   const navigate = useNavigate()
@@ -179,6 +181,8 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
       </ol>
 
       <div className={styles.body} onKeyDown={keyboardNav}>
+        {/* The Route step's map, kept loaded on every step so it's ready when Route opens. */}
+        <RoutePreview draft={draft} hidden={step !== ROUTE_STEP} />
         <Step draft={draft} update={update} errors={errors} clearError={clearError} />
       </div>
 

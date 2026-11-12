@@ -36,6 +36,9 @@ export type Draft = {
   aircraftId: string
   tailNumber: string // for display; the API only needs aircraftId
   flightDate: string
+  // The date before the first FlightAware flight was picked (picking sets the date), to put
+  // back when the last one is unpicked. null: none picked, or the date was since set by hand.
+  dateBeforeImport: string | null
   instructorId: string // '' = no instructor
   legs: DraftLeg[]
   times: Record<TimeField, string>
@@ -90,6 +93,18 @@ export function applyPatch(d: Draft, patch: Partial<Draft>): Draft {
     next.times = { ...next.times, totalTime: sum.toFixed(1) }
   }
 
+  // Picking the first FlightAware flight (which sets the date) remembers the date it replaces;
+  // unpicking the last one, or changing aircraft (which drops them), puts it back. A date
+  // picked by hand in between is kept.
+  const hadImported = d.legs.some((leg) => leg.faFlightId)
+  const hasImported = next.legs.some((leg) => leg.faFlightId)
+  if (patch.flightDate !== undefined && !patch.legs) next.dateBeforeImport = null
+  else if (!hadImported && hasImported) next.dateBeforeImport = d.flightDate
+  else if (hadImported && !hasImported && d.dateBeforeImport !== null) {
+    next.flightDate = d.dateBeforeImport
+    next.dateBeforeImport = null
+  }
+
   // Typing a cross-country time yourself stops it following the legs.
   if (patch.times && patch.times.crossCountryTime !== d.times.crossCountryTime) next.crossCountryFromLegs = false
 
@@ -131,6 +146,7 @@ export function emptyDraft(): Draft {
     aircraftId: '',
     tailNumber: '',
     flightDate: todayIso(),
+    dateBeforeImport: null,
     instructorId: '',
     legs: [emptyLeg()],
     times: mapFields(TIME_FIELDS, () => '0.0'),
@@ -148,6 +164,7 @@ export function draftFromFlight(f: Flight): Draft {
     aircraftId: f.aircraftId,
     tailNumber: f.tailNumber,
     flightDate: f.flightDate,
+    dateBeforeImport: null,
     instructorId: f.instructorId ?? '',
     legs: f.legs.map(({ origin, destination, faFlightId, time }) => ({
       origin,
