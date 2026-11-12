@@ -2,7 +2,12 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { resolveAirports } from "../airports.js";
 import { requireAuth } from "../auth.js";
-import { FlightAwareBudgetExceeded, FlightAwareNotConfigured, recentFlights } from "../flightaware.js";
+import {
+  cachedFlightTrack,
+  FlightAwareBudgetExceeded,
+  FlightAwareNotConfigured,
+  recentFlights,
+} from "../flightaware.js";
 
 const RecentQuerySchema = z.object({
   tail: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{1,10}$/),
@@ -49,5 +54,28 @@ export default async function flightAwareRoutes(app: FastifyInstance) {
       departedAt: f.departedAt,
       arrivedAt: f.arrivedAt,
     }));
+  });
+
+  // The path a FlightAware flight actually flew, as [lon, lat] pairs (empty if FlightAware
+  // has too few positions), for drawing a picked recent flight on the Route step's map.
+  // Each track is fetched from FlightAware at most once; saving the flight reuses it.
+  app.get("/flightaware/track/:faFlightId", async (request, reply) => {
+    const params = z.object({ faFlightId: z.string().min(1).max(100) }).safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ error: "Invalid request", issues: params.error.issues });
+    }
+
+    try {
+      return await cachedFlightTrack(params.data.faFlightId);
+    } catch (err) {
+      if (err instanceof FlightAwareNotConfigured) {
+        return reply.code(503).send({ error: err.message });
+      }
+      if (err instanceof FlightAwareBudgetExceeded) {
+        return reply.code(429).send({ error: err.message, resetsOn: err.resetsOn });
+      }
+      request.log.error(err);
+      return reply.code(502).send({ error: "Couldn't reach FlightAware" });
+    }
   });
 }

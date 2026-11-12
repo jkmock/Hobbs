@@ -64,9 +64,6 @@ export default function RecentFlights({ draft, update }: Pick<StepProps, 'draft'
 
       {flights.length > 0 && (
         <>
-          <p className="muted" style={{ fontSize: 13 }}>
-            Pick the flights that were yours. Several become legs of one flight. Pick none to enter the route by hand.
-          </p>
           <ul className={styles.optionList}>
             {flights.map((f) => {
               const isSelected = selectedIds.has(f.faFlightId)

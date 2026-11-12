@@ -1,19 +1,20 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
-import FlightMap, { type RouteLeg } from './FlightMap'
+import FlightMap, { type LoneAirport, type RouteLeg } from './FlightMap'
 import type { BaseMap } from '../lib/mapStyle'
 import styles from './ChartViewer.module.css'
 
 type Props = {
   legs: RouteLeg[]
+  airports?: LoneAirport[] // airports marked on their own (one end of a leg still being typed)
   title: string
   onClose: () => void
 }
 
 // A full-screen map you can pan and zoom, opened from a route map. It starts on our
 // FlightAware-style chart, with a switch to the FAA sectional.
-export default function ChartViewer({ legs, title, onClose }: Props) {
+export default function ChartViewer({ legs, airports, title, onClose }: Props) {
   const [base, setBase] = useState<BaseMap>('chart')
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -29,7 +30,7 @@ export default function ChartViewer({ legs, title, onClose }: Props) {
 
   return createPortal(
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={title}>
-      <FlightMap legs={legs} interactive base={base} />
+      <FlightMap legs={legs} airports={airports} interactive base={base} />
       <div className={styles.baseSwitch} role="radiogroup" aria-label="Map type">
         {(
           [

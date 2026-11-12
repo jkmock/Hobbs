@@ -27,6 +27,7 @@ const FlightBase = z.object({
   dualReceivedTime: Tenths.optional(),
   soloTime: Tenths.optional(),
   picTime: Tenths.optional(),
+  sicTime: Tenths.optional(),
   crossCountryTime: Tenths.optional(),
   nightTime: Tenths.optional(),
   actualInstrumentTime: Tenths.optional(),
@@ -41,7 +42,7 @@ const FlightBase = z.object({
 
 // POST /flights
 export const CreateFlightSchema = FlightBase.superRefine((f, ctx) => {
-  const categories = ["dualReceivedTime", "soloTime", "picTime", "crossCountryTime",
+  const categories = ["dualReceivedTime", "soloTime", "picTime", "sicTime", "crossCountryTime",
                       "nightTime", "actualInstrumentTime", "simulatedInstrumentTime"] as const;
 
   for (const key of categories) {

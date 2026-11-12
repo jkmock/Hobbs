@@ -21,7 +21,8 @@ const AIRCRAFT_COLUMNS = `
 
 export default async function aircraftRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
-  // The aircraft this user has added or logged a flight in, most recently used first.
+  // The aircraft this user has added or logged a flight in, most recently used first,
+  // leaving out any they've removed from their list.
   app.get("/aircraft/mine", async (request) => {
     const result = await pool.query(
       `WITH used AS (
@@ -32,13 +33,18 @@ export default async function aircraftRoutes(app: FastifyInstance) {
        SELECT ${AIRCRAFT_COLUMNS}
        FROM aircraft
        JOIN (SELECT aircraft_id, max(last_used) AS last_used FROM used GROUP BY aircraft_id) u USING (aircraft_id)
+       WHERE NOT EXISTS (
+         SELECT 1 FROM user_aircraft r
+         WHERE r.user_id = $1 AND r.aircraft_id = aircraft.aircraft_id AND r.removed_at IS NOT NULL
+       )
        ORDER BY u.last_used DESC, tail_number`,
       [getCurrentUserId(request)],
     );
     return result.rows;
   });
 
-  // Adds an aircraft that's already in Hobbs (someone created its tail number) to this user's list.
+  // Adds an aircraft that's already in Hobbs (someone created its tail number) to this user's list,
+  // or brings back one they removed.
   app.post("/aircraft/mine", async (request, reply) => {
     const body = z.object({ aircraftId: z.uuid() }).safeParse(request.body);
     if (!body.success) {
@@ -49,7 +55,7 @@ export default async function aircraftRoutes(app: FastifyInstance) {
       `WITH linked AS (
          INSERT INTO user_aircraft (user_id, aircraft_id)
          SELECT $1, aircraft_id FROM aircraft WHERE aircraft_id = $2
-         ON CONFLICT DO NOTHING
+         ON CONFLICT (user_id, aircraft_id) DO UPDATE SET removed_at = NULL, added_at = now()
        )
        SELECT ${AIRCRAFT_COLUMNS} FROM aircraft WHERE aircraft_id = $2`,
       [getCurrentUserId(request), body.data.aircraftId],
@@ -58,6 +64,46 @@ export default async function aircraftRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: "Aircraft not found" });
     }
     return result.rows[0];
+  });
+
+  // Takes an aircraft off this user's list, even one they've logged flights in.
+  // If nobody has logged a flight in it and nobody else has it on their list, the aircraft
+  // is deleted from Hobbs. Otherwise it's only hidden from this user's list: the aircraft
+  // stays for others, the flights stay logged, and adding it again brings it back.
+  app.delete("/aircraft/mine/:id", async (request, reply) => {
+    const params = IdParamsSchema.safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ error: "Invalid request", issues: params.error.issues });
+    }
+    const userId = getCurrentUserId(request);
+
+    try {
+      const deleted = await pool.query(
+        `DELETE FROM aircraft a
+         WHERE a.aircraft_id = $2
+           AND NOT EXISTS (SELECT 1 FROM flights f WHERE f.aircraft_id = a.aircraft_id)
+           AND NOT EXISTS (
+             SELECT 1 FROM user_aircraft ua
+             WHERE ua.aircraft_id = a.aircraft_id AND ua.user_id <> $1 AND ua.removed_at IS NULL
+           )`,
+        [userId, params.data.id],
+      );
+      if (deleted.rowCount) return reply.code(204).send();
+    } catch (err) {
+      // Something else (a flight logged just now) still points at it: hide it instead.
+      if ((err as { code?: string }).code !== "23503") throw err;
+    }
+
+    const result = await pool.query(
+      `INSERT INTO user_aircraft (user_id, aircraft_id, removed_at)
+       SELECT $1, aircraft_id, now() FROM aircraft WHERE aircraft_id = $2
+       ON CONFLICT (user_id, aircraft_id) DO UPDATE SET removed_at = now()`,
+      [userId, params.data.id],
+    );
+    if (result.rowCount === 0) {
+      return reply.code(404).send({ error: "Aircraft not found" });
+    }
+    return reply.code(204).send();
   });
 
   app.get("/aircraft/:id", async (request, reply) => {

@@ -149,8 +149,35 @@ export async function recentFlights(tailNumber: string): Promise<RecentFlight[]>
   return flights;
 }
 
-// The positions FlightAware recorded for one flight, as [lon, lat] pairs.
-export async function flightTrack(faFlightId: string): Promise<[number, number][]> {
+// A flight's track as [lon, lat] pairs (empty when FlightAware had too few positions),
+// paid for at most once: a track already saved with a logged leg, or fetched before into
+// flightaware_tracks, is reused; otherwise it's fetched and kept there.
+// Throws like flightTrack when it has to fetch and can't.
+export async function cachedFlightTrack(faFlightId: string): Promise<[number, number][]> {
+  const known = await pool.query<{ geojson: string | null }>(
+    `SELECT ST_AsGeoJSON(track) AS geojson FROM flightaware_tracks WHERE fa_flight_id = $1
+     UNION ALL
+     (SELECT ST_AsGeoJSON(track) FROM flight_legs WHERE fa_flight_id = $1 AND track IS NOT NULL LIMIT 1)
+     LIMIT 1`,
+    [faFlightId],
+  );
+  const row = known.rows[0];
+  if (row) return row.geojson ? (JSON.parse(row.geojson).coordinates as [number, number][]) : [];
+
+  const coordinates = await flightTrack(faFlightId);
+  const geojson = coordinates.length >= 2 ? JSON.stringify({ type: "LineString", coordinates }) : null;
+  await pool.query(
+    `INSERT INTO flightaware_tracks (fa_flight_id, track)
+     VALUES ($1, ST_GeomFromGeoJSON($2)::geography)
+     ON CONFLICT (fa_flight_id) DO NOTHING`,
+    [faFlightId, geojson],
+  );
+  return geojson ? coordinates : [];
+}
+
+// The positions FlightAware recorded for one flight, as [lon, lat] pairs. Billed on every call;
+// use cachedFlightTrack.
+async function flightTrack(faFlightId: string): Promise<[number, number][]> {
   const data = await aeroApi<{ positions: FaPosition[] }>(
     "track",
     `/flights/${encodeURIComponent(faFlightId)}/track`,

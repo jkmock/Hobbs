@@ -11,6 +11,7 @@ export const TIME_FIELDS = [
   ['dualReceivedTime', 'Dual received'],
   ['soloTime', 'Solo'],
   ['picTime', 'PIC'],
+  ['sicTime', 'SIC'],
   ['crossCountryTime', 'Cross-country'],
   ['nightTime', 'Night'],
   ['actualInstrumentTime', 'Actual instrument'],

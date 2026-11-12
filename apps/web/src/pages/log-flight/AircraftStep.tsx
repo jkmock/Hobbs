@@ -1,5 +1,5 @@
 import { useDeferredValue, useState, type FormEvent } from 'react'
-import { Check, Plus, Search } from 'lucide-react'
+import { Check, Plus, Search, X } from 'lucide-react'
 import { CreateAircraftSchema } from '@hobbs/shared'
 import { DateField, Segmented } from '../../components/controls'
 import {
@@ -7,6 +7,8 @@ import {
   useAircraftSearch,
   useCreateAircraft,
   useMyAircraft,
+  useRemoveMyAircraft,
+  useUpdateAircraft,
 } from '../../hooks/useLookups'
 import type { Aircraft } from '../../lib/types'
 import { emptyLeg, type StepProps } from './draft'
@@ -18,27 +20,57 @@ type Option = { id: string; tailNumber: string; detail?: string }
 export default function AircraftStep({ draft, update, errors }: StepProps) {
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(false)
+  // Edit mode swaps each row's Select for Edit and Remove; editingId is the row whose details are open.
+  const [editModeOn, setEditMode] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const mine = useMyAircraft()
+  const hasAircraft = (mine.data?.length ?? 0) > 0
+  // With no aircraft left there's nothing to edit; adding one also ends edit mode.
+  const editMode = editModeOn && hasAircraft
+  const remove = useRemoveMyAircraft()
+  const editingAircraft = mine.data?.find((a) => a.id === editingId)
 
-  // Your aircraft (added or flown), narrowed by the search box. Other people's aircraft
-  // are reached through "Add aircraft".
+  // Your aircraft (added or flown), narrowed by the search box, which matches the tail
+  // number, make or model. Other people's aircraft are reached through "Add aircraft".
   const term = search.trim().toUpperCase()
-  let options: Option[] = (mine.data ?? [])
-    .filter((a) => a.tailNumber.includes(term))
-    .map((a) => ({ id: a.id, tailNumber: a.tailNumber, detail: `${a.make} ${a.model}` }))
+  const matches = (o: Option) => `${o.tailNumber} ${o.detail ?? ''}`.toUpperCase().includes(term)
+  let options: Option[] = (mine.data ?? []).map((a) => ({
+    id: a.id,
+    tailNumber: a.tailNumber,
+    detail: `${a.make} ${a.model}`,
+  }))
+  // An aircraft that's selected but not on your list (a removed one, on a flight being edited)
+  // is still shown, so it can be seen and changed.
   if (draft.aircraftId && !options.some((o) => o.id === draft.aircraftId)) {
     options = [{ id: draft.aircraftId, tailNumber: draft.tailNumber }, ...options]
   }
+  options = options.filter(matches)
 
-  const select = (a: { id: string; tailNumber: string }) => update({ aircraftId: a.id, tailNumber: a.tailNumber })
+  // Legs imported from the selected aircraft's FlightAware flights belong to that aircraft,
+  // so changing or clearing the aircraft drops them; hand-entered legs stay.
+  const legsWithoutImported = () => {
+    const kept = draft.legs.filter((leg) => !leg.faFlightId)
+    return kept.length > 0 ? kept : [emptyLeg()]
+  }
 
-  // Tapping the selected aircraft again clears it. Legs imported from its FlightAware
-  // flights go too, since they belong to that aircraft; hand-entered legs stay.
+  const select = (a: { id: string; tailNumber: string }) => {
+    if (a.id === draft.aircraftId) return
+    update({ aircraftId: a.id, tailNumber: a.tailNumber, legs: legsWithoutImported() })
+  }
+
+  // Tapping the selected aircraft again clears it.
   const toggle = (a: { id: string; tailNumber: string }) => {
     if (a.id !== draft.aircraftId) return select(a)
-    const kept = draft.legs.filter((leg) => !leg.faFlightId)
-    update({ aircraftId: '', tailNumber: '', legs: kept.length > 0 ? kept : [emptyLeg()] })
+    update({ aircraftId: '', tailNumber: '', legs: legsWithoutImported() })
   }
+
+  // Removing the selected aircraft also clears the selection.
+  const removeAircraft = (a: Option) =>
+    remove.mutate(a.id, {
+      onSuccess: () => {
+        if (a.id === draft.aircraftId) toggle(a)
+      },
+    })
 
   return (
     <>
@@ -55,11 +87,34 @@ export default function AircraftStep({ draft, update, errors }: StepProps) {
 
       <section className={`card ${styles.panel}`}>
         <div className={styles.panelHead}>
-          <h2>My Aircraft</h2>
-          {!adding && (
-            <button type="button" className={`btn btn--primary btn--sm ${styles.headButton}`} onClick={() => setAdding(true)}>
-              <Plus size={18} /> Add aircraft
-            </button>
+          <h2>{editingAircraft ? `Edit ${editingAircraft.tailNumber}` : 'My Aircraft'}</h2>
+          {!adding && !editingAircraft && (
+            <div className={styles.headActions}>
+              {/* In edit mode, Done takes Add aircraft's place. */}
+              {editMode ? (
+                <button
+                  type="button"
+                  className={`btn btn--primary btn--sm ${styles.headButton}`}
+                  onClick={() => {
+                    setEditMode(false)
+                    remove.reset()
+                  }}
+                >
+                  Done
+                </button>
+              ) : (
+                <>
+                  {hasAircraft && (
+                    <button type="button" className={styles.textButton} onClick={() => setEditMode(true)}>
+                      Edit
+                    </button>
+                  )}
+                  <button type="button" className={`btn btn--primary btn--sm ${styles.headButton}`} onClick={() => setAdding(true)}>
+                    <Plus size={18} /> Add aircraft
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
 
@@ -71,54 +126,83 @@ export default function AircraftStep({ draft, update, errors }: StepProps) {
             onAdded={(a) => {
               select(a)
               setAdding(false)
+              setEditMode(false)
               setSearch('')
             }}
           />
+        ) : editingAircraft ? (
+          <AircraftDetails
+            tailNumber={editingAircraft.tailNumber}
+            aircraft={editingAircraft}
+            onCancel={() => setEditingId(null)}
+            onSaved={() => setEditingId(null)}
+          />
         ) : (
           <>
-            <label style={{ position: 'relative' }}>
-              <Search size={17} aria-hidden style={{ position: 'absolute', left: 12, top: 12, color: 'var(--ink-3)' }} />
-              <input
-                className={`input ${styles.airportInput}`}
-                style={{ paddingLeft: 38 }}
-                placeholder="Search your aircraft"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                aria-label="Search your aircraft"
-              />
-            </label>
-
-            {mine.isSuccess && mine.data.length === 0 && (
-              <p className="muted" style={{ fontSize: 14 }}>
-                No aircraft yet. Add the one you're flying with "Add aircraft".
-              </p>
+            {/* Nothing to search until you have aircraft; "Add aircraft" is the way in. */}
+            {hasAircraft && (
+              <label style={{ position: 'relative' }}>
+                <Search size={17} aria-hidden style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-3)' }} />
+                <input
+                  className={`input ${styles.airportInput}`}
+                  style={{ paddingLeft: 38, paddingRight: 38 }}
+                  placeholder="Search your aircraft"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  aria-label="Search your aircraft"
+                />
+                {search && (
+                  <button type="button" className={styles.clearSearch} onClick={() => setSearch('')} aria-label="Clear search">
+                    <X size={17} aria-hidden />
+                  </button>
+                )}
+              </label>
             )}
 
-            <ul className={styles.optionList}>
-              {options.map((option) => {
-                const isSelected = option.id === draft.aircraftId
-                return (
-                  <li key={option.id} className={styles.option}>
-                    <span className={styles.tail}>{option.tailNumber}</span>
-                    <span className={styles.detail}>{option.detail}</span>
-                    <button
-                      type="button"
-                      className={`btn btn--sm ${styles.selectButton} ${isSelected ? styles.selected : ''}`}
-                      aria-pressed={isSelected}
-                      onClick={() => toggle(option)}
-                    >
-                      {isSelected ? (
-                        <>
-                          <Check size={14} /> Selected
-                        </>
+            {options.length > 0 && (
+              <ul className={styles.optionList}>
+                {options.map((option) => {
+                  const isSelected = option.id === draft.aircraftId
+                  return (
+                    <li key={option.id} className={styles.option}>
+                      <span className={styles.tail}>{option.tailNumber}</span>
+                      <span className={styles.detail}>{option.detail}</span>
+                      {editMode ? (
+                        <div className={styles.rowActions}>
+                          <button type="button" className="btn btn--sm btn--ghost" onClick={() => setEditingId(option.id)}>
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn btn--sm btn--danger ${styles.removeButton}`}
+                            disabled={remove.isPending}
+                            onClick={() => removeAircraft(option)}
+                          >
+                            Remove
+                          </button>
+                        </div>
                       ) : (
-                        'Select'
+                        <button
+                          type="button"
+                          className={`btn btn--sm ${styles.selectButton} ${isSelected ? styles.selected : ''}`}
+                          aria-pressed={isSelected}
+                          onClick={() => toggle(option)}
+                        >
+                          {isSelected ? (
+                            <>
+                              <Check size={14} /> Selected
+                            </>
+                          ) : (
+                            'Select'
+                          )}
+                        </button>
                       )}
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            {editMode && remove.error && <p className="error-text">{remove.error.message}</p>}
           </>
         )}
         {errors.aircraftId && <p className="error-text">{errors.aircraftId}</p>}
@@ -176,12 +260,16 @@ function AddAircraft({
         </button>
       ) : existing ? (
         <>
-          <div className={styles.found}>
-            <span className={styles.tail}>{existing.tailNumber}</span>
-            <span className={styles.detail}>
-              {existing.make} {existing.model}
-              {existing.year ? `, ${existing.year}` : ''}
-            </span>
+          {/* Labelled like the Tail number field above it. */}
+          <div className="field">
+            <span>Aircraft found</span>
+            <div className={styles.found}>
+              <span className={styles.tail}>{existing.tailNumber}</span>
+              <span className={styles.detail}>
+                {existing.make} {existing.model}
+                {existing.year ? `, ${existing.year}` : ''}
+              </span>
+            </div>
           </div>
           {addMine.error && <p className="error-text">{addMine.error.message}</p>}
           <div className={styles.twoCol}>
@@ -199,13 +287,13 @@ function AddAircraft({
                 disabled={addMine.isPending}
                 onClick={() => addMine.mutate(existing.id, { onSuccess: onAdded })}
               >
-                Add to my aircraft
+                Add to My Aircraft
               </button>
             )}
           </div>
         </>
       ) : (
-        <NewAircraftDetails tailNumber={deferredTail} onCancel={onCancel} onCreated={onAdded} />
+        <AircraftDetails tailNumber={deferredTail} onCancel={onCancel} onSaved={onAdded} />
       )}
 
       {isComplete && !existing && !checking && lookup.isError && (
@@ -219,25 +307,29 @@ const TAIL_NUMBER = /^[A-Z0-9-]{2,10}$/
 
 type AircraftClass = 'single_engine_land' | 'multi_engine_land'
 
-// Details for a tail number Hobbs doesn't have yet.
-function NewAircraftDetails({
+// Details for a tail number Hobbs doesn't have yet, or, given `aircraft`, edits that aircraft's details.
+function AircraftDetails({
   tailNumber,
+  aircraft,
   onCancel,
-  onCreated,
+  onSaved,
 }: {
   tailNumber: string
+  aircraft?: Aircraft
   onCancel: () => void
-  onCreated: (aircraft: Aircraft) => void
+  onSaved: (aircraft: Aircraft) => void
 }) {
-  const create = useCreateAircraft()
+  const createAircraft = useCreateAircraft()
+  const updateAircraft = useUpdateAircraft()
+  const save = aircraft ? updateAircraft : createAircraft
   const [form, setForm] = useState({
-    make: '',
-    model: '',
-    year: '',
-    aircraftClass: 'single_engine_land' as AircraftClass,
-    isTailwheel: false,
-    isComplex: false,
-    isHighPerf: false,
+    make: aircraft?.make ?? '',
+    model: aircraft?.model ?? '',
+    year: aircraft?.year ? String(aircraft.year) : '',
+    aircraftClass: aircraft?.aircraftClass ?? ('single_engine_land' as AircraftClass),
+    isTailwheel: aircraft?.isTailwheel ?? false,
+    isComplex: aircraft?.isComplex ?? false,
+    isHighPerf: aircraft?.isHighPerf ?? false,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }))
@@ -254,7 +346,12 @@ function NewAircraftDetails({
       return
     }
     setErrors({})
-    create.mutate(parsed.data, { onSuccess: onCreated })
+    if (aircraft) {
+      const { tailNumber: _tail, ...details } = parsed.data
+      updateAircraft.mutate({ id: aircraft.id, ...details }, { onSuccess: onSaved })
+    } else {
+      createAircraft.mutate(parsed.data, { onSuccess: onSaved })
+    }
   }
 
   return (
@@ -309,14 +406,14 @@ function NewAircraftDetails({
         </label>
       </div>
 
-      {create.error && <p className="error-text">{create.error.message}</p>}
+      {save.error && <p className="error-text">{save.error.message}</p>}
 
       <div className={styles.twoCol}>
         <button type="button" className="btn" onClick={onCancel}>
           Cancel
         </button>
-        <button className="btn btn--primary" disabled={create.isPending}>
-          Add aircraft
+        <button className="btn btn--primary" disabled={save.isPending}>
+          {aircraft ? 'Save' : 'Add aircraft'}
         </button>
       </div>
     </form>

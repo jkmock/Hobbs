@@ -47,6 +47,7 @@ export type Flight = {
   dualReceivedTime: number
   soloTime: number
   picTime: number
+  sicTime: number
   crossCountryTime: number
   nightTime: number
   actualInstrumentTime: number

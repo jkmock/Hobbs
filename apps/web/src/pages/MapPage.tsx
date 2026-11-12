@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { Maximize2 } from 'lucide-react'
+import { Expand } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { useAllFlights } from '../hooks/useFlights'
 import styles from './MapPage.module.css'
@@ -45,7 +45,7 @@ export default function MapPage() {
                 <FlightMap legs={legs} />
               </Suspense>
               <span className={styles.expand} aria-hidden>
-                <Maximize2 size={16} strokeWidth={2} />
+                <Expand size={20} strokeWidth={2} />
               </span>
             </button>
             {chartOpen && (

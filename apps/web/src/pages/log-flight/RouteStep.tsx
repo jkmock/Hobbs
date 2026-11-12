@@ -1,15 +1,23 @@
-import { Plus, X } from 'lucide-react'
+import { lazy, Suspense, useState } from 'react'
+import { Expand, Plus, X } from 'lucide-react'
 import LiveRouteMap from '../../components/LiveRouteMap'
 import { Stepper } from '../../components/controls'
+import { useFlightTracks } from '../../hooks/useLookups'
 import type { Airport } from '../../lib/types'
 import { textWidth, useFontsReady } from '../../lib/textWidth'
 import { emptyLeg, useLegDistances, type DraftLeg, type StepProps } from './draft'
 import styles from './LogFlight.module.css'
 
-const FONT_SANS = getComputedStyle(document.documentElement).getPropertyValue('--font-sans') || 'sans-serif'
+// The chart library is large, so it loads only when someone opens the map.
+const ChartViewer = lazy(() => import('../../components/ChartViewer'))
+
+const FONT_SANS =getComputedStyle(document.documentElement).getPropertyValue('--font-sans') || 'sans-serif'
 
 export default function RouteStep({ draft, update, errors, clearError }: StepProps) {
   const { find, distances } = useLegDistances(draft.legs)
+  const [mapOpen, setMapOpen] = useState(false)
+  // Legs picked from FlightAware are drawn along the path actually flown.
+  const tracks = useFlightTracks(draft.legs.flatMap((leg) => (leg.faFlightId ? [leg.faFlightId] : [])))
 
   const setLeg = (index: number, patch: Partial<DraftLeg>) =>
     update({ legs: draft.legs.map((leg, i) => (i === index ? { ...leg, ...patch } : leg)) })
@@ -32,6 +40,8 @@ export default function RouteStep({ draft, update, errors, clearError }: StepPro
         destination: b.ident,
         originPoint: { lat: a.latitude, lon: a.longitude },
         destinationPoint: { lat: b.latitude, lon: b.longitude },
+        // A straight (great-circle) line until the track arrives, or if there isn't one.
+        track: leg.faFlightId ? tracks.get(leg.faFlightId) : undefined,
       },
     ]
   })
@@ -56,9 +66,22 @@ export default function RouteStep({ draft, update, errors, clearError }: StepPro
       <div className={styles.routePreview}>
         <div className={`card ${styles.routePreviewCard}`}>
           {/* Shows the continental US until a leg's two airports are known. */}
-          <LiveRouteMap legs={preview} airports={loneAirports} height={170} />
+          {/* Tapping the map opens it full screen to explore. It sits over this page, so
+              the legs being entered stay as they are; the X closes it. */}
+          <button type="button" className={styles.mapButton} onClick={() => setMapOpen(true)} aria-label="Open the route map full screen">
+            <LiveRouteMap legs={preview} airports={loneAirports} height={170} />
+            {/* Same full-screen badge as the Map page's preview. */}
+            <span className={styles.mapExpand} aria-hidden>
+              <Expand size={20} strokeWidth={2} />
+            </span>
+          </button>
         </div>
       </div>
+      {mapOpen && (
+        <Suspense fallback={null}>
+          <ChartViewer legs={preview} airports={loneAirports} title="Route map" onClose={() => setMapOpen(false)} />
+        </Suspense>
+      )}
       <div className={styles.routeLegs}>
         {draft.legs.map((leg, i) => {
           const nm = distances[i]

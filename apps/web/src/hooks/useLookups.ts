@@ -1,5 +1,5 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { CreateAircraft } from '@hobbs/shared'
+import type { CreateAircraft, UpdateAircraft } from '@hobbs/shared'
 import { api } from '../lib/api'
 import type { Aircraft, Airport, Instructor, RecentFlight } from '../lib/types'
 
@@ -27,6 +27,24 @@ export function useAddMyAircraft() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (aircraftId: string) => api<Aircraft>('/aircraft/mine', { method: 'POST', body: { aircraftId } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['aircraft'] }),
+  })
+}
+
+// Takes an aircraft off your list (it stays in Hobbs for others).
+export function useRemoveMyAircraft() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (aircraftId: string) => api<void>(`/aircraft/mine/${aircraftId}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['aircraft'] }),
+  })
+}
+
+export function useUpdateAircraft() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: UpdateAircraft & { id: string }) =>
+      api<Aircraft>(`/aircraft/${id}`, { method: 'PATCH', body }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['aircraft'] }),
   })
 }
@@ -82,6 +100,22 @@ export function useAirports(idents: string[]): Map<string, Airport | null | unde
     byIdent.set(ident, result?.isError ? null : result?.data)
   })
   return byIdent
+}
+
+// The paths FlightAware recorded for these flights, as [lon, lat] pairs: faFlightId -> path,
+// or undefined while loading or if it couldn't be had. The server pays for each track once
+// and keeps it, and a track never changes, so they're cached for good and not retried.
+export function useFlightTracks(faFlightIds: string[]): Map<string, [number, number][] | undefined> {
+  const unique = [...new Set(faFlightIds)]
+  const results = useQueries({
+    queries: unique.map((id) => ({
+      queryKey: ['flightaware', 'track', id],
+      queryFn: () => api<[number, number][]>(`/flightaware/track/${encodeURIComponent(id)}`),
+      staleTime: Infinity,
+      retry: false,
+    })),
+  })
+  return new Map(unique.map((id, i) => [id, results[i]?.data]))
 }
 
 // Flights FlightAware saw for this tail number in the last ~10 days. Each fetch is billed,

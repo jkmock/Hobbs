@@ -19,6 +19,7 @@ export type FlightSummary = Pick<
   | 'dualReceivedTime'
   | 'soloTime'
   | 'picTime'
+  | 'sicTime'
   | 'crossCountryTime'
   | 'nightTime'
   | 'nightLandingsFs'
@@ -118,6 +119,7 @@ function tagsFor(f: FlightSummary): { icon: LucideIcon; label: string }[] {
   if (f.dualReceivedTime > 0) tags.push({ icon: GraduationCap, label: 'Dual' })
   if (f.soloTime > 0) tags.push({ icon: User, label: 'Solo' })
   else if (f.picTime > 0) tags.push({ icon: User, label: 'PIC' })
+  if (f.sicTime > 0) tags.push({ icon: User, label: 'SIC' })
   if (f.crossCountryTime > 0) tags.push({ icon: Route, label: 'Cross-country' })
   const nightLandings = f.nightLandingsFs + f.nightLandingsTg
   if (nightLandings > 0) tags.push({ icon: Moon, label: nightLandings === 1 ? 'Night landing' : `${nightLandings} night landings` })

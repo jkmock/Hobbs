@@ -5,7 +5,7 @@ import { z } from "zod";
 import { CreateFlightSchema, UpdateFlightSchema, IdParamsSchema, FlightListQuerySchema } from "@hobbs/shared";
 
 import { getCurrentUserId, requireAuth } from "../auth.js";
-import { flightTrack } from "../flightaware.js";
+import { cachedFlightTrack } from "../flightaware.js";
 import { DISPLAY_CODE, resolveAirports } from "../airports.js";
 import type { PoolClient } from "pg";
 
@@ -43,6 +43,7 @@ const FLIGHT_COLUMNS = `
   dual_received_time        AS "dualReceivedTime",
   solo_time                 AS "soloTime",
   pic_time                  AS "picTime",
+  sic_time                  AS "sicTime",
   cross_country_time        AS "crossCountryTime",
   night_time                AS "nightTime",
   actual_instrument_time    AS "actualInstrumentTime",
@@ -116,27 +117,19 @@ async function loadLegs(flightIds: string[]): Promise<Map<string, Leg[]>> {
 }
 
 // Tracks for the legs imported from FlightAware, keyed by FlightAware flight id.
-// A track already stored (say, when an edited flight is saved again) is reused, so each
-// one is paid for once. A failed fetch only means that leg has no track.
+// A track already stored (fetched for the Route step's map, or saved with an edited flight)
+// is reused, so each one is paid for once. A failed fetch only means that leg has no track.
 async function tracksFor(
   legs: { faFlightId?: string | undefined }[],
   log: { warn: (obj: unknown, msg: string) => void },
 ): Promise<Map<string, string>> {
   const ids = [...new Set(legs.map((l) => l.faFlightId).filter((id): id is string => !!id))];
   const tracks = new Map<string, string>(); // id -> GeoJSON LineString
-  if (ids.length === 0) return tracks;
-
-  const stored = await pool.query(
-    `SELECT DISTINCT ON (fa_flight_id) fa_flight_id, ST_AsGeoJSON(track) AS geojson
-     FROM flight_legs WHERE fa_flight_id = ANY($1) AND track IS NOT NULL`,
-    [ids],
-  );
-  for (const row of stored.rows) tracks.set(row.fa_flight_id, row.geojson);
 
   // One at a time, so each fetch's budget check counts the ones before it.
-  for (const id of ids.filter((id) => !tracks.has(id))) {
+  for (const id of ids) {
     try {
-      const coordinates = await flightTrack(id);
+      const coordinates = await cachedFlightTrack(id);
       if (coordinates.length >= 2) tracks.set(id, JSON.stringify({ type: "LineString", coordinates }));
     } catch (err) {
       log.warn({ err, faFlightId: id }, "FlightAware track fetch failed");
@@ -274,8 +267,8 @@ export default async function flightRoutes(app: FastifyInstance) {
           total_time, dual_received_time, solo_time, pic_time, cross_country_time, night_time,
           actual_instrument_time, simulated_instrument_time,
           day_landings_fs, day_landings_tg, night_landings_fs, night_landings_tg,
-          instrument_approaches, notes)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+          instrument_approaches, notes, sic_time)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
         RETURNING ${FLIGHT_COLUMNS}`,
         [
           userId,
@@ -298,6 +291,7 @@ export default async function flightRoutes(app: FastifyInstance) {
           body.nightLandingsTg ?? 0,
           body.instrumentApproaches ?? 0,
           body.notes ?? null,
+          body.sicTime ?? 0,
         ],
       );
       const flight = flightResult.rows[0];
@@ -387,7 +381,8 @@ export default async function flightRoutes(app: FastifyInstance) {
             night_landings_fs         = $18,
             night_landings_tg         = $19,
             instrument_approaches     = $20,
-            notes                     = $21
+            notes                     = $21,
+            sic_time                  = $22
         WHERE flight_id = $1 AND user_id = $2
         RETURNING ${FLIGHT_COLUMNS}`,
         [
@@ -411,7 +406,8 @@ export default async function flightRoutes(app: FastifyInstance) {
           body.nightLandingsFs ?? 0,
           body.nightLandingsTg ?? 0,
           body.instrumentApproaches ?? 0,
-          body.notes ?? null
+          body.notes ?? null,
+          body.sicTime ?? 0,
         ],
       );
 

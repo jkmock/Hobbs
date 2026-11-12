@@ -85,7 +85,7 @@ Whether an airport has a tower may come from OurAirports' `airport-frequencies.c
 | departure_time | timestamptz | **Nullable** |
 | arrival_time | timestamptz | **Nullable** |
 | total_time | numeric(4,1) | `CHECK (total_time > 0)` |
-| dual_received_time, solo_time, pic_time, cross_country_time, night_time, actual_instrument_time, simulated_instrument_time | numeric(4,1) | `DEFAULT 0`. These overlap: each describes the same flight, so they don't add up to `total_time` |
+| dual_received_time, solo_time, pic_time, sic_time, cross_country_time, night_time, actual_instrument_time, simulated_instrument_time | numeric(4,1) | `DEFAULT 0`. These overlap: each describes the same flight, so they don't add up to `total_time` |
 | day_landings_fs, day_landings_tg, night_landings_fs, night_landings_tg | smallint | `DEFAULT 0`. Full stop and touch-and-go are separate: night currency, tailwheel currency and several 61.109 requirements count only full stops |
 | instrument_approaches | smallint | `DEFAULT 0` |
 | notes | text | **Nullable** |

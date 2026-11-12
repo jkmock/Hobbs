@@ -30,6 +30,7 @@ const none = {
   dualReceivedTime: 0,
   soloTime: 0,
   picTime: 0,
+  sicTime: 0,
   crossCountryTime: 0,
   nightTime: 0,
   nightLandingsFs: 0,

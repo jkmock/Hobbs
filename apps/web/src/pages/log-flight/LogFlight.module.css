@@ -168,6 +168,36 @@
    the date's original 40px, so their edges line up; a longer date (one from another year,
    "Nov 4, 2025") can still grow wider. */
 .headButton { min-width: 122px; height: 35px; padding-inline: 10px; font-size: 14px; }
+/* Clears the aircraft search. It spans the field's full height with the X centered in it,
+   12px from the right, mirroring the magnifying glass on the left; it's also the tap area. */
+.clearSearch {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--ink-3); /* same as the magnifying glass */
+  cursor: pointer;
+}
+@media (hover: hover) { .clearSearch:hover { color: var(--ink-2); } }
+/* Edit sits to the left of Add aircraft. */
+.headActions { display: flex; align-items: center; gap: 16px; }
+/* A button that is just text: no border or background. */
+.textButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2); /* same grey as an aircraft's make and model */
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  cursor: pointer;
+}
+@media (hover: hover) { .textButton:hover { opacity: 0.75; } }
 
 .twoCol {
   display: grid;
@@ -190,7 +220,8 @@
 }
 /* The last row sits on the card's own 16px padding, so the bottom matches the sides. */
 .option:last-child { border-bottom: 0; padding-bottom: 0; }
-.option .tail { font-family: var(--font-mono); font-size: 15px; width: 84px; }
+/* Wide enough for a 6-character tail (N172SP); a longer one pushes make/model over. */
+.option .tail { font-family: var(--font-mono); font-size: 15px; min-width: 60px; }
 .option .detail { flex: 1; color: var(--ink-2); font-size: 14px; }
 
 .found {
@@ -204,7 +235,12 @@
 .found .tail { font-family: var(--font-mono); font-size: 15px; }
 .found .detail { color: var(--ink-2); font-size: 14px; }
 
-.selectButton { min-width: 96px; } /* same width whether it says Select or Selected */
+/* Same width as Add aircraft (.headButton), whether it says Select or Selected. */
+.selectButton { min-width: 122px; }
+/* In edit mode, Edit (borderless) and Remove share the Select button's 122px. */
+.rowActions { display: flex; width: 122px; gap: 2px; }
+.removeButton { flex: 1; background: var(--danger); border-color: var(--danger); color: #fff; }
+@media (hover: hover) { .removeButton:hover { border-color: var(--danger); opacity: 0.9; } }
 
 .selected { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 @media (hover: hover) { .selected:hover { border-color: var(--accent); } }
@@ -254,6 +290,28 @@
   padding: 8px 16px calc(var(--footer-space) + 12px);
 }
 .routePreviewCard { padding: 6px; }
+/* The route preview opens full screen when tapped. */
+.mapButton {
+  position: relative; /* for the full-screen badge */
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: zoom-in;
+}
+/* Full-screen icon in the map's top right, matching the Map page's (.expand in MapPage.module.css). */
+.mapExpand {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: #fff;
+}
 /* Same size as the Origin, Dest and Flight Time labels, with the plus centered on the text. */
 .addLeg {
   align-self: center;
