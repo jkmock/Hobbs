@@ -9,6 +9,7 @@
   inset: 0;
   background: #e9e5d9;
 }
+.wrap[data-base='chart'] .map { background: #285981; } /* the chart's land color, while tiles load */
 
 /* Airport: a white dot with a navy ring, and its identifier beside it. */
 .airport {
@@ -35,6 +36,17 @@
     0 0 3px #fff;
   pointer-events: none;
 }
+
+/* On the dark blue chart: a white dot with a dark ring, and a white label with a dark halo. */
+.wrap[data-base='chart'] .airport { border-color: #002a55; }
+.wrap[data-base='chart'] .airport span {
+  color: #ffffff;
+  text-shadow:
+    0 0 3px #002a55,
+    0 0 3px #002a55,
+    0 0 3px #002a55;
+}
+.wrap[data-base='chart'] .pattern { border-color: #ffffff; }
 
 /* Pattern work or a local flight: a dashed ring around the airport. */
 .pattern {

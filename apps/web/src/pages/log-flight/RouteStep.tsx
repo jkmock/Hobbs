@@ -1,5 +1,5 @@
 import { Plus, X } from 'lucide-react'
-import RouteMap from '../../components/RouteMap'
+import LiveRouteMap from '../../components/LiveRouteMap'
 import type { Airport } from '../../lib/types'
 import { textWidth, useFontsReady } from '../../lib/textWidth'
 import { emptyLeg, useLegDistances, type DraftLeg, type StepProps } from './draft'
@@ -42,7 +42,7 @@ export default function RouteStep({ draft, update, errors }: StepProps) {
       <div className={styles.routePreview}>
         <div className={`card ${styles.routePreviewCard}`}>
           {preview.length > 0 ? (
-            <RouteMap legs={preview} height={170} />
+            <LiveRouteMap legs={preview} height={170} />
           ) : (
             <p className={styles.routePreviewEmpty}>Your route will show here</p>
           )}

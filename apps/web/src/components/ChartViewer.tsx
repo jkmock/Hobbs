@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
-import SectionalMap, { type RouteLeg } from './SectionalMap'
+import FlightMap, { type RouteLeg } from './FlightMap'
+import type { BaseMap } from '../lib/mapStyle'
 import styles from './ChartViewer.module.css'
 
 type Props = {
@@ -10,8 +11,10 @@ type Props = {
   onClose: () => void
 }
 
-// A full-screen sectional chart you can pan and zoom, opened from a route map.
+// A full-screen map you can pan and zoom, opened from a route map. It starts on our
+// FlightAware-style chart, with a switch to the FAA sectional.
 export default function ChartViewer({ legs, title, onClose }: Props) {
+  const [base, setBase] = useState<BaseMap>('chart')
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
@@ -26,7 +29,19 @@ export default function ChartViewer({ legs, title, onClose }: Props) {
 
   return createPortal(
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-label={title}>
-      <SectionalMap legs={legs} interactive />
+      <FlightMap legs={legs} interactive base={base} />
+      <div className={styles.baseSwitch} role="radiogroup" aria-label="Map type">
+        {(
+          [
+            ['chart', 'Map'],
+            ['sectional', 'Sectional'],
+          ] as const
+        ).map(([value, label]) => (
+          <button key={value} type="button" role="radio" aria-checked={base === value} onClick={() => setBase(value)}>
+            {label}
+          </button>
+        ))}
+      </div>
       <button type="button" className={styles.close} onClick={onClose} aria-label="Close map" autoFocus>
         <X size={22} strokeWidth={2} />
       </button>

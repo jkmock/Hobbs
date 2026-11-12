@@ -6,7 +6,7 @@ import { useAllFlights } from '../hooks/useFlights'
 import styles from './MapPage.module.css'
 
 // The chart library is large, so it loads only on this page.
-const SectionalMap = lazy(() => import('../components/SectionalMap'))
+const FlightMap = lazy(() => import('../components/FlightMap'))
 const ChartViewer = lazy(() => import('../components/ChartViewer'))
 
 export default function MapPage() {
@@ -38,10 +38,10 @@ export default function MapPage() {
             type="button"
             className={`card ${styles.mapCard}`}
             onClick={() => setChartOpen(true)}
-            aria-label="Open the sectional chart full screen"
+            aria-label="Open the map full screen"
           >
             <Suspense fallback={null}>
-              <SectionalMap legs={legs} />
+              <FlightMap legs={legs} />
             </Suspense>
             <span className={styles.expand} aria-hidden>
               <Maximize2 size={16} strokeWidth={2} />

@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import { Gauge, GraduationCap, Moon, Plane, Route, User, type LucideIcon } from 'lucide-react'
 import type { Flight } from '../lib/types'
 import { formatDate, formatHours } from '../lib/format'
-import RouteMap from './RouteMap'
+import LiveRouteMap from './LiveRouteMap'
 import styles from './FlightCard.module.css'
 
 // The chart library is large, so it loads only when someone opens a chart.
@@ -61,9 +61,9 @@ export default function FlightCard({ flight, pilot, to, footer, navy }: Props) {
           type="button"
           className={styles.mapButton}
           onClick={() => setChartOpen(true)}
-          aria-label={`Open ${routeName} on the sectional chart`}
+          aria-label={`Open ${routeName} on the map`}
         >
-          <RouteMap legs={flight.legs} />
+          <LiveRouteMap legs={flight.legs} />
         </button>
       )}
       {tags.length > 0 && (
