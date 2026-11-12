@@ -16,19 +16,32 @@
 
 .identity p { font-size: 14px; }
 
-/* Same gap above as the Stats heading has. */
+/* Room between the name and My Aircraft. */
 .myAircraft { margin-top: 24px; }
 
-.stats { margin: 0; }
+/* Stats, styled like My Aircraft (MyAircraft.module.css): a floating card with its heading
+   inside, and rows like the aircraft rows. */
+.statsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px; /* the same gap as between the log-flight form's cards */
+  padding: 16px;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.18), 0 1px 3px rgb(0 0 0 / 0.12);
+}
+.statsCard h2 { font-size: 18px; font-weight: 550; color: var(--ink); }
 
+.stats { margin: 0; }
 .stats > div {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
 }
-.stats > div + div { border-top: 1px solid var(--line); }
-
-.stats dt { color: var(--ink-2); }
-.stats dd { margin: 0; font-size: 26px; }
-.stats small { font-size: 14px; color: var(--ink-3); }
+/* The last row sits on the card's own 16px padding, so the bottom matches the sides. */
+.stats > div:last-child { border-bottom: 0; padding-bottom: 0; }
+/* min-height: the same row height as the aircraft rows (their buttons are 30px tall). */
+.stats dt { display: flex; align-items: center; min-height: 30px; color: var(--ink-2); font-size: 14px; } /* like an aircraft's make and model */
+.stats dd { margin: 0; color: var(--ink); font-size: 15px; } /* like a tail number */
+.stats small { font-size: 13px; color: var(--ink-3); }

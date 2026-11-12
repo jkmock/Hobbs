@@ -41,24 +41,27 @@ export default function ProfilePage() {
           <MyAircraft />
         </div>
 
-        <h2 className="section-title">Stats</h2>
-        <dl className={`card ${styles.stats}`}>
-          <div>
-            <dt>Flights</dt>
-            <dd className="mono">{stats.flights}</dd>
-          </div>
-          <div>
-            <dt>Hours</dt>
-            <dd className="mono">{formatHours(stats.hours)}</dd>
-          </div>
-          <div>
-            <dt>Distance</dt>
-            <dd className="mono">
-              {stats.distanceNm.toLocaleString()}
-              <small> nm</small>
-            </dd>
-          </div>
-        </dl>
+        {/* Laid out like My Aircraft above it: heading in the card, then one row per stat. */}
+        <section className={`card ${styles.statsCard}`}>
+          <h2>Stats</h2>
+          <dl className={styles.stats}>
+            <div>
+              <dt>Flights</dt>
+              <dd className="mono">{stats.flights}</dd>
+            </div>
+            <div>
+              <dt>Hours</dt>
+              <dd className="mono">{formatHours(stats.hours)}</dd>
+            </div>
+            <div>
+              <dt>Distance</dt>
+              <dd className="mono">
+                {stats.distanceNm.toLocaleString()}
+                <small> nm</small>
+              </dd>
+            </div>
+          </dl>
+        </section>
       </div>
     </>
   )

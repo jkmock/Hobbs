@@ -34,8 +34,8 @@
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 13px;
-  color: var(--ink-2);
+  font-size: 15px; /* the date and tail number */
+  color: var(--accent); /* the date, blue like the route */
 }
 .meta strong { color: var(--ink); font-size: 16px; font-weight: 650; }
 .meta strong + span::before { content: '· '; }
@@ -46,42 +46,69 @@
   align-items: center;
   gap: 5px;
   margin-left: auto;
-  color: var(--ink);
+  color: var(--accent); /* blue like the route */
 }
 
 .routeBlock { display: flex; flex-direction: column; gap: 2px; }
 
+/* The airports and the arrow between them, styled like a leg on the log-flight Route step
+   (.route, .endpointInput and .routeLine in LogFlight.module.css). */
 .route {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .ident {
-  font-size: 19px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
+  font-family: var(--font-sans);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  color: var(--accent);
 }
 
-/* The line between the two airports, with the time on it. */
-.rule {
+.middle {
   flex: 1;
+  min-width: 0;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--ink-2);
+}
+
+/* A thin accent line ending in a small filled arrowhead, pointing at the destination. */
+.line {
+  flex: 1;
+  position: relative;
+  display: block;
+  height: 1.5px;
+  /* Stops where the arrowhead starts. */
+  background: linear-gradient(var(--accent), var(--accent)) left / calc(100% - 9px) 100% no-repeat;
+}
+.line::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 9px solid var(--accent);
+}
+
+/* "1.5 h · 235 nm" centered just above the arrow, where the Route step shows the distance.
+   Out of the layout, so it takes no space. */
+.summary {
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  transform: translateX(-50%);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--accent);
   white-space: nowrap;
 }
-.rule::before,
-.rule::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--line-strong);
-}
 
-.via { font-size: 12px; color: var(--ink-3); text-align: center; }
+.via { font-size: 14px; color: var(--accent); /* blue like the route */ text-align: center; }
 
 .tags {
   display: flex;
@@ -101,4 +128,17 @@
   gap: 4px;
   padding: 6px 8px;
   border-top: 1px solid var(--line);
+}
+/* Props and Comments each take half the width, icon and text centered in their half. */
+.footer > * { flex: 1 1 0; justify-content: center; }
+/* A short divider between the two halves, centered in the gap, about two-thirds their height. */
+.footer > * + * { position: relative; }
+.footer > * + *::before {
+  content: '';
+  position: absolute;
+  left: -2.5px; /* the middle of the 4px gap */
+  top: 17%;
+  height: 66%;
+  width: 1px;
+  background: var(--line-strong);
 }

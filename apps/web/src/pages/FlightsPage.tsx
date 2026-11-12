@@ -1,8 +1,9 @@
 import { Link } from 'react-router'
-import { Plus } from 'lucide-react'
+import { MessageCircle, Plus, Star } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import FlightCard from '../components/FlightCard'
 import { useFlightPages } from '../hooks/useFlights'
+import styles from './FlightsPage.module.css'
 
 export default function FlightsPage() {
   const { data, isPending, isError, error, hasNextPage, fetchNextPage, isFetchingNextPage } = useFlightPages()
@@ -32,9 +33,26 @@ export default function FlightsPage() {
           </div>
         )}
 
-        <div className="stack">
+        <div className={`stack ${styles.list}`}>
           {flights.map((flight) => (
-            <FlightCard key={flight.id} flight={flight} to={`/flights/${flight.id}/edit`} />
+            <FlightCard
+              key={flight.id}
+              flight={flight}
+              to={`/flights/${flight.id}/edit`}
+              footer={
+                // Hobbs doesn't store props or comments yet, so these show 0 and do nothing.
+                <>
+                  <span className={`btn btn--ghost btn--sm ${styles.reaction}`}>
+                    <Star size={16} strokeWidth={1.75} aria-hidden />
+                    <span className="mono">0</span> Props
+                  </span>
+                  <span className={`btn btn--ghost btn--sm ${styles.reaction}`}>
+                    <MessageCircle size={16} strokeWidth={1.75} aria-hidden />
+                    <span className="mono">0</span> Comments
+                  </span>
+                </>
+              }
+            />
           ))}
         </div>
 

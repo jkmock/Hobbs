@@ -52,7 +52,7 @@ export default function FlightCard({ flight, pilot, to, footer, navy }: Props) {
         {pilot && <strong>{pilot}</strong>}
         <span>{formatDate(flight.flightDate)}</span>
         <span className={`tail-number ${styles.tail}`}>
-          <Plane size={14} strokeWidth={1.75} aria-hidden />
+          <Plane size={16} strokeWidth={1.75} aria-hidden />
           {flight.tailNumber}
         </span>
       </p>
@@ -99,15 +99,19 @@ function RouteHeader({ flight }: { flight: FlightSummary }) {
 
   return (
     <div className={styles.routeBlock}>
+      {/* Styled like a leg on the log-flight Route step: big blue codes and an arrow, with the
+          time and distance where the Route step shows the distance. */}
       <div className={styles.route}>
-        <span className={`mono ${styles.ident}`}>{first.origin}</span>
-        <span className={styles.rule}>
-          <span className="mono">
-            {formatHours(flight.totalTime)} h{distance > 0 && ` · ${distance} nm`}
-            {isLocal && ' · local'}
+        <span className={styles.ident}>{first.origin}</span>
+        <span className={styles.middle}>
+          <span className={styles.line}>
+            <span className={styles.summary}>
+              {formatHours(flight.totalTime)} h{distance > 0 && ` · ${distance} nm`}
+              {isLocal && ' · Local'}
+            </span>
           </span>
         </span>
-        <span className={`mono ${styles.ident}`}>{last.destination}</span>
+        <span className={styles.ident}>{last.destination}</span>
       </div>
       {stops.length > 0 && <p className={styles.via}>via {stops.join(', ')}</p>}
     </div>
