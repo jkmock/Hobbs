@@ -3,7 +3,6 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { pool } from "./db.js";
 import cookie from "@fastify/cookie";
-import fastifyStatic from "@fastify/static";
 
 import aircraftRoutes from "./routes/aircraft.js";
 import airportRoutes from "./routes/airports.js";
@@ -87,6 +86,9 @@ app.register(
 );
 
 if (servesWeb) {
+  // Loaded only here: on Vercel the website project serves the pages, and this package
+  // can't load in Vercel's function runtime (it require()s an ES-module-only dependency).
+  const { default: fastifyStatic } = await import("@fastify/static");
   app.register(fastifyStatic, {
     root: webDist,
     // Vite's /assets files have a content hash in their names, so they can be cached for good.
