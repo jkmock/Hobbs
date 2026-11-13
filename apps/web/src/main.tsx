@@ -9,9 +9,12 @@ import '@fontsource/azeret-mono/500.css'
 import './index.css'
 import { router } from './router'
 import { installButtonPress } from './lib/buttonPress'
+import { installNoZoom } from './lib/noZoom'
 
 // Every button presses in on touch and springs back out on release.
 installButtonPress()
+// No pinch or keyboard zoom: the app stays at its own size, like a native one.
+installNoZoom()
 
 // Caches API responses. staleTime: reuse cached data for 30s before refetching.
 const queryClient = new QueryClient({

@@ -5,6 +5,7 @@
   inset: 0;
   display: flex;
   flex-direction: column;
+  padding-top: var(--safe-top); /* below the status bar, like the frame's own rows */
 }
 
 /* Hidden but still laid out, so its scroll position and maps stay exactly as they were.

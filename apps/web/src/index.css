@@ -46,6 +46,9 @@
   --font-tail: 'Azeret Mono', ui-monospace, monospace;
   --tabbar-height: 64px; /* the floating tab bar */
   --tabbar-gap: 20px; /* between the tab bar and the bottom of the screen */
+  /* The iPhone status bar's height (0 elsewhere). The app reaches under it (viewport-fit=cover);
+     pages start below it, and full-screen maps run up under it. */
+  --safe-top: env(safe-area-inset-top, 0px);
 
   font-family: var(--font-sans);
   font-size: 15px;
@@ -60,7 +63,12 @@
 
 * { box-sizing: border-box; }
 
-html { background: var(--paper); }
+/* No double-tap zoom, and iOS doesn't resize text when the phone turns sideways. */
+html { background: var(--paper); touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* No scrollbars anywhere: everything still scrolls, as in a native app. */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
 
 body {
   margin: 0;
@@ -93,7 +101,10 @@ input, textarea { -webkit-user-select: text; user-select: text; }
   flex-direction: column;
   overflow: hidden;
   background: var(--paper);
+  padding-top: var(--safe-top); /* rows start below the status bar */
 }
+/* A bare page that is the frame itself (loading, errors). */
+.app.page { padding-top: calc(20px + var(--safe-top)); }
 
 @media (min-width: 560px) {
   .app { border-inline: 1px solid var(--line); }

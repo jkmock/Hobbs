@@ -20,7 +20,7 @@
 
 .close {
   position: absolute;
-  top: calc(20px + env(safe-area-inset-top));
+  top: calc(20px + var(--safe-top));
   right: calc(24px + env(safe-area-inset-right));
   display: grid;
   place-items: center;
