@@ -30,6 +30,9 @@ export default function RecentFlights({ draft, update }: Pick<StepProps, 'draft'
       // Takeoff to landing, so a little under the Hobbs time; the pilot can adjust it.
       time: f.arrivedAt ? airHours(f.departedAt, f.arrivedAt).toFixed(1) : '',
       faFlightId: f.faFlightId,
+      // A flight picked before keeps the touch-and-goes included or discarded for it.
+      stops: draft.legs.find((leg) => leg.faFlightId === f.faFlightId)?.stops,
+      dismissedStops: draft.legs.find((leg) => leg.faFlightId === f.faFlightId)?.dismissedStops,
     }))
 
     const legs = [...kept, ...imported]

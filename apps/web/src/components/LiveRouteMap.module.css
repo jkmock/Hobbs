@@ -20,3 +20,17 @@
 
 /* The map stays hidden while it loads, so it switches in finished rather than drawing in pieces. */
 .loading { opacity: 0; }
+
+/* A soft shadow inside the top and edges, so the map looks set down into the card rather than
+   printed on it. Drawn over the map, since the map's canvas would cover a shadow on the box. */
+.box::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 1px 5px rgb(0 0 0 / 0.2),
+    inset 0 0 0 1px rgb(0 0 0 / 0.06);
+  pointer-events: none;
+}

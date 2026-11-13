@@ -1,5 +1,7 @@
-import { Plus, X } from 'lucide-react'
+import { useState } from 'react'
+import { Check, Plus, X } from 'lucide-react'
 import { Stepper } from '../../components/controls'
+import { useDetectedTouchAndGoes } from '../../hooks/useLookups'
 import type { Airport } from '../../lib/types'
 import { textWidth, useFontsReady } from '../../lib/textWidth'
 import { emptyLeg, useLegDistances, type DraftLeg, type StepProps } from './draft'
@@ -76,6 +78,7 @@ export default function RouteStep({ draft, update, errors, clearError }: StepPro
                 />
               </div>
             </section>
+            {leg.faFlightId && <TouchAndGoCards leg={leg} onChange={(patch) => setLeg(i, patch)} />}
             </div>
           )
         })}
@@ -89,6 +92,90 @@ export default function RouteStep({ draft, update, errors, clearError }: StepPro
         )}
       </div>
     </>
+  )
+}
+
+// Under a leg imported from FlightAware: a card for each airport where the track suggests
+// touch-and-goes, with how many (editable), to include in the leg or discard. A touch-and-go
+// doesn't end the FlightAware flight, so they belong to this leg rather than new legs.
+// Included ones are saved with the leg and added to the day touch-and-go landings.
+function TouchAndGoCards({ leg, onChange }: { leg: DraftLeg; onChange: (patch: Partial<DraftLeg>) => void }) {
+  const detected = useDetectedTouchAndGoes(leg.faFlightId)
+  // Counts edited on cards not included yet, by airport.
+  const [edited, setEdited] = useState<Record<string, string>>({})
+  const stops = leg.stops ?? []
+  const dismissed = new Set(leg.dismissedStops ?? [])
+  const detectedCount = new Map((detected.data ?? []).map((d) => [d.airport, d.count]))
+
+  // In the order flown: what the track found, then included ones it didn't (saved earlier).
+  const airports = [...new Set([...(detected.data ?? []).map((d) => d.airport), ...stops.map((s) => s.airport)])]
+  const cards = airports.flatMap((airport) => {
+    const stop = stops.find((s) => s.airport === airport)
+    if (stop) return [{ airport, count: stop.count, included: true }]
+    if (dismissed.has(airport)) return []
+    return [{ airport, count: edited[airport] ?? String(detectedCount.get(airport) ?? 1), included: false }]
+  })
+  if (cards.length === 0) return null
+
+  const order = (airport: string) => airports.indexOf(airport)
+  const setCount = (airport: string, count: string, included: boolean) => {
+    if (!included) return setEdited({ ...edited, [airport]: count })
+    onChange({ stops: stops.map((s) => (s.airport === airport ? { ...s, count } : s)) })
+  }
+  const include = (airport: string, count: string) =>
+    onChange({ stops: [...stops, { airport, count }].sort((a, b) => order(a.airport) - order(b.airport)) })
+  const discard = (airport: string) =>
+    onChange({
+      stops: stops.filter((s) => s.airport !== airport),
+      dismissedStops: [...(leg.dismissedStops ?? []), airport],
+    })
+
+  return (
+    <div className={styles.touchAndGoes}>
+      {cards.map(({ airport, count, included }) => (
+        <section key={airport} className={`card ${styles.leg}`} data-included={included || undefined}>
+          <div className={`${styles.legTop} ${styles.touchAndGoTop}`}>
+            <span className={styles.touchAndGoCode}>{airport}</span>
+            {/* Once included, the "Detected…" line and the buttons fold away. */}
+            <div className={styles.touchAndGoFold} inert={included}>
+              <div>
+                <span className={`${styles.endpointLabel} ${styles.touchAndGoLabel}`}>
+                  Detected Touch and Go {Number(count) === 1 ? 'Landing' : 'Landings'}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className={styles.legBottom}>
+            <Stepper
+              label="Touch and Go"
+              value={count}
+              step={1}
+              max={99}
+              onChange={(value) => setCount(airport, value, included)}
+              labelClassName={styles.stepLabelText}
+            />
+          </div>
+          <div className={styles.touchAndGoFold} inert={included}>
+            <div>
+              <div className={styles.touchAndGoActions}>
+                <button type="button" className="btn" onClick={() => discard(airport)}>
+                  Discard
+                </button>
+                <button type="button" className="btn btn--primary" disabled={included} onClick={() => include(airport, count)}>
+                  {included ? (
+                    <>
+                      <Check size={16} strokeWidth={2.5} aria-hidden /> Included
+                    </>
+                  ) : (
+                    'Include'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      ))}
+    </div>
   )
 }
 

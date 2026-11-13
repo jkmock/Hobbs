@@ -1,3 +1,29 @@
+/* The header of a tab's list (Feed, My flights): extra room above it, and a navy title. */
+header.topHeader { padding-top: 44px; }
+.topHeader h1 { color: var(--accent); }
+
+/* A flight's page: Back (with an arrow) in place of a title, and Edit on the right. Both are
+   text styled like the page's section labels ("Stats:", .label in FlightDetails.module.css),
+   with no background. Their padding makes a big tap target. Back's text sits 4px in from the
+   page's left edge, where the labels sit; Edit's 14px in from the right, in line with the
+   card's contents. Both are nudged down toward the card (without moving it), so the gap
+   between them and the card is smaller. */
+:global(.btn).headerButton { /* outranks .btn whatever order the CSS loads in */
+  height: 44px;
+  padding: 0 10px;
+  /* 44px to tap, but takes up 38px like the list header's buttons, so the card doesn't move. */
+  margin: -3px -6px;
+  position: relative;
+  top: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 550;
+}
+:global(.btn).headerButton.editButton { margin-right: 4px; }
+@media (hover: hover) { :global(.btn).headerButton:hover { color: var(--ink-2); } }
+
 /* A list of flight cards that is also each flight's page: My flights and the social feed
    (see hooks/useCardExpand). */
 

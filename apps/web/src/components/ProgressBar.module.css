@@ -12,9 +12,10 @@
   align-items: center;
   gap: 5px;
   font-size: 14px;
+  color: var(--ink-2); /* like Profile's stat names */
 }
 
-.value { font-size: 13px; white-space: nowrap; }
+.value { font-size: 15px; color: var(--ink); white-space: nowrap; } /* like Profile's stat values */
 .target { color: var(--ink-3); }
 
 .track {
@@ -34,7 +35,7 @@
 .done .fill { background: var(--good); }
 .done .label svg { color: var(--good); }
 
-.large .label { font-size: 16px; font-weight: 600; }
+.large .label { font-size: 18px; font-weight: 550; color: var(--ink); } /* like a card heading */
 .large .value { font-size: 20px; }
 .large .track { height: 10px; border-radius: 5px; }
 .large .fill { border-radius: 5px; }

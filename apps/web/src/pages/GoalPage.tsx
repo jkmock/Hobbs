@@ -17,14 +17,16 @@ export default function GoalPage() {
           <p className="muted">Loading…</p>
         ) : (
           <>
-            <div className={`card ${styles.totalCard}`}>
+            <div className={`card ${styles.card}`}>
               <ProgressBar requirement={total} large />
             </div>
 
+            {/* Styled like Profile's Stats card: a floating card with its heading inside, and a
+                row per requirement. */}
             {sections.map((section) => (
-              <section key={section.title}>
-                <h2 className="section-title">{section.title}</h2>
-                <div className={`card ${styles.list}`}>
+              <section key={section.title} className={`card ${styles.card}`}>
+                <h2>{section.title}</h2>
+                <div className={styles.list}>
                   {section.items.map((item) => (
                     <ProgressBar key={item.label} requirement={item} />
                   ))}

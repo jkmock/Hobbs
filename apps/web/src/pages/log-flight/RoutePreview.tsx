@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { Expand } from 'lucide-react'
 import LiveRouteMap from '../../components/LiveRouteMap'
-import { useFlightTracks } from '../../hooks/useLookups'
+import { useAirports, useDetectedTouchAndGoesFor, useFlightTracks } from '../../hooks/useLookups'
 import { useLegDistances, type Draft } from './draft'
 import styles from './LogFlight.module.css'
 
@@ -46,6 +46,21 @@ export default function RoutePreview({ draft, hidden }: { draft: Draft; hidden: 
       if (airport && !inPreview.has(airport.ident)) {
         lone.set(airport.ident, { ident: airport.ident, point: { lat: airport.latitude, lon: airport.longitude } })
       }
+    }
+  }
+  // Airports with touch-and-goes, detected or included, as dots on the track. Discarding
+  // them on the Route step takes the dot away.
+  const detected = useDetectedTouchAndGoesFor(draft.legs.flatMap((leg) => (leg.faFlightId ? [leg.faFlightId] : [])))
+  const touchAndGoIdents = draft.legs.flatMap((leg) => {
+    const dismissed = new Set(leg.dismissedStops ?? [])
+    const found = (leg.faFlightId && detected.get(leg.faFlightId)) || []
+    return [...found.map((d) => d.airport).filter((a) => !dismissed.has(a)), ...(leg.stops ?? []).map((s) => s.airport)]
+  })
+  const touchAndGoAirports = useAirports(touchAndGoIdents)
+  for (const ident of touchAndGoIdents) {
+    const airport = touchAndGoAirports.get(ident)
+    if (airport && !inPreview.has(airport.ident)) {
+      lone.set(airport.ident, { ident: airport.ident, point: { lat: airport.latitude, lon: airport.longitude } })
     }
   }
   const loneAirports = [...lone.values()]

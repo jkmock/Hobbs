@@ -6,7 +6,7 @@
   navy of the Social cards) and --accent-dark-mode (a lighter blue that reads on the
   dark background). --accent picks between them; tints (--accent-soft, --highlight)
   are mixed from it. Things that always sit on a light or navy surface whatever the
-  mode (the sectional chart, the navy cards) use --accent-light-mode directly.
+  mode (the navy cards) use --accent-light-mode directly.
 
   Each color is light-dark(light value, dark value). Which one applies follows
   `color-scheme`: the system setting by default, or the choice made in Settings
@@ -42,7 +42,8 @@
   --font-mono: 'Archivo Variable', system-ui, sans-serif;
   /* Tail numbers: monospace, with a plain zero (no dot or slash). */
   --font-tail: 'Azeret Mono', ui-monospace, monospace;
-  --tabbar-height: 64px;
+  --tabbar-height: 64px; /* the floating tab bar */
+  --tabbar-gap: 20px; /* between the tab bar and the bottom of the screen */
 
   font-family: var(--font-sans);
   font-size: 15px;
@@ -103,6 +104,11 @@ input, textarea { -webkit-user-select: text; user-select: text; }
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 20px 16px 32px;
+}
+
+/* With the floating tab bar over it, a page scrolls its last content clear of the bar. */
+.app--tabbar .page {
+  padding-bottom: calc(32px + var(--tabbar-height) + var(--tabbar-gap) + env(safe-area-inset-bottom));
 }
 
 .stack { display: flex; flex-direction: column; gap: 12px; }

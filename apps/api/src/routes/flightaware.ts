@@ -4,10 +4,12 @@ import { resolveAirports } from "../airports.js";
 import { requireAuth } from "../auth.js";
 import {
   cachedFlightTrack,
+  cachedTrackWithAltitudes,
   FlightAwareBudgetExceeded,
   FlightAwareNotConfigured,
   recentFlights,
 } from "../flightaware.js";
+import { detectTouchAndGoes } from "../touchAndGoes.js";
 
 const RecentQuerySchema = z.object({
   tail: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{1,10}$/),
@@ -67,6 +69,29 @@ export default async function flightAwareRoutes(app: FastifyInstance) {
 
     try {
       return await cachedFlightTrack(params.data.faFlightId);
+    } catch (err) {
+      if (err instanceof FlightAwareNotConfigured) {
+        return reply.code(503).send({ error: err.message });
+      }
+      if (err instanceof FlightAwareBudgetExceeded) {
+        return reply.code(429).send({ error: err.message, resetsOn: err.resetsOn });
+      }
+      request.log.error(err);
+      return reply.code(502).send({ error: "Couldn't reach FlightAware" });
+    }
+  });
+
+  // Touch-and-goes the track suggests, by airport: [{ airport: "RDU", count: 2 }], in the
+  // order flown. Shares the stored track with the route above (fetched again only if it was
+  // stored before altitudes were kept).
+  app.get("/flightaware/touch-and-goes/:faFlightId", async (request, reply) => {
+    const params = z.object({ faFlightId: z.string().min(1).max(100) }).safeParse(request.params);
+    if (!params.success) {
+      return reply.code(400).send({ error: "Invalid request", issues: params.error.issues });
+    }
+
+    try {
+      return await detectTouchAndGoes(await cachedTrackWithAltitudes(params.data.faFlightId));
     } catch (err) {
       if (err instanceof FlightAwareNotConfigured) {
         return reply.code(503).send({ error: err.message });

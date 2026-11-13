@@ -1,12 +1,11 @@
 import { Link, useMatch, useNavigate } from 'react-router'
-import { Users, X } from 'lucide-react'
+import { ArrowLeft, UserPlus, Users } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import FlightCard, { FlightReactions } from '../components/FlightCard'
 import { useCardExpand, type PanelKind } from '../hooks/useCardExpand'
-import { SAMPLE_FEED } from '../mocks/social'
+import { SAMPLE_FEED, SAMPLE_FRIENDS } from '../mocks/social'
 import FlightDetails from './FlightDetails'
 import listStyles from '../components/FlightList.module.css'
-import styles from './HomePage.module.css'
 
 // The social feed, and a feed flight's page (/feed/:id), in one, the same way as My flights
 // (see useCardExpand): the card you tap opens into the flight's page and back.
@@ -18,6 +17,7 @@ export default function HomePage() {
 
   const shown = SAMPLE_FEED.find((item) => item.id === shownId)
   const showingFlight = shownId !== null
+  const hasFriends = SAMPLE_FRIENDS.length > 0
 
   // The sample feed has counts, but not who gave props or what the comments say.
   const panelItem = SAMPLE_FEED.find((item) => item.id === panel?.id)
@@ -39,20 +39,22 @@ export default function HomePage() {
       <div key={showingFlight ? 'flight' : 'list'} className={`${listStyles.header} ${swapClass}`}>
         {showingFlight ? (
           <PageHeader
-            title="Flight"
-            action={
-              <Link to="/" className="icon-btn" aria-label="Close">
-                <X size={24} />
+            className={listStyles.topHeader}
+            leading={
+              <Link to="/" className={`btn ${listStyles.headerButton}`}>
+                <ArrowLeft size={22} /> Back
               </Link>
             }
           />
         ) : (
           <PageHeader
-            title="Social"
-            className={styles.home}
+            title="Feed"
+            className={listStyles.topHeader}
             action={
-              <Link to="/friends" className="icon-btn" aria-label="Friends">
-                <Users size={22} strokeWidth={1.75} />
+              // Like My flights' Log flight button, with the icon after the text.
+              <Link to="/friends" className="btn btn--primary">
+                {hasFriends ? 'My Friends' : 'Add friends'}
+                {hasFriends ? <Users size={16} /> : <UserPlus size={16} />}
               </Link>
             }
           />

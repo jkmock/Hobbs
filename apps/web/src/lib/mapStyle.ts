@@ -1,13 +1,8 @@
 import type { LayerSpecification, SourceSpecification } from 'maplibre-gl'
 
-// The two base maps a route can be drawn on.
-//
-// 'chart': our own vector map in FlightAware's live-map colors (deep blue water, steel-blue
-//   land, pale blue borders). Only the colors are borrowed; the map data is OpenStreetMap's,
-//   served free (no key) by OpenFreeMap in the OpenMapTiles layout.
-// 'sectional': the FAA's VFR sectional charts (public-domain raster tiles).
-
-export type BaseMap = 'chart' | 'sectional'
+// The map a route is drawn on: our own vector map in FlightAware's live-map colors (deep
+// blue water, steel-blue land, pale blue borders). Only the colors are borrowed; the map data
+// is OpenStreetMap's, served free (no key) by OpenFreeMap in the OpenMapTiles layout.
 
 export const CHART_COLORS = {
   water: '#003366',
@@ -24,27 +19,11 @@ export const CHART_COLORS = {
   routeCasing: '#002a55',
 }
 
-const SECTIONAL_TILES =
-  'https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/VFR_Sectional/MapServer/tile/{z}/{y}/{x}'
-
 export const GLYPHS = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf'
 const FONT = ['Noto Sans Regular']
 const FONT_BOLD = ['Noto Sans Bold']
 
-export function baseSources(base: BaseMap): Record<string, SourceSpecification> {
-  if (base === 'sectional') {
-    return {
-      base: {
-        type: 'raster',
-        tiles: [SECTIONAL_TILES],
-        tileSize: 256,
-        // The FAA only serves zoom 8-12; MapLibre stretches zoom 12 when zoomed in further.
-        minzoom: 8,
-        maxzoom: 12,
-        attribution: 'Charts: FAA Aeronautical Information Services',
-      },
-    }
-  }
+export function baseSources(): Record<string, SourceSpecification> {
   return {
     base: {
       type: 'vector',
@@ -55,14 +34,7 @@ export function baseSources(base: BaseMap): Record<string, SourceSpecification> 
   }
 }
 
-export function baseLayers(base: BaseMap): LayerSpecification[] {
-  if (base === 'sectional') {
-    return [
-      { id: 'paper', type: 'background', paint: { 'background-color': '#e9e5d9' } },
-      { id: 'sectional', type: 'raster', source: 'base' },
-    ]
-  }
-
+export function baseLayers(): LayerSpecification[] {
   const c = CHART_COLORS
   return [
     { id: 'land', type: 'background', paint: { 'background-color': c.land } },
@@ -169,10 +141,9 @@ export function baseLayers(base: BaseMap): LayerSpecification[] {
   ]
 }
 
-// The route on top of either base map: a dark casing under a white line on the blue chart,
-// a white casing under a navy line on the paper sectional.
-export function routeLayers(base: BaseMap, navy: string): LayerSpecification[] {
-  const [line, casing] = base === 'chart' ? [CHART_COLORS.route, CHART_COLORS.routeCasing] : [navy, '#ffffff']
+// The route on top of the map: a dark casing under a white line.
+export function routeLayers(): LayerSpecification[] {
+  const [line, casing] = [CHART_COLORS.route, CHART_COLORS.routeCasing]
   return [
     {
       id: 'route-casing',

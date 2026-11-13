@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import {
   LngLatBounds,
   Map as MapLibreMap,
@@ -14,11 +14,11 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { legPath } from '../lib/geo'
 import type { Leg } from '../lib/types'
-import { baseLayers, baseSources, GLYPHS, routeLayers, type BaseMap } from '../lib/mapStyle'
+import { baseLayers, baseSources, GLYPHS, routeLayers } from '../lib/mapStyle'
 import { markShowing, park, routeKey, takeParked, type LiveMap } from '../lib/mapPool'
 import styles from './FlightMap.module.css'
 
-// A route drawn on a real map: our FlightAware-colored chart by default, or the FAA sectional.
+// A route drawn on a real map: our FlightAware-colored chart.
 // Used for the flight cards, the Route step preview, the Map page and the full-screen viewer.
 
 setWorkerUrl(workerUrl)
@@ -27,7 +27,6 @@ setWorkerUrl(workerUrl)
 // maps and start much sooner.
 setWorkerCount(2)
 
-const SECTIONAL_MIN_ZOOM = 6.5 // below about this, MapLibre stops drawing the zoom 8 sectional tiles
 // With no route to show, frame the continental US (the lower 48), whatever the map's size.
 const US_BOUNDS: [[number, number], [number, number]] = [
   [-125, 24.5],
@@ -45,7 +44,6 @@ type Props = {
   legs: RouteLeg[]
   airports?: LoneAirport[] // drawn as dots; they don't move the view, only legs do
   interactive?: boolean
-  base?: BaseMap
   className?: string // sizes the map; it fills this box
   onLoad?: () => void // once the map has first drawn, tiles and all
   // Keep the map alive when this goes away, for the next map of the same route to reuse
@@ -56,42 +54,46 @@ type Props = {
   // the map glides to frame the route full size; back to true, it glides back.
   startBox?: ScreenBox
   holdView?: boolean
+  // Room to leave around the route when framing it on an interactive map, for panels that
+  // float over the map (the Map page's).
+  fitPadding?: Padding
 }
+
+export type Padding = { top: number; bottom: number; left: number; right: number }
 
 export default function FlightMap({
   legs,
   airports = NO_AIRPORTS,
   interactive = false,
-  base = 'chart',
   className = '',
   onLoad,
   pooled = false,
   startBox,
   holdView = false,
+  fitPadding,
 }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const liveRef = useRef<LiveMap | null>(null)
-  const [zoomedOut, setZoomedOut] = useState(false)
 
   // Callers often build `legs` fresh on every render (the Route step does), so compare by content.
   const legsKey = useMemo(() => routeKey(legs, airports), [legs, airports])
   // The latest props, for the effects below (layout effects run before them).
-  const routeRef = useRef({ legs, airports, legsKey })
+  const routeRef = useRef({ legs, airports, legsKey, fitPadding })
   const onLoadRef = useRef(onLoad)
   const viewRef = useRef({ startBox, holdView })
   useLayoutEffect(() => {
-    routeRef.current = { legs, airports, legsKey }
+    routeRef.current = { legs, airports, legsKey, fitPadding }
     onLoadRef.current = onLoad
     viewRef.current = { startBox, holdView }
   })
 
-  // The map itself: rebuilt only when the base map or interactivity changes. A layout effect,
+  // The map itself: rebuilt only when its interactivity changes. A layout effect,
   // so a reused map is in place before the page is drawn (and before a page transition takes
   // its picture of the new page).
   useLayoutEffect(() => {
     const wrap = container.current
     if (!wrap) return
-    const usePool = pooled && !interactive && base === 'chart'
+    const usePool = pooled && !interactive
 
     let live = usePool ? takeParked(routeRef.current.legsKey) : undefined
     if (live) {
@@ -108,7 +110,7 @@ export default function FlightMap({
       // has the map in it.
       live.map.redraw()
     } else {
-      live = createMap(wrap, routeRef.current, viewRef.current, interactive, base, setZoomedOut)
+      live = createMap(wrap, routeRef.current, viewRef.current, interactive)
     }
 
     const current = live
@@ -127,7 +129,7 @@ export default function FlightMap({
         current.el.remove()
       }
     }
-  }, [interactive, base, pooled])
+  }, [interactive, pooled])
 
   // The route, airports and view: updated in place when the legs change.
   useEffect(() => {
@@ -148,7 +150,7 @@ export default function FlightMap({
       }
       source.setData(routeGeoJson(current.legs))
       if (viewRef.current.holdView && viewRef.current.startBox) return // held on the mini map's view
-      if (current.legs.length > 0) map.fitBounds(boundsFor(current.legs), { ...fitOptions(interactive), duration: 300 })
+      if (current.legs.length > 0) map.fitBounds(boundsFor(current.legs), { ...fitOptions(interactive, current.fitPadding), duration: 300 })
       else map.fitBounds(US_BOUNDS, { ...US_FIT, duration: 300 }) // back to the US when the route is cleared
     }
     apply()
@@ -173,8 +175,8 @@ export default function FlightMap({
     return () => {
       map.off('styledata', apply)
     }
-    // legsKey stands in for legs; base/interactive rebuild the map, which needs fresh markers too.
-  }, [legsKey, base, interactive, pooled])
+    // legsKey stands in for legs; interactive rebuilds the map, which needs fresh markers too.
+  }, [legsKey, interactive, pooled])
 
   // Gliding between the mini map's view (held) and the route framed full size.
   // A layout effect, so the glide starts on the same frame as the box's transition.
@@ -192,21 +194,19 @@ export default function FlightMap({
       // Opening out from the mini map only ever zooms in. When the full-screen framing would be
       // further out than the mini map's (a long east-west route on a narrow screen, say), keep
       // the mini map's zoom and just center the route.
-      const fit = current.length > 0 ? map.cameraForBounds(boundsFor(current), fitOptions(interactive)) : map.cameraForBounds(US_BOUNDS, US_FIT)
+      const fit = current.length > 0 ? map.cameraForBounds(boundsFor(current), fitOptions(interactive, routeRef.current.fitPadding)) : map.cameraForBounds(US_BOUNDS, US_FIT)
       if (fit) map.easeTo({ ...fit, zoom: Math.max(fit.zoom ?? 0, map.getZoom()), ...glide })
     }
   }, [holdView, interactive])
 
   return (
-    <div ref={container} className={`${styles.wrap} ${className}`} data-base={base}>
-      {interactive && base === 'sectional' && zoomedOut && <p className={styles.hint}>Zoom in to see the sectional chart</p>}
-    </div>
+    <div ref={container} className={`${styles.wrap} ${className}`} />
   )
 }
 
 // Airport labels sit to the right of their dots, so leave more room on the right.
-const fitOptions = (interactive: boolean) => ({
-  padding: interactive ? { top: 80, bottom: 80, left: 80, right: 110 } : { top: 30, bottom: 22, left: 24, right: 56 },
+const fitOptions = (interactive: boolean, padding?: Padding) => ({
+  padding: padding && interactive ? padding : interactive ? { top: 80, bottom: 80, left: 80, right: 110 } : { top: 30, bottom: 22, left: 24, right: 56 },
   maxZoom: 10,
 })
 
@@ -238,16 +238,13 @@ function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
 // box later). It shows the route straight away; markers come from the route effect.
 function createMap(
   wrap: HTMLDivElement,
-  route: { legs: RouteLeg[] },
+  route: { legs: RouteLeg[]; fitPadding?: Padding },
   hold: { startBox?: ScreenBox; holdView: boolean },
   interactive: boolean,
-  base: BaseMap,
-  setZoomedOut: (zoomedOut: boolean) => void,
 ): LiveMap {
   const el = document.createElement('div')
   el.className = styles.map ?? ''
   wrap.prepend(el)
-  const navy = getComputedStyle(document.documentElement).getPropertyValue('--accent-light-mode').trim() || '#1b2f57'
   const startBox = hold.holdView ? hold.startBox : undefined
 
   const map = new MapLibreMap({
@@ -262,14 +259,14 @@ function createMap(
       version: 8,
       glyphs: GLYPHS,
       sources: {
-        ...baseSources(base),
+        ...baseSources(),
         // Part of the initial style so the route draws at once, not after the map tiles load.
         route: { type: 'geojson', data: routeGeoJson(route.legs) },
       },
-      layers: [...baseLayers(base), ...routeLayers(base, navy)],
+      layers: [...baseLayers(), ...routeLayers()],
     },
     ...(route.legs.length > 0
-      ? { bounds: boundsFor(route.legs), fitBoundsOptions: fitOptions(interactive) }
+      ? { bounds: boundsFor(route.legs), fitBoundsOptions: fitOptions(interactive, route.fitPadding) }
       : { bounds: US_BOUNDS, fitBoundsOptions: US_FIT }),
   })
   // Opening from a mini map: framed as the mini map frames it, where the mini map is.
@@ -283,11 +280,6 @@ function createMap(
 
   if (interactive) {
     map.touchZoomRotate.disableRotation()
-  }
-  if (base === 'sectional') {
-    const update = () => setZoomedOut(map.getZoom() < SECTIONAL_MIN_ZOOM)
-    map.on('zoomend', update)
-    map.on('load', update)
   }
   return live
 }

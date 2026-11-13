@@ -2,7 +2,6 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Transit
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import FlightMap, { type LoneAirport, type RouteLeg } from './FlightMap'
-import type { BaseMap } from '../lib/mapStyle'
 import styles from './ChartViewer.module.css'
 
 type Props = {
@@ -13,8 +12,8 @@ type Props = {
   from?: HTMLElement | null // the mini map it opens from (or the button around it), to grow out of
 }
 
-// A full-screen map you can pan and zoom, opened from a route map. It starts on our
-// FlightAware-style chart, with a switch to the FAA sectional.
+// A full-screen map you can pan and zoom, opened from a route map, on our FlightAware-style
+// chart.
 //
 // Opened from a mini map, it grows out of it: the full-screen map starts on exactly the mini
 // map's view, lined up with where the mini map sits, cut down to the mini map's box, and
@@ -24,7 +23,6 @@ type Props = {
 // route (both take GLIDE_MS, with the same easing).
 // Closing runs it all backwards into the mini map.
 export default function ChartViewer({ legs, airports, title, onClose, from }: Props) {
-  const [base, setBase] = useState<BaseMap>('chart')
 
   // The mini map's box to grow out of, if there is one and motion is welcome. Only its place
   // on screen is needed (the view is worked out from the route), so this works even if the
@@ -108,26 +106,13 @@ export default function ChartViewer({ legs, airports, title, onClose, from }: Pr
         legs={legs}
         airports={airports}
         interactive
-        base={base}
         onLoad={() => setMapLoaded(true)}
         startBox={rect ?? undefined}
         holdView={holdView}
       />
       <div className={`${styles.controls} ${phase === 'open' ? '' : styles.controlsHidden}`}>
-        <div className={styles.baseSwitch} role="radiogroup" aria-label="Map type">
-          {(
-            [
-              ['chart', 'Map'],
-              ['sectional', 'Sectional'],
-            ] as const
-          ).map(([value, label]) => (
-            <button key={value} type="button" role="radio" aria-checked={base === value} onClick={() => setBase(value)}>
-              {label}
-            </button>
-          ))}
-        </div>
         <button type="button" className={styles.close} onClick={close} aria-label="Close map" autoFocus>
-          <X size={22} strokeWidth={2} />
+          <X size={40} strokeWidth={2.25} />
         </button>
       </div>
     </div>,

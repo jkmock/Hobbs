@@ -9,17 +9,17 @@
 .wrap .map {
   position: absolute;
   inset: 0;
-  background: #e9e5d9;
+  background: #285981; /* the chart's land color, while tiles load */
 }
-.wrap[data-base='chart'] .map { background: #285981; } /* the chart's land color, while tiles load */
 
-/* Airport: a white dot with a navy ring, and its identifier beside it. */
+/* Airport: a white dot with a dark ring, and its identifier beside it in white with a dark
+   halo, to stand out on the dark blue chart. */
 .airport {
   width: 12px;
   height: 12px;
   border-radius: 50%;
   background: #ffffff;
-  border: 2.5px solid var(--accent-light-mode);
+  border: 2.5px solid #002a55;
   box-sizing: border-box;
 }
 
@@ -31,45 +31,20 @@
   font-variant-numeric: tabular-nums;
   font-size: 12px;
   font-weight: 600;
-  color: var(--accent-light-mode);
-  white-space: nowrap;
-  text-shadow:
-    0 0 3px #fff,
-    0 0 3px #fff,
-    0 0 3px #fff;
-  pointer-events: none;
-}
-
-/* On the dark blue chart: a white dot with a dark ring, and a white label with a dark halo. */
-.wrap[data-base='chart'] .airport { border-color: #002a55; }
-.wrap[data-base='chart'] .airport span {
   color: #ffffff;
+  white-space: nowrap;
   text-shadow:
     0 0 3px #002a55,
     0 0 3px #002a55,
     0 0 3px #002a55;
+  pointer-events: none;
 }
-.wrap[data-base='chart'] .pattern { border-color: #ffffff; }
 
 /* Pattern work or a local flight: a dashed ring around the airport. */
 .pattern {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  border: 2px dashed var(--accent-light-mode);
-  pointer-events: none;
-}
-
-.hint {
-  position: absolute;
-  left: 50%;
-  bottom: calc(56px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent-light-mode) 90%, transparent);
-  color: #fff;
-  font-size: 13px;
-  white-space: nowrap;
+  border: 2px dashed #ffffff;
   pointer-events: none;
 }

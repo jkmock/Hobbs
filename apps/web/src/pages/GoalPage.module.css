@@ -1,10 +1,22 @@
-.totalCard { padding: 16px; }
+/* Floating cards with their heading inside, like Profile's (ProfilePage.module.css), with
+   the same 16px between them as the log-flight form's cards. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.18), 0 1px 3px rgb(0 0 0 / 0.12);
+}
+.card + .card { margin-top: 16px; }
+.card h2 { font-size: 18px; font-weight: 550; color: var(--ink); }
 
+/* A row per requirement. Each one's progress track already separates it from the next, so no
+   divider lines (they'd double up with the tracks). */
 .list {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 16px;
+  padding-top: 12px;
 }
 
 .footnote {

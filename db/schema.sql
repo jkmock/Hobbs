@@ -126,9 +126,25 @@ CREATE TABLE public.airports (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     faa_code text,
+    elevation_ft integer,
     CONSTRAINT airports_airport_ident_check CHECK ((airport_ident = upper(airport_ident))),
     CONSTRAINT airports_airport_type_check CHECK ((airport_type = ANY (ARRAY['small_airport'::text, 'medium_airport'::text, 'large_airport'::text, 'closed'::text]))),
     CONSTRAINT airports_faa_code_check CHECK ((faa_code = upper(faa_code)))
+);
+
+
+--
+-- Name: flight_leg_stops; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.flight_leg_stops (
+    stop_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    leg_id uuid NOT NULL,
+    stop_order smallint NOT NULL,
+    airport_id uuid NOT NULL,
+    touch_and_goes smallint NOT NULL,
+    CONSTRAINT flight_leg_stops_stop_order_check CHECK ((stop_order >= 1)),
+    CONSTRAINT flight_leg_stops_touch_and_goes_check CHECK (((touch_and_goes >= 1) AND (touch_and_goes <= 99)))
 );
 
 
@@ -158,7 +174,8 @@ CREATE TABLE public.flight_legs (
 CREATE TABLE public.flightaware_tracks (
     fa_flight_id text NOT NULL,
     track public.geography(LineString,4326),
-    fetched_at timestamp with time zone DEFAULT now() NOT NULL
+    fetched_at timestamp with time zone DEFAULT now() NOT NULL,
+    altitudes smallint[]
 );
 
 
@@ -329,6 +346,22 @@ ALTER TABLE ONLY public.airports
 
 ALTER TABLE ONLY public.airports
     ADD CONSTRAINT airports_pkey PRIMARY KEY (airport_id);
+
+
+--
+-- Name: flight_leg_stops flight_leg_stops_leg_id_stop_order_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flight_leg_stops
+    ADD CONSTRAINT flight_leg_stops_leg_id_stop_order_key UNIQUE (leg_id, stop_order);
+
+
+--
+-- Name: flight_leg_stops flight_leg_stops_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flight_leg_stops
+    ADD CONSTRAINT flight_leg_stops_pkey PRIMARY KEY (stop_id);
 
 
 --
@@ -557,6 +590,22 @@ CREATE TRIGGER users_set_updated_at BEFORE UPDATE ON public.users FOR EACH ROW E
 
 
 --
+-- Name: flight_leg_stops flight_leg_stops_airport_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flight_leg_stops
+    ADD CONSTRAINT flight_leg_stops_airport_id_fkey FOREIGN KEY (airport_id) REFERENCES public.airports(airport_id);
+
+
+--
+-- Name: flight_leg_stops flight_leg_stops_leg_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flight_leg_stops
+    ADD CONSTRAINT flight_leg_stops_leg_id_fkey FOREIGN KEY (leg_id) REFERENCES public.flight_legs(leg_id) ON DELETE CASCADE;
+
+
+--
 -- Name: flight_legs flight_legs_destination_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -666,4 +715,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261111220000'),
     ('20261112120000'),
     ('20261112130000'),
-    ('20261112140000');
+    ('20261112140000'),
+    ('20261112150000');

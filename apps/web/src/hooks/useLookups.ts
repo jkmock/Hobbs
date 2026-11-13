@@ -1,7 +1,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { CreateAircraft, UpdateAircraft } from '@hobbs/shared'
 import { api } from '../lib/api'
-import type { Aircraft, Airport, Instructor, RecentFlight } from '../lib/types'
+import type { Aircraft, Airport, DetectedTouchAndGoes, Instructor, RecentFlight } from '../lib/types'
 
 const TAIL_SEARCH = /^[A-Z0-9-]{1,10}$/
 
@@ -115,6 +115,27 @@ export function useFlightTracks(faFlightIds: string[]): Map<string, [number, num
       retry: false,
     })),
   })
+  return new Map(unique.map((id, i) => [id, results[i]?.data]))
+}
+
+// Touch-and-goes FlightAware's track suggests for one flight, by airport. Worked out from the
+// stored track (the same one useFlightTracks draws), which never changes, so kept for good.
+const touchAndGoesQuery = (faFlightId: string) => ({
+  queryKey: ['flightaware', 'touch-and-goes', faFlightId],
+  queryFn: () => api<DetectedTouchAndGoes[]>(`/flightaware/touch-and-goes/${encodeURIComponent(faFlightId)}`),
+  staleTime: Infinity,
+  retry: false,
+})
+
+export function useDetectedTouchAndGoes(faFlightId: string | undefined) {
+  return useQuery({ ...touchAndGoesQuery(faFlightId ?? ''), enabled: !!faFlightId })
+}
+
+// The same, for several flights at once: faFlightId -> touch-and-goes, or undefined while
+// loading or if they couldn't be had.
+export function useDetectedTouchAndGoesFor(faFlightIds: string[]): Map<string, DetectedTouchAndGoes[] | undefined> {
+  const unique = [...new Set(faFlightIds)]
+  const results = useQueries({ queries: unique.map(touchAndGoesQuery) })
   return new Map(unique.map((id, i) => [id, results[i]?.data]))
 }
 

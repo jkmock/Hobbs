@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 import { Link, useLocation, useMatch, useNavigate } from 'react-router'
-import { Pencil, Plus, X } from 'lucide-react'
+import { ArrowLeft, Plus } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import FlightCard, { FlightReactions } from '../components/FlightCard'
 import { useFlight, useFlightPages } from '../hooks/useFlights'
@@ -74,21 +74,22 @@ export default function FlightsPage() {
       <div key={showingFlight ? 'flight' : 'list'} className={`${styles.header} ${swapClass}`}>
         {showingFlight ? (
           <PageHeader
-            title="Flight"
+            className={styles.topHeader}
+            leading={
+              <Link to="/flights" className={`btn ${styles.headerButton}`}>
+                <ArrowLeft size={22} /> Back
+              </Link>
+            }
             action={
-              <>
-                <Link to={`/flights/${shownId}/edit`} className="icon-btn" aria-label="Edit flight">
-                  <Pencil size={20} />
-                </Link>
-                <Link to="/flights" className="icon-btn" aria-label="Close">
-                  <X size={24} />
-                </Link>
-              </>
+              <Link to={`/flights/${shownId}/edit`} className={`btn ${styles.headerButton} ${styles.editButton}`}>
+                Edit
+              </Link>
             }
           />
         ) : (
           <PageHeader
             title="My flights"
+            className={styles.topHeader}
             action={
               <Link to="/flights/new" className="btn btn--primary">
                 <Plus size={16} /> Log flight

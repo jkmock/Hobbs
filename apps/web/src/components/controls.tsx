@@ -120,9 +120,9 @@ export function Segmented<T extends string>({ label, options, value, onChange, o
   )
 }
 
-export function Avatar({ firstName, lastName, size = 40 }: { firstName: string; lastName: string; size?: number }) {
+export function Avatar({ firstName, lastName, size = 40, className = '' }: { firstName: string; lastName: string; size?: number; className?: string }) {
   return (
-    <span className={styles.avatar} style={{ width: size, height: size, fontSize: size * 0.38 }} aria-hidden>
+    <span className={`${styles.avatar} ${className}`} style={{ width: size, height: size, fontSize: size * 0.38 }} aria-hidden>
       {initials(firstName, lastName)}
     </span>
   )

@@ -83,7 +83,8 @@ type FaFlight = {
   cancelled: boolean;
 };
 
-type FaPosition = { latitude: number; longitude: number };
+// altitude is in hundreds of feet.
+type FaPosition = { latitude: number; longitude: number; altitude: number | null };
 
 // One flight as the app sees it. Airports are every code FlightAware gave,
 // best first; the route matches them against our airports table.
@@ -163,21 +164,62 @@ export async function cachedFlightTrack(faFlightId: string): Promise<[number, nu
   );
   const row = known.rows[0];
   if (row) return row.geojson ? (JSON.parse(row.geojson).coordinates as [number, number][]) : [];
-
-  const coordinates = await flightTrack(faFlightId);
-  const geojson = coordinates.length >= 2 ? JSON.stringify({ type: "LineString", coordinates }) : null;
-  await pool.query(
-    `INSERT INTO flightaware_tracks (fa_flight_id, track)
-     VALUES ($1, ST_GeomFromGeoJSON($2)::geography)
-     ON CONFLICT (fa_flight_id) DO NOTHING`,
-    [faFlightId, geojson],
-  );
-  return geojson ? coordinates : [];
+  return (await fetchAndStoreTrack(faFlightId)).coordinates;
 }
 
-// The positions FlightAware recorded for one flight, as [lon, lat] pairs. Billed on every call;
-// use cachedFlightTrack.
-async function flightTrack(faFlightId: string): Promise<[number, number][]> {
+export type TrackWithAltitudes = {
+  coordinates: [number, number][];
+  altitudesFt: number[]; // one per coordinate
+};
+
+// A flight's track with the altitude at each position, for finding touch-and-goes. Like
+// cachedFlightTrack, but a track stored before altitudes were kept is fetched once more,
+// since its altitudes aren't known.
+export async function cachedTrackWithAltitudes(faFlightId: string): Promise<TrackWithAltitudes> {
+  const known = await pool.query<{ geojson: string | null; altitudes: number[] | null }>(
+    `SELECT ST_AsGeoJSON(track) AS geojson, altitudes FROM flightaware_tracks WHERE fa_flight_id = $1`,
+    [faFlightId],
+  );
+  const row = known.rows[0];
+  if (row && (row.altitudes || !row.geojson)) {
+    const coordinates = row.geojson ? (JSON.parse(row.geojson).coordinates as [number, number][]) : [];
+    return { coordinates, altitudesFt: (row.altitudes ?? []).map((a) => a * 100) };
+  }
+  return fetchAndStoreTrack(faFlightId);
+}
+
+// Fetches a track (billed) and keeps it, with its altitudes, in flightaware_tracks. Picking a
+// flight asks for its track (for the map) and its touch-and-goes at the same moment, so a
+// fetch already under way is shared rather than paid for twice.
+const fetching = new Map<string, Promise<TrackWithAltitudes>>();
+function fetchAndStoreTrack(faFlightId: string): Promise<TrackWithAltitudes> {
+  const pending = fetching.get(faFlightId);
+  if (pending) return pending;
+  const promise = fetchAndStoreTrackNow(faFlightId).finally(() => fetching.delete(faFlightId));
+  fetching.set(faFlightId, promise);
+  return promise;
+}
+
+async function fetchAndStoreTrackNow(faFlightId: string): Promise<TrackWithAltitudes> {
+  const positions = await flightTrack(faFlightId);
+  const coordinates = positions.map((p) => [p.longitude, p.latitude] as [number, number]);
+  // A missing altitude takes the one before it, so the list stays in step with the points.
+  let last = 0;
+  const altitudes = positions.map((p) => (last = p.altitude ?? last));
+  const enough = coordinates.length >= 2;
+  const geojson = enough ? JSON.stringify({ type: "LineString", coordinates }) : null;
+  await pool.query(
+    `INSERT INTO flightaware_tracks (fa_flight_id, track, altitudes)
+     VALUES ($1, ST_GeomFromGeoJSON($2)::geography, $3)
+     ON CONFLICT (fa_flight_id) DO UPDATE SET track = EXCLUDED.track, altitudes = EXCLUDED.altitudes`,
+    [faFlightId, geojson, enough ? altitudes : null],
+  );
+  return enough ? { coordinates, altitudesFt: altitudes.map((a) => a * 100) } : { coordinates: [], altitudesFt: [] };
+}
+
+// The positions FlightAware recorded for one flight. Billed on every call; use
+// cachedFlightTrack or cachedTrackWithAltitudes.
+async function flightTrack(faFlightId: string): Promise<FaPosition[]> {
   const data = await aeroApi<{ positions: FaPosition[] }>(
     "track",
     `/flights/${encodeURIComponent(faFlightId)}/track`,
@@ -187,5 +229,5 @@ async function flightTrack(faFlightId: string): Promise<[number, number][]> {
         ? COST.trackResultSet * Math.max(1, Math.ceil(d.positions.length / 15))
         : COST.trackResultSet,
   );
-  return data.positions.map((p) => [p.longitude, p.latitude]);
+  return data.positions;
 }

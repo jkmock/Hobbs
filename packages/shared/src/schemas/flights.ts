@@ -14,6 +14,9 @@ const LegSchema = z.object({
   // Set when the leg was imported from FlightAware; the API fetches its track on save.
   faFlightId: z.string().min(1).max(100).optional(),
   time: Tenths.optional(), // flight time for this leg, in hours
+  // Touch-and-goes during the leg, by airport, in the order flown. A touch-and-go doesn't
+  // end the leg (or the FlightAware flight), so these sit inside it.
+  stops: z.array(z.object({ airport: AirportIdent, touchAndGoes: z.int().min(1).max(99) })).max(20).optional(),
 });
 
 const FlightBase = z.object({

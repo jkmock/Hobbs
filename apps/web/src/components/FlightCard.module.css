@@ -49,11 +49,17 @@
   border-bottom: 1px solid var(--line);
   font-size: 16px;
   font-weight: 650;
-  color: var(--ink);
+  color: var(--accent); /* the pilot's name, blue like the route */
+}
+
+/* The pilot's picture: the accent fill instead of the default ink one. */
+.pilotAvatar {
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 /* Like a finished step's label on the log-flight step indicator (.steps button[data-done]). */
-.date { font-weight: 550; color: var(--ink); }
+.date { font-weight: 550; color: var(--accent); } /* blue like the route */
 
 /* Tail number sits at the top right of the card. */
 .tail {

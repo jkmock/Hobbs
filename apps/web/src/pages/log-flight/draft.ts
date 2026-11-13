@@ -30,7 +30,23 @@ export type TimeField = (typeof TIME_FIELDS)[number][0]
 export type LandingField = (typeof LANDING_FIELDS)[number][0]
 
 // time: flight time in hours, as typed ('' = not entered). faFlightId: imported from FlightAware.
-export type DraftLeg = { origin: string; destination: string; time: string; faFlightId?: string }
+// stops: touch-and-goes included in the leg. dismissedStops: airports whose detected
+// touch-and-goes were discarded, so they aren't suggested again while editing.
+export type DraftLeg = {
+  origin: string
+  destination: string
+  time: string
+  faFlightId?: string
+  stops?: DraftStop[]
+  dismissedStops?: string[]
+}
+
+// Touch-and-goes at one airport during a leg; count as typed.
+export type DraftStop = { airport: string; count: string }
+
+// How many touch-and-goes the legs' stops add up to.
+export const stopTouchAndGoes = (legs: DraftLeg[]) =>
+  legs.reduce((sum, leg) => sum + (leg.stops ?? []).reduce((n, stop) => n + (Number(stop.count) || 0), 0), 0)
 
 export type Draft = {
   aircraftId: string
@@ -51,6 +67,9 @@ export type Draft = {
   // total time; editing any of those by hand clears it.
   flightType: FlightType | null
   landings: Record<LandingField, string>
+  // Day full-stop landings follow the legs (one per leg, each ends with one) until the pilot
+  // changes them.
+  fullStopsFromLegs: boolean
   notes: string
 }
 
@@ -81,6 +100,10 @@ export function legTotal(times: number[]): number {
 
 export const draftLegTotal = (legs: DraftLeg[]) => legTotal(legs.map((l) => Number(l.time) || 0))
 
+// One full-stop landing per leg: each leg ends with one. A leg counts once its destination
+// is filled in.
+export const legFullStops = (legs: DraftLeg[]) => legs.filter((leg) => leg.destination.trim() !== '').length
+
 // Every change to the draft goes through here. While totalFromLegs is on, editing leg times
 // updates the total; typing a different total by hand turns it off.
 export function applyPatch(d: Draft, patch: Partial<Draft>): Draft {
@@ -103,6 +126,22 @@ export function applyPatch(d: Draft, patch: Partial<Draft>): Draft {
   else if (hadImported && !hasImported && d.dateBeforeImport !== null) {
     next.flightDate = d.dateBeforeImport
     next.dateBeforeImport = null
+  }
+
+  // Typing day full stops yourself stops them following the legs; otherwise they do.
+  if (patch.landings && patch.landings.dayLandingsFs !== d.landings.dayLandingsFs) next.fullStopsFromLegs = false
+  else if (patch.legs && next.fullStopsFromLegs) {
+    next.landings = { ...next.landings, dayLandingsFs: String(Math.min(99, legFullStops(next.legs))) }
+  }
+
+  // Touch-and-goes included in (or taken out of) the legs add to (or come off) the day
+  // touch-and-go landings, which stay editable on the Landings step.
+  if (patch.legs) {
+    const added = stopTouchAndGoes(next.legs) - stopTouchAndGoes(d.legs)
+    if (added !== 0) {
+      const tg = Math.min(99, Math.max(0, (Number(next.landings.dayLandingsTg) || 0) + added))
+      next.landings = { ...next.landings, dayLandingsTg: String(tg) }
+    }
   }
 
   // Typing a cross-country time yourself stops it following the legs.
@@ -154,6 +193,7 @@ export function emptyDraft(): Draft {
     crossCountryFromLegs: true,
     flightType: null, // neither Solo nor Dual Received until the pilot picks one
     landings: mapFields(LANDING_FIELDS, () => '0'),
+    fullStopsFromLegs: true,
     notes: '',
   }
 }
@@ -166,11 +206,12 @@ export function draftFromFlight(f: Flight): Draft {
     flightDate: f.flightDate,
     dateBeforeImport: null,
     instructorId: f.instructorId ?? '',
-    legs: f.legs.map(({ origin, destination, faFlightId, time }) => ({
+    legs: f.legs.map(({ origin, destination, faFlightId, time, stops }) => ({
       origin,
       destination,
       time: time != null ? time.toFixed(1) : '',
       faFlightId: faFlightId ?? undefined,
+      stops: (stops ?? []).map((stop) => ({ airport: stop.airport, count: String(stop.touchAndGoes) })),
     })),
     times,
     // Keep following the legs only if the saved total still matches them.
@@ -178,6 +219,8 @@ export function draftFromFlight(f: Flight): Draft {
     crossCountryFromLegs: null, // decided once the airports load (see syncCrossCountry)
     flightType: flightTypeOf(times),
     landings: mapFields(LANDING_FIELDS, (key) => String(f[key])),
+    // Keep following the legs only if the saved count still matches them.
+    fullStopsFromLegs: f.dayLandingsFs === f.legs.length,
     notes: f.notes ?? '',
   }
 }
@@ -194,6 +237,10 @@ export function toInput(d: Draft): unknown {
       destination: leg.destination,
       faFlightId: leg.faFlightId,
       time: number(leg.time),
+      // A stop set to 0 touch-and-goes is left out.
+      stops: (leg.stops ?? [])
+        .filter((stop) => (Number(stop.count) || 0) > 0)
+        .map((stop) => ({ airport: stop.airport, touchAndGoes: Number(stop.count) })),
     })),
     ...Object.fromEntries(TIME_FIELDS.map(([key]) => [key, number(d.times[key])])),
     ...Object.fromEntries(LANDING_FIELDS.map(([key]) => [key, number(d.landings[key])])),
@@ -216,21 +263,25 @@ export function friendlyMessage(issue: { path: PropertyKey[]; code: string; mess
 
 // Airport lookups and leg distances for the legs being typed.
 export function useLegDistances(legs: DraftLeg[]) {
-  const airports = useAirports(legs.flatMap((leg) => [leg.origin, leg.destination]))
+  const stopIdents = legs.flatMap((leg) => (leg.stops ?? []).map((stop) => stop.airport))
+  const airports = useAirports([...legs.flatMap((leg) => [leg.origin, leg.destination]), ...stopIdents])
   const find = (ident: string) => airports.get(ident.trim().toUpperCase())
   const distances = legs.map((leg) => {
     const a = find(leg.origin)
     const b = find(leg.destination)
     return a && b ? distanceNm({ lat: a.latitude, lon: a.longitude }, { lat: b.latitude, lon: b.longitude }) : null
   })
-  // From the original departure airport to each leg's landing airport, for cross-country.
+  // From the original departure airport to each airport landed at, for cross-country: each
+  // leg's landing airport, and each airport with touch-and-goes (a touch-and-go is a landing).
   const start = find(legs[0]?.origin ?? '')
-  const fromStart = legs.map((leg) => {
-    const b = find(leg.destination)
+  const fromStart = [...legs.map((leg) => leg.destination), ...stopIdents].map((ident) => {
+    const b = find(ident)
     return start && b ? distanceNm({ lat: start.latitude, lon: start.longitude }, { lat: b.latitude, lon: b.longitude }) : null
   })
   // Still waiting on an airport lookup (a code that wasn't found is null, not undefined).
-  const pending = legs.some((leg) => [leg.origin, leg.destination].some((ident) => find(ident) === undefined && ident.trim().length >= 3))
+  const pending = [...legs.flatMap((leg) => [leg.origin, leg.destination]), ...stopIdents].some(
+    (ident) => find(ident) === undefined && ident.trim().length >= 3,
+  )
   return { find, distances, fromStart, pending }
 }
 

@@ -259,6 +259,48 @@
 }
 .addLeg svg { display: block; flex-shrink: 0; }
 
+/* Touch-and-goes the FlightAware track suggests, under their leg: a card per airport, laid out
+   like the leg card (the airport in its code style, then a stepper), with Discard and Include. */
+.touchAndGoes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+.touchAndGoTop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.touchAndGoLabel { display: block; padding-top: 2px; }
+.touchAndGoCode {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  color: var(--accent); /* like the Origin and Dest codes */
+}
+.touchAndGoActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 4px 16px 14px;
+}
+/* Included: the "Detected…" line and the buttons fold up (rows from their height to 0) and
+   fade, leaving the airport and its count. The inner div clips what's folding. */
+.touchAndGoFold {
+  display: grid;
+  grid-template-rows: 1fr;
+  width: 100%;
+  transition: grid-template-rows 280ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 200ms ease;
+}
+.touchAndGoFold > div { min-height: 0; overflow: hidden; }
+[data-included] .touchAndGoFold { grid-template-rows: 0fr; opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .touchAndGoFold { transition: none; } }
+/* While folding away, the Include button stays filled ("Included"), not faded like a disabled one. */
+.touchAndGoActions :global(.btn--primary):disabled { opacity: 1; }
+
 /* A leg's card with its "Leg 1:" heading and remove button above it, on the page. */
 .legGroup { display: flex; flex-direction: column; gap: 4px; }
 .legHead {

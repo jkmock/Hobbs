@@ -20,7 +20,14 @@ export type Leg = {
   faFlightId?: string | null // set when imported from FlightAware
   track?: [number, number][] | null // [lon, lat] positions FlightAware recorded
   time?: number | null // flight time for this leg, in hours
+  stops?: LegStop[] // touch-and-goes along the way, in the order flown
 }
+
+// Touch-and-goes at one airport during a leg. They don't end the leg.
+export type LegStop = { airport: string; point: Point; touchAndGoes: number }
+
+// Touch-and-goes FlightAware's track suggests for a flight (GET /flightaware/touch-and-goes/:id).
+export type DetectedTouchAndGoes = { airport: string; count: number }
 
 // A flight FlightAware saw for a tail number (GET /flightaware/recent).
 // origin/destination are idents we know, or null; the *Code fields are FlightAware's, for display.

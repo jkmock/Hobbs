@@ -1,12 +1,12 @@
 import { NavLink, Outlet, useMatch } from 'react-router'
-import { BookOpen, CircleUser, Flag, House, Map } from 'lucide-react'
+import { ChartBar, CircleUser, Earth, Plane, UsersRoundCollaboration } from 'lucide-react'
 import styles from './AppLayout.module.css'
 
 const TABS = [
-  { to: '/', label: 'Home', icon: House },
-  { to: '/flights', label: 'Flights', icon: BookOpen },
-  { to: '/map', label: 'Map', icon: Map },
-  { to: '/goal', label: 'Goal', icon: Flag },
+  { to: '/', label: 'Feed', icon: UsersRoundCollaboration },
+  { to: '/flights', label: 'Flights', icon: Plane },
+  { to: '/map', label: 'Map', icon: Earth },
+  { to: '/goal', label: 'Goal', icon: ChartBar },
   { to: '/profile', label: 'Profile', icon: CircleUser },
 ]
 
@@ -18,13 +18,12 @@ export function TabLayout() {
   const onFeedFlight = useMatch('/feed/:id') !== null
   const onFlight = onMyFlight || onFeedFlight
   return (
-    <div className="app">
+    <div className={`app ${onFlight ? '' : 'app--tabbar'}`}>
       <Outlet />
       <nav className={`${styles.tabbar} ${onFlight ? styles.tabbarHidden : ''}`} aria-label="Main" inert={onFlight}>
         {TABS.map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={to} end={to === '/'} className={styles.tab}>
-            <Icon size={21} strokeWidth={1.75} aria-hidden />
-            <span>{label}</span>
+          <NavLink key={to} to={to} end={to === '/'} className={styles.tab} aria-label={label} title={label}>
+            <Icon size={30} strokeWidth={1.75} aria-hidden />
           </NavLink>
         ))}
       </nav>

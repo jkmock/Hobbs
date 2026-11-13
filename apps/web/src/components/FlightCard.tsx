@@ -63,7 +63,7 @@ export default function FlightCard({ flight, pilot, to, footer, below, belowOpen
       <div className={styles.body}>
       {pilot && (
         <p className={styles.pilot}>
-          <Avatar firstName={pilot.firstName} lastName={pilot.lastName} size={32} />
+          <Avatar firstName={pilot.firstName} lastName={pilot.lastName} size={32} className={styles.pilotAvatar} />
           {pilot.firstName} {pilot.lastName}
         </p>
       )}
@@ -270,7 +270,9 @@ function RouteHeader({ flight }: { flight: FlightSummary }) {
   const last = flight.legs.at(-1)
   if (!first || !last) return null
 
-  const stops = flight.legs.slice(1).map((leg) => leg.origin)
+  // Every airport between the first origin and the last destination, in order: where each
+  // leg after the first started, and where touch-and-goes were flown along the way.
+  const stops = flight.legs.flatMap((leg, i) => [...(i > 0 ? [leg.origin] : []), ...(leg.stops ?? []).map((s) => s.airport)])
   const distance = Math.round(flight.legs.reduce((nm, leg) => nm + leg.distanceNm, 0))
   const isLocal = flight.legs.length === 1 && first.origin === first.destination
 
