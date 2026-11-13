@@ -1,0 +1,15 @@
+/* A kept tab page fills the app's frame the way a page does on its own (headers and the
+   scrolling .page as rows of a column); the kept pages sit stacked under the tab bar. */
+.page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hidden but still laid out, so its scroll position and maps stay exactly as they were.
+   visibility also keeps it out of taps and of the tab bar's look at what's behind it. */
+.hidden {
+  visibility: hidden;
+  pointer-events: none;
+}

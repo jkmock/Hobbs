@@ -8,6 +8,10 @@ import '@fontsource/azeret-mono/500.css'
 // Global styles before any component, so component CSS modules can override them.
 import './index.css'
 import { router } from './router'
+import { installButtonPress } from './lib/buttonPress'
+
+// Every button presses in on touch and springs back out on release.
+installButtonPress()
 
 // Caches API responses. staleTime: reuse cached data for 30s before refetching.
 const queryClient = new QueryClient({

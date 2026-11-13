@@ -1,6 +1,6 @@
 import { useDeferredValue, useState, type FormEvent } from 'react'
 import { Check, Plus, Search, X } from 'lucide-react'
-import { CreateAircraftSchema } from '@hobbs/shared'
+import { CreateAircraftSchema, normalizeTailNumber } from '@hobbs/shared'
 import { Segmented } from './controls'
 import {
   useAddMyAircraft,
@@ -226,14 +226,15 @@ function AddAircraft({
   onAdded: (aircraft: Aircraft) => void
 }) {
   const [tail, setTail] = useState(initialTail.trim().toUpperCase())
-  const deferredTail = useDeferredValue(tail.trim())
+  // Looked up (and saved) as normalized: "12345" becomes N12345.
+  const deferredTail = normalizeTailNumber(useDeferredValue(tail))
   const lookup = useAircraftSearch(deferredTail)
   const addMine = useAddMyAircraft()
 
   const isComplete = TAIL_NUMBER.test(deferredTail)
   const existing = lookup.data?.find((a) => a.tailNumber === deferredTail)
   const alreadyMine = existing && mine.some((a) => a.id === existing.id)
-  const checking = tail.trim() !== deferredTail || lookup.isFetching
+  const checking = normalizeTailNumber(tail) !== deferredTail || lookup.isFetching
 
   return (
     <div className="stack">
@@ -250,6 +251,12 @@ function AddAircraft({
           onChange={(e) => setTail(e.target.value.toUpperCase())}
           placeholder="N123AB"
         />
+        {/* Say so when the N is being added for you. */}
+        {isComplete && deferredTail !== tail.trim() && (
+          <small className="muted">
+            Saved as <span className="tail-number">{deferredTail}</span>
+          </small>
+        )}
       </label>
 
       {!isComplete || (checking && !existing) ? (
@@ -345,12 +352,17 @@ function AircraftDetails({
       return
     }
     setErrors({})
-    if (aircraft) {
-      const { tailNumber: _tail, ...details } = parsed.data
-      updateAircraft.mutate({ id: aircraft.id, ...details }, { onSuccess: onSaved })
-    } else {
-      createAircraft.mutate(parsed.data, { onSuccess: onSaved })
-    }
+    // mutateAsync rather than mutate's onSuccess: saving refetches the aircraft lookups, and for a
+    // new aircraft the tail-number lookup then finds it, so AddAircraft swaps this form for
+    // "Aircraft found" and unmounts it before mutate's per-call onSuccess would run. The promise
+    // still resolves, so the new aircraft is selected and the form closes. Errors show via save.error.
+    const saved = aircraft
+      ? (() => {
+          const { tailNumber: _tail, ...details } = parsed.data
+          return updateAircraft.mutateAsync({ id: aircraft.id, ...details })
+        })()
+      : createAircraft.mutateAsync(parsed.data)
+    saved.then(onSaved, () => {})
   }
 
   return (

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, type CSSProperties } from 'react'
 import { RouteLine } from '../components/FlightCard'
 import LiveRouteMap from '../components/LiveRouteMap'
+import { touchAndGoAirports } from '../lib/geo'
 import { formatHours } from '../lib/format'
 import type { Flight, Leg } from '../lib/types'
 import { usePress } from '../hooks/usePress'
@@ -22,18 +23,33 @@ type Props = {
 
 export default function FlightDetails({ flight, delay = 100, className = '' }: Props) {
   const press = usePress() // the cards press and pop for fun
-  const legCards = flight.legs.length > 1 ? flight.legs.length : 0
+  const multiLeg = flight.legs.length > 1
+  // Sections pop in one after another, in the order they appear: one leg's touch-and-goes,
+  // or each leg (with its touch-and-goes), then Stats and Notes.
+  const singleLegCards = multiLeg ? [] : touchAndGoCards(flight.legs[0])
+  const statsOrder = multiLeg ? flight.legs.length : singleLegCards.length
   return (
     <div className={`stack ${styles.cards} ${className}`} style={{ '--pop-start': `${delay}ms` } as CSSProperties}>
-      {flight.legs.length > 1 &&
+      {/* With one leg, the flight's card above is the leg, so its touch-and-goes come first. */}
+      {singleLegCards.map((card, i) => (
+        <section key={i} className={styles.group} style={popOrder(i)}>
+          <TouchAndGoCard {...card} />
+        </section>
+      ))}
+
+      {multiLeg &&
         flight.legs.map((leg, i) => (
           <section key={leg.order} className={styles.group} style={popOrder(i)}>
             <h2 className={styles.label}>Leg {i + 1}:</h2>
             <LegCard leg={leg} />
+            {/* The leg's touch-and-goes, right after its card. */}
+            {touchAndGoCards(leg).map((card, j) => (
+              <TouchAndGoCard key={j} {...card} />
+            ))}
           </section>
         ))}
 
-      <section className={styles.group} style={popOrder(legCards)}>
+      <section className={styles.group} style={popOrder(statsOrder)}>
         <h2 className={styles.label}>Stats:</h2>
         <dl className={`card ${styles.stats}`} {...press}>
           {statsFor(flight).map(([label, value]) => (
@@ -46,13 +62,37 @@ export default function FlightDetails({ flight, delay = 100, className = '' }: P
       </section>
 
       {flight.notes && (
-        <section className={styles.group} style={popOrder(legCards + 1)}>
+        <section className={styles.group} style={popOrder(statsOrder + 1)}>
           <h2 className={styles.label}>Notes:</h2>
           <p className={`card ${styles.notes}`} {...press}>
             {flight.notes}
           </p>
         </section>
       )}
+    </div>
+  )
+}
+
+// A card per airport where touch-and-goes were flown during the leg, in the order flown, with
+// how many in a row (stops in a row at the same airport are put together).
+function touchAndGoCards(leg: Leg | undefined): { airport: string; count: number }[] {
+  const cards: { airport: string; count: number }[] = []
+  for (const stop of leg?.stops ?? []) {
+    const last = cards.at(-1)
+    if (last?.airport === stop.airport) last.count += stop.touchAndGoes
+    else cards.push({ airport: stop.airport, count: stop.touchAndGoes })
+  }
+  return cards
+}
+
+// Touch-and-goes at one airport: the airport, and "Touch and Go" (or "2x Touch and Go")
+// under it, centered.
+function TouchAndGoCard({ airport, count }: { airport: string; count: number }) {
+  const press = usePress() // press and pop it for fun
+  return (
+    <div className={`card ${styles.touchAndGo}`} {...press}>
+      <span className={styles.touchAndGoCode}>{airport}</span>
+      <span className={styles.touchAndGoLabel}>{count > 1 ? `${count}x ` : ''}Touch and Go</span>
     </div>
   )
 }
@@ -66,12 +106,20 @@ function LegCard({ leg }: { leg: Leg }) {
   return (
     <div className={`card ${styles.leg}`} {...press}>
       <RouteLine origin={leg.origin} destination={leg.destination} summary={legSummary(leg.time, leg.distanceNm)} />
-      <button type="button" className={styles.mapButton} onClick={(e) => setChartFrom(e.currentTarget)} aria-label={`Open ${name} on the map`}>
-        <LiveRouteMap legs={[leg]} />
+      <button
+        type="button"
+        className={styles.mapButton}
+        onClick={(e) => setChartFrom(e.currentTarget)}
+        // Tapping the map opens it; neither the map nor the leg card around it presses and pops.
+        onPointerDown={(e) => e.stopPropagation()}
+        aria-label={`Open ${name} on the map`}
+        data-no-press
+      >
+        <LiveRouteMap legs={[leg]} airports={touchAndGoAirports([leg])} />
       </button>
       {chartFrom && (
         <Suspense fallback={null}>
-          <ChartViewer legs={[leg]} title={name} from={chartFrom} onClose={() => setChartFrom(null)} />
+          <ChartViewer legs={[leg]} airports={touchAndGoAirports([leg])} title={name} from={chartFrom} onClose={() => setChartFrom(null)} />
         </Suspense>
       )}
     </div>

@@ -7,6 +7,12 @@
   text-align: center;
 }
 
+/* The picture in the accent blue (navy in light mode, the lighter blue in dark). */
+.identity .avatar { /* .identity: outranks the Avatar's own colors whatever order the CSS loads in */
+  background: var(--accent);
+  color: #ffffff; /* white initials in both modes, like the selected tab's icon */
+}
+
 .identity h2 {
   margin-top: 10px;
   font-size: 22px;

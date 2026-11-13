@@ -15,7 +15,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { legPath } from '../lib/geo'
 import type { Leg } from '../lib/types'
 import { baseLayers, baseSources, GLYPHS, routeLayers } from '../lib/mapStyle'
-import { markShowing, park, routeKey, takeParked, type LiveMap } from '../lib/mapPool'
+import { markShowing, park, parkKept, routeKey, takeKept, takeParked, type LiveMap } from '../lib/mapPool'
 import styles from './FlightMap.module.css'
 
 // A route drawn on a real map: our FlightAware-colored chart.
@@ -49,6 +49,9 @@ type Props = {
   // Keep the map alive when this goes away, for the next map of the same route to reuse
   // (lib/mapPool). For mini maps only.
   pooled?: boolean
+  // For an interactive map: keep it alive in this slot when this goes away, and take it back
+  // (view and all) when it comes again, so it shows at once (lib/mapPool). The Map tab's.
+  keepAs?: string
   // Opening from a mini map: start framed exactly as the mini map in `startBox` (where it sits
   // on screen) shows the route, and stay that way while `holdView` is true. When it turns false
   // the map glides to frame the route full size; back to true, it glides back.
@@ -57,6 +60,9 @@ type Props = {
   // Room to leave around the route when framing it on an interactive map, for panels that
   // float over the map (the Map page's).
   fitPadding?: Padding
+  // When the route empties (a filter that matches no flights), stay where the map is instead
+  // of going back to the whole US. The Map page's; the log-flight preview goes back.
+  keepViewWhenEmpty?: boolean
 }
 
 export type Padding = { top: number; bottom: number; left: number; right: number }
@@ -68,9 +74,11 @@ export default function FlightMap({
   className = '',
   onLoad,
   pooled = false,
+  keepAs,
   startBox,
   holdView = false,
   fitPadding,
+  keepViewWhenEmpty = false,
 }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const liveRef = useRef<LiveMap | null>(null)
@@ -78,11 +86,11 @@ export default function FlightMap({
   // Callers often build `legs` fresh on every render (the Route step does), so compare by content.
   const legsKey = useMemo(() => routeKey(legs, airports), [legs, airports])
   // The latest props, for the effects below (layout effects run before them).
-  const routeRef = useRef({ legs, airports, legsKey, fitPadding })
+  const routeRef = useRef({ legs, airports, legsKey, fitPadding, keepViewWhenEmpty })
   const onLoadRef = useRef(onLoad)
   const viewRef = useRef({ startBox, holdView })
   useLayoutEffect(() => {
-    routeRef.current = { legs, airports, legsKey, fitPadding }
+    routeRef.current = { legs, airports, legsKey, fitPadding, keepViewWhenEmpty }
     onLoadRef.current = onLoad
     viewRef.current = { startBox, holdView }
   })
@@ -94,8 +102,9 @@ export default function FlightMap({
     const wrap = container.current
     if (!wrap) return
     const usePool = pooled && !interactive
+    const keepSlot = interactive ? keepAs : undefined
 
-    let live = usePool ? takeParked(routeRef.current.legsKey) : undefined
+    let live = usePool ? takeParked(routeRef.current.legsKey) : keepSlot ? takeKept(keepSlot) : undefined
     if (live) {
       // A set-aside map of this route: move it in. If this box is a different size, refit.
       const before = live.el.getBoundingClientRect()
@@ -103,8 +112,8 @@ export default function FlightMap({
       const after = live.el.getBoundingClientRect()
       if (Math.round(before.width) !== Math.round(after.width) || Math.round(before.height) !== Math.round(after.height)) {
         live.map.resize()
-        const { legs: current } = routeRef.current
-        if (current.length > 0) live.map.fitBounds(boundsFor(current), { ...fitOptions(false), duration: 0 })
+        const { legs: current, fitPadding: padding } = routeRef.current
+        if (current.length > 0) live.map.fitBounds(boundsFor(current), { ...fitOptions(interactive, padding), duration: 0 })
       }
       // Draw it now, not on the next frame, so a page transition's picture of the new page
       // has the map in it.
@@ -124,12 +133,13 @@ export default function FlightMap({
       liveRef.current = null
       if (shownKey) markShowing(shownKey, -1)
       if (usePool) park(current)
+      else if (keepSlot) parkKept(keepSlot, current)
       else {
         current.map.remove()
         current.el.remove()
       }
     }
-  }, [interactive, pooled])
+  }, [interactive, pooled, keepAs])
 
   // The route, airports and view: updated in place when the legs change.
   useEffect(() => {
@@ -151,7 +161,7 @@ export default function FlightMap({
       source.setData(routeGeoJson(current.legs))
       if (viewRef.current.holdView && viewRef.current.startBox) return // held on the mini map's view
       if (current.legs.length > 0) map.fitBounds(boundsFor(current.legs), { ...fitOptions(interactive, current.fitPadding), duration: 300 })
-      else map.fitBounds(US_BOUNDS, { ...US_FIT, duration: 300 }) // back to the US when the route is cleared
+      else if (!current.keepViewWhenEmpty) map.fitBounds(US_BOUNDS, { ...US_FIT, duration: 300 }) // back to the US when the route is cleared
     }
     apply()
 
@@ -176,7 +186,7 @@ export default function FlightMap({
       map.off('styledata', apply)
     }
     // legsKey stands in for legs; interactive rebuilds the map, which needs fresh markers too.
-  }, [legsKey, interactive, pooled])
+  }, [legsKey, interactive, pooled, keepAs])
 
   // Gliding between the mini map's view (held) and the route framed full size.
   // A layout effect, so the glide starts on the same frame as the box's transition.

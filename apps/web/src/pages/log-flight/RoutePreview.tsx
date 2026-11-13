@@ -74,7 +74,13 @@ export default function RoutePreview({ draft, hidden }: { draft: Draft; hidden: 
           {/* Shows the continental US until a leg's two airports are known. Tapping the map opens
               it full screen to explore. It sits over the form, so nothing entered is lost; the X
               closes it. */}
-          <button type="button" className={styles.mapButton} onClick={(e) => setMapFrom(e.currentTarget)} aria-label="Open the route map full screen">
+          <button
+            type="button"
+            className={styles.mapButton}
+            onClick={(e) => setMapFrom(e.currentTarget)}
+            aria-label="Open the route map full screen"
+            data-no-press // the map doesn't press in and pop like other buttons (lib/buttonPress)
+          >
             <LiveRouteMap legs={preview} airports={loneAirports} height={170} />
             {/* Same full-screen badge as the Map page's preview. */}
             <span className={styles.mapExpand} aria-hidden>

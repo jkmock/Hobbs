@@ -73,10 +73,18 @@ export function useSaveFlight(id: string | undefined) {
   })
 }
 
+// Deleting takes the flight out of the cached list at once, so it's gone the moment the list
+// shows again, then refreshes every flight query from the server (totals, map, goal).
 export function useDeleteFlight() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api<void>(`/flights/${id}`, { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['flights'] }),
+    onSuccess: (_, id) => {
+      queryClient.setQueryData<InfiniteData<Page<Flight>>>(['flights', 'pages'], (data) =>
+        data && { ...data, pages: data.pages.map((page) => ({ ...page, items: page.items.filter((f) => f.id !== id) })) },
+      )
+      queryClient.removeQueries({ queryKey: ['flights', 'one', id] })
+      queryClient.invalidateQueries({ queryKey: ['flights'] })
+    },
   })
 }

@@ -6,15 +6,63 @@
   right: 16px;
   bottom: calc(var(--tabbar-gap) + env(safe-area-inset-bottom));
   z-index: 10;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  /* The end pills sit as far from the sides as every pill sits from the top and bottom
+     ((64 - 2px border - 52) / 2 = 5px), so they nest concentrically in the bar's rounded ends
+     (bar radius 32 = 1px border + 5px inset + pill radius 26). The pills between are spread evenly. */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   height: var(--tabbar-height);
-  padding: 0 6px;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  padding: 0 calc((var(--tabbar-height) - 2px - 52px) / 2);
   border-radius: 999px;
-  box-shadow: 0 6px 20px rgb(0 0 0 / 0.12), 0 1px 3px rgb(0 0 0 / 0.08);
+
+  /* Liquid glass: a thin, translucent tint over a blurred, saturated view of the page behind,
+     a bright rim (the glass edge catching light), a specular highlight along the top, a softer
+     reflection along the bottom, and a faint inner glow that gives the glass some thickness. */
+  --glass-tint: light-dark(rgb(255 255 255 / 0.12), rgb(38 41 46 / 0.2));
+  --glass-rim: light-dark(rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.12));
+  --glass-shine: light-dark(rgb(255 255 255 / 0.8), rgb(255 255 255 / 0.24));
+  --glass-reflect: light-dark(rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.07));
+  --glass-glow: light-dark(rgb(255 255 255 / 0.14), rgb(255 255 255 / 0.03));
+  --glass-sheen: light-dark(rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.05));
+  background: var(--glass-tint);
+  -webkit-backdrop-filter: blur(7px) saturate(1.8);
+  backdrop-filter: blur(7px) saturate(1.8);
+  border: 1px solid var(--glass-rim);
+  box-shadow:
+    inset 0 1px 1px var(--glass-shine),
+    inset 0 -1px 1px var(--glass-reflect),
+    inset 0 0 14px var(--glass-glow),
+    0 8px 24px rgb(0 0 0 / 0.14),
+    0 1px 3px rgb(0 0 0 / 0.08);
   transition: transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 200ms ease;
+  /* The bar takes horizontal drags itself (to move the selection) rather than the browser. */
+  touch-action: none;
+}
+/* The sheen: light falling across the top half of the glass. Behind the tabs (the bar's
+   z-index makes it a stacking context, so -1 still paints over the bar's own background). */
+.tabbar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(to bottom, var(--glass-sheen), transparent 60%);
+  pointer-events: none;
+}
+/* Solid, as before, where the blur isn't supported or reduced transparency is asked for. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .tabbar { background: var(--surface); border-color: var(--line); }
+  .tabbar::before { display: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .tabbar {
+    background: var(--surface);
+    border-color: var(--line);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .tabbar::before { display: none; }
 }
 /* Slid off the bottom (on a flight's page). */
 .tabbarHidden {
@@ -23,21 +71,82 @@
 }
 
 .tab {
-  /* Icon only. The selected tab is a navy pill, so each tab is a fixed-size pill centered in its column. */
-  align-self: center;
-  justify-self: center;
+  /* Icon only, a fixed size (narrowing only on very small screens). The selected one sits on
+     the sliding .indicator pill, so tabs are above it. */
+  position: relative;
+  z-index: 1;
+  flex: 0 1 64px;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
   height: 52px;
   border-radius: 999px;
-  color: var(--ink-3);
+  /* --ink-2 rather than --ink-3: over glass, the page behind can be busy. White when what's
+     behind the glass is dark (TabLayout marks the tab data-on-dark). */
+  color: var(--tab-ink, var(--ink-2));
   text-decoration: none;
-  transition: background-color 180ms ease, color 180ms ease;
+  transition: color 120ms ease;
 }
 
+.tab[data-on-dark] { --tab-ink: #ffffff; }
+
+/* The icon on the pill is white in both modes (elsewhere, dark mode's lighter blue accent
+   takes dark text, --on-accent). */
 .tab:global(.active) {
-  background: var(--accent);
-  color: var(--on-accent);
+  color: #ffffff;
+}
+/* While dragging, the icon under the pill is the highlighted one, not the open tab's. */
+.tabbar[data-dragging] .tab:global(.active) { color: var(--tab-ink, var(--ink-2)); }
+.tabbar[data-dragging] .tab[data-under] { color: #ffffff; }
+
+/* The selection: one pill of accent-tinted glass, with its own highlight and a slight lift,
+   that slides to the selected tab, or follows a finger held on the bar. Its position
+   (translate, set by TabLayout) and width are set inline. CSS transitions retarget from wherever the pill is, so tapping another
+   tab mid-slide redirects it smoothly instead of jumping. The curve overshoots a little, so
+   the pill settles like a drop of liquid. */
+.indicator {
+  position: absolute;
+  left: 0;
+  top: calc(50% - 26px);
+  height: 52px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 88%, transparent);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.28),
+    inset 0 -1px 1px rgb(0 0 0 / 0.12),
+    0 2px 8px rgb(0 0 0 / 0.18);
+  pointer-events: none;
+}
+/* Turned on after the first placement, so the pill doesn't slide in from the left on load. */
+.indicatorAnimated {
+  transition:
+    translate 450ms cubic-bezier(0.3, 1.25, 0.45, 1),
+    width 450ms cubic-bezier(0.3, 1.25, 0.45, 1),
+    scale 300ms cubic-bezier(0.3, 1.25, 0.45, 1),
+    opacity 200ms ease;
+}
+/* While the press-and-hold gesture moves the pill, its position is set each frame by
+   TabLayout's spring, so CSS doesn't animate it (the other properties still ease). */
+.indicatorAnimated.indicatorDriven {
+  transition:
+    width 450ms cubic-bezier(0.3, 1.25, 0.45, 1),
+    scale 300ms cubic-bezier(0.3, 1.25, 0.45, 1),
+    background-color 200ms ease,
+    box-shadow 200ms ease,
+    opacity 200ms ease;
+}
+/* Held: the pill lifts (grows a little, more see-through, a deeper shadow). */
+.indicatorHeld {
+  scale: 1.12;
+  background: color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.35),
+    inset 0 -1px 1px rgb(0 0 0 / 0.12),
+    0 6px 16px rgb(0 0 0 / 0.22);
+}
+@media (prefers-reduced-motion: reduce) {
+  .indicatorAnimated,
+  .indicatorAnimated.indicatorDriven { transition: opacity 150ms ease; }
+  .indicatorHeld { scale: none; }
 }

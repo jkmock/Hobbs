@@ -1,16 +1,18 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { LazyFlightMap as FlightMap } from './LazyFlightMap'
 import type { LoneAirport, RouteLeg } from './FlightMap'
 import { CHART_COLORS } from '../lib/mapStyle'
-import { hasReadyMap, routeKey } from '../lib/mapPool'
+import { hasReadyMap, keepReady, routeKey } from '../lib/mapPool'
 import styles from './LiveRouteMap.module.css'
 
-// The map library is large, so it loads only when a map is first shown.
-const FlightMap = lazy(() => import('./FlightMap'))
 
 type Props = {
   legs: RouteLeg[]
   airports?: LoneAirport[] // airports to mark on their own, without a route line
   height?: number // the map keeps a 360-wide shape at this height
+  // Keeps this map ready after it leaves (lib/mapPool's keepReady), in this slot, so coming
+  // back shows it at once however many other maps were used meanwhile: a tab's top cards.
+  keepAs?: string
 }
 
 // How far past the visible part of the page a map starts, so it's drawn by the time it
@@ -20,14 +22,18 @@ const PRELOAD_MARGIN = '100% 0px'
 // A small, non-interactive route map on the FlightAware-style chart, for cards and previews.
 // Each live map is a WebGL canvas and phones only allow a handful at once, so it's only live
 // while on screen or about a screen away. Until the map has fully loaded (tiles, route and
-// all) the box is just the chart's ocean color, and then the finished map switches in.
+// all) the box is just the chart's land color, and then the finished map switches in.
 // A map that leaves is kept alive for a while (lib/mapPool), so coming back to it, or to the
 // same route on another page, shows it at once.
-export default function LiveRouteMap({ legs, airports, height = 150 }: Props) {
+export default function LiveRouteMap({ legs, airports, height = 150, keepAs }: Props) {
   const box = useRef<HTMLDivElement>(null)
+  const key = routeKey(legs, airports)
+  useEffect(() => {
+    if (keepAs) keepReady(keepAs, key)
+  }, [keepAs, key])
   // Straight away if a map of this route is ready (set aside, or on the page being left): it
   // moves in already drawn, so the card never shows without it.
-  const [onScreen, setOnScreen] = useState(() => hasReadyMap(routeKey(legs, airports)))
+  const [onScreen, setOnScreen] = useState(() => hasReadyMap(key))
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -57,7 +63,7 @@ export default function LiveRouteMap({ legs, airports, height = 150 }: Props) {
       ref={box}
       data-route-map
       className={styles.box}
-      style={{ aspectRatio: `360 / ${height}`, background: CHART_COLORS.water }}
+      style={{ aspectRatio: `360 / ${height}`, background: CHART_COLORS.land }}
     >
       {onScreen && (
         <Suspense fallback={null}>

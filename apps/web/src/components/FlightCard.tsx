@@ -6,6 +6,7 @@ import { formatDate, formatHours } from '../lib/format'
 import { pressIn, release } from '../lib/press'
 import { usePress } from '../hooks/usePress'
 import LiveRouteMap from './LiveRouteMap'
+import { touchAndGoAirports } from '../lib/geo'
 import { Avatar } from './controls'
 import styles from './FlightCard.module.css'
 
@@ -42,9 +43,10 @@ type Props = {
   className?: string
   cardRef?: Ref<HTMLElement>
   pressable?: boolean // press and pop it for fun (for a card that isn't a link)
+  keepMapAs?: string // keep its map ready after it leaves, in this slot (LiveRouteMap's keepAs)
 }
 
-export default function FlightCard({ flight, pilot, to, footer, below, belowOpen = true, navy, className = '', cardRef, pressable = false }: Props) {
+export default function FlightCard({ flight, pilot, to, footer, below, belowOpen = true, navy, className = '', cardRef, pressable = false, keepMapAs }: Props) {
   const pressHandlers = usePress()
   const tags = tagsFor(flight)
   const [chartFrom, setChartFrom] = useState<HTMLElement | null>(null) // the map tapped, while open
@@ -83,8 +85,9 @@ export default function FlightCard({ flight, pilot, to, footer, below, belowOpen
           // Tapping the map opens it; it doesn't press and pop the card around it.
           onPointerDown={stopPress}
           aria-label={`Open ${routeName} on the map`}
+          data-no-press // nor does the map itself press in and pop (lib/buttonPress)
         >
-          <LiveRouteMap legs={flight.legs} />
+          <LiveRouteMap legs={flight.legs} airports={touchAndGoAirports(flight.legs)} keepAs={keepMapAs} />
         </button>
       )}
       {tags.length > 0 && (
@@ -115,7 +118,7 @@ export default function FlightCard({ flight, pilot, to, footer, below, belowOpen
       )}
       {chartFrom && (
         <Suspense fallback={null}>
-          <ChartViewer legs={flight.legs} title={routeName} from={chartFrom} onClose={() => setChartFrom(null)} />
+          <ChartViewer legs={flight.legs} airports={touchAndGoAirports(flight.legs)} title={routeName} from={chartFrom} onClose={() => setChartFrom(null)} />
         </Suspense>
       )}
     </article>

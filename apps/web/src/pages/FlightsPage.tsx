@@ -1,12 +1,14 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation, useMatch, useNavigate } from 'react-router'
 import { ArrowLeft, Plus } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
+import ConfirmDialog from '../components/ConfirmDialog'
 import FlightCard, { FlightReactions } from '../components/FlightCard'
-import { useFlight, useFlightPages } from '../hooks/useFlights'
+import { useDeleteFlight, useFlight, useFlightPages } from '../hooks/useFlights'
 import { useCardExpand } from '../hooks/useCardExpand'
 import type { Flight } from '../lib/types'
 import FlightDetails from './FlightDetails'
+import { keptSlot } from '../hooks/useKeptMaps'
 import { POP_SCALE } from '../lib/press'
 import styles from '../components/FlightList.module.css'
 
@@ -30,6 +32,22 @@ export default function FlightsPage() {
   const inList = flights.find((f) => f.id === shownId)
   const flight: Flight | undefined = shownId ? (fetched ?? inList) : undefined
 
+  const navigate = useNavigate()
+
+  // Delete, from the flight's page: asks first (ConfirmDialog), then deletes and goes back to
+  // My flights, where the flight is already gone from the list.
+  const deleteFlight = useDeleteFlight()
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  function remove() {
+    if (!shownId) return
+    deleteFlight.mutate(shownId, {
+      onSuccess: () => {
+        setConfirmingDelete(false)
+        navigate('/flights')
+      },
+    })
+  }
+
   const panelBelow = (
     <p className={styles.panelText}>{panel?.kind === 'props' ? 'No props yet.' : 'No comments yet.'}</p>
   )
@@ -38,7 +56,6 @@ export default function FlightsPage() {
   // into view if it's further down. Once only: the id is then cleared from the history entry,
   // so going back here or reloading doesn't pop it again.
   const newFlightId = (useLocation().state as { newFlightId?: string } | null)?.newFlightId
-  const navigate = useNavigate()
   const arrived = useRef<string | null>(null)
   useLayoutEffect(() => {
     if (!newFlightId || arrived.current === newFlightId || shownId !== null) return
@@ -81,14 +98,23 @@ export default function FlightsPage() {
               </Link>
             }
             action={
-              <Link to={`/flights/${shownId}/edit`} className={`btn ${styles.headerButton} ${styles.editButton}`}>
-                Edit
-              </Link>
+              <>
+                <button type="button" className={`btn ${styles.headerButton} ${styles.deleteButton}`} onClick={() => {
+                    deleteFlight.reset()
+                    setConfirmingDelete(true)
+                  }}
+                >
+                  Delete
+                </button>
+                <Link to={`/flights/${shownId}/edit`} className={`btn ${styles.headerButton} ${styles.editButton}`}>
+                  Edit
+                </Link>
+              </>
             }
           />
         ) : (
           <PageHeader
-            title="My flights"
+            title="My Flights"
             className={styles.topHeader}
             action={
               <Link to="/flights/new" className="btn btn--primary">
@@ -134,11 +160,13 @@ export default function FlightsPage() {
               belowOpen={panelOpen}
             />
           )}
-          {flights.map((f) => {
+          {flights.map((f, i) => {
             const isShown = f.id === shownId
             return (
               <FlightCard
                 key={f.id}
+                // The top maps stay ready (hooks/useKeptMaps), so this tab never shows them loading.
+                keepMapAs={keptSlot('flights', i)}
                 flight={isShown && flight ? flight : f}
                 cardRef={cardRef(f.id)}
                 className={otherClass(f.id)}
@@ -180,6 +208,18 @@ export default function FlightsPage() {
           </button>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmingDelete && showingFlight}
+        title="Delete this flight?"
+        confirmLabel="Delete"
+        busyLabel="Deleting…"
+        busy={deleteFlight.isPending}
+        error={deleteFlight.error ? `Couldn't delete it: ${deleteFlight.error.message}` : null}
+        danger
+        onConfirm={remove}
+        onCancel={() => setConfirmingDelete(false)}
+      />
     </>
   )
 }

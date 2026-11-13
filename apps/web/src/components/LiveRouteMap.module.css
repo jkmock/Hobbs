@@ -1,4 +1,4 @@
-/* The box's background (set inline) is the chart's ocean color, shown until the map has loaded. */
+/* The box's background (set inline) is the chart's land color, shown until the map has loaded. */
 .box {
   position: relative;
   width: 100%;

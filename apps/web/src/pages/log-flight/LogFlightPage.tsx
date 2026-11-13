@@ -1,8 +1,8 @@
 import { useEffect, useState, type KeyboardEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { ArrowLeft, Trash2, X } from 'lucide-react'
+import { ArrowLeft, X } from 'lucide-react'
 import { CreateFlightSchema } from '@hobbs/shared'
-import { useDeleteFlight, useFlight, useSaveFlight } from '../../hooks/useFlights'
+import { useFlight, useSaveFlight } from '../../hooks/useFlights'
 import {
   applyPatch,
   draftFromFlight,
@@ -39,7 +39,6 @@ const ROUTE_STEP = STEP_COMPONENTS.indexOf(RouteStep)
 function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
   const navigate = useNavigate()
   const save = useSaveFlight(id)
-  const deleteFlight = useDeleteFlight()
   const [draft, setDraft] = useState(initial)
   const [step, setStep] = useState(0)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -108,11 +107,6 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
     })
   }
 
-  function remove() {
-    if (!id || !window.confirm('Delete this flight from your logbook?')) return
-    deleteFlight.mutate(id, { onSuccess: () => navigate('/flights') })
-  }
-
   const Step = STEP_COMPONENTS[step]!
 
   // Moving between a step's fields from the keyboard:
@@ -156,13 +150,8 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
   return (
     <div className={styles.wizard}>
       <header className={styles.header}>
-        <h1>{id ? 'Edit flight' : 'Log flight'}</h1>
+        <h1>{id ? 'Edit Flight' : 'Log Flight'}</h1>
         <div className={styles.headerActions}>
-          {id && (
-            <button type="button" className="icon-btn" aria-label="Delete flight" onClick={remove}>
-              <Trash2 size={20} />
-            </button>
-          )}
           <Link to="/flights" className="icon-btn" aria-label="Close">
             <X size={24} />
           </Link>
@@ -191,23 +180,27 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
       </div>
 
       <footer className={styles.footer}>
-        {(save.error || deleteFlight.error) && (
-          <p className="error-text">{(save.error ?? deleteFlight.error)?.message}</p>
-        )}
-        <div className={styles.footerButtons}>
-          {step > 0 && (
+        {save.error && <p className="error-text">{save.error.message}</p>}
+        {/* Editing, the steps are tabs to jump between: no Back or Next, just Save Changes
+            from any step. A new flight goes step by step to Log Flight. */}
+        <div className={styles.footerButtons} data-editing={id ? true : undefined}>
+          {id ? (
+            <button type="button" className={`card ${styles.nextButton}`} onClick={submit} disabled={save.isPending}>
+              {save.isPending ? 'Saving…' : 'Save Changes'}
+            </button>
+          ) : step > 0 && (
             <button type="button" className={`card ${styles.backButton}`} onClick={() => setStep(step - 1)} aria-label="Back">
               <ArrowLeft size={18} />
             </button>
           )}
-          {isLast ? (
+          {id ? null : isLast ? (
             <button
               type="button"
               className={`card ${styles.nextButton}`}
               onClick={submit}
               disabled={save.isPending}
             >
-              {save.isPending ? 'Saving…' : id ? 'Save changes' : 'Log Flight'}
+              {save.isPending ? 'Saving…' : 'Log Flight'}
             </button>
           ) : (
             <button type="button" className={`card ${styles.nextButton}`} onClick={next}>

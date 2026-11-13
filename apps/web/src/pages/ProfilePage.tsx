@@ -7,6 +7,7 @@ import { useMe } from '../hooks/useAuth'
 import { useAllFlights } from '../hooks/useFlights'
 import { totals } from '../lib/progress'
 import { formatHours } from '../lib/format'
+import listStyles from '../components/FlightList.module.css'
 import styles from './ProfilePage.module.css'
 
 export default function ProfilePage() {
@@ -20,6 +21,7 @@ export default function ProfilePage() {
     <>
       <PageHeader
         title="Profile"
+        className={listStyles.topHeader}
         action={
           <Link to="/settings" className="icon-btn" aria-label="Settings">
             <Settings size={22} strokeWidth={1.75} />
@@ -29,7 +31,7 @@ export default function ProfilePage() {
       <div className="page">
 
         <div className={styles.identity}>
-          <Avatar firstName={user.firstName} lastName={user.lastName} size={88} />
+          <Avatar firstName={user.firstName} lastName={user.lastName} size={88} className={styles.avatar} />
           <h2>
             {user.firstName} {user.lastName}
           </h2>

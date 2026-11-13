@@ -2,6 +2,7 @@ import PageHeader from '../components/PageHeader'
 import ProgressBar from '../components/ProgressBar'
 import { useAllFlights } from '../hooks/useFlights'
 import { privatePilotProgress } from '../lib/progress'
+import listStyles from '../components/FlightList.module.css'
 import styles from './GoalPage.module.css'
 
 export default function GoalPage() {
@@ -10,7 +11,11 @@ export default function GoalPage() {
 
   return (
     <>
-      <PageHeader title="Private Pilot" subtitle="14 CFR 61.109(a) · airplane single-engine" />
+      <PageHeader
+        title="Private Pilot"
+        subtitle="14 CFR 61.109(a) · airplane single-engine"
+        className={listStyles.topHeader}
+      />
       <div className="page">
 
         {isPending ? (

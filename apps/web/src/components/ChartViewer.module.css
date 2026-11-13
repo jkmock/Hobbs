@@ -2,7 +2,7 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  background: #e9e5d9;
+  background: #285981; /* the chart's land color (CHART_COLORS.land), while the map loads */
 }
 
 /* Opening out of a mini map (and shrinking back into it): the overlay is cut down to the mini

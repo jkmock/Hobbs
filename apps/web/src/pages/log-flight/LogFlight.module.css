@@ -1,7 +1,6 @@
 .wizard {
   /* Fills the .app frame: the title row, progress bar and footer stay put, and only the
      step body scrolls. */
-  --header-height: 60px;
   --steps-height: 54px;
   /* Room the floating buttons take at the bottom, which the scrolling content leaves clear. */
   --footer-space: calc(64px + 12px + 32px + env(safe-area-inset-bottom)); /* button card + padding */
@@ -20,13 +19,15 @@
 .header {
   flex: none;
   display: flex;
-  align-items: center;
+  /* Laid out like the other pages' headers (PageHeader, with FlightList's .topHeader): the
+     title 44px from the top, lined up with the tops of the buttons beside it. */
+  align-items: flex-start;
   justify-content: space-between;
-  height: var(--header-height);
-  padding: 20px 16px 0;
+  gap: 12px;
+  padding: 44px 16px 0;
   background: var(--paper);
 }
-.header h1 { font-size: 28px; font-weight: 680; letter-spacing: -0.02em; }
+.header h1 { font-size: 28px; font-weight: 680; letter-spacing: -0.02em; line-height: 1.15; }
 .headerActions { display: flex; gap: 4px; }
 
 /* Step indicator: four segments, filled up to the current step. */
@@ -114,6 +115,9 @@
   display: flex;
   gap: 10px;
 }
+/* Editing: Save Changes alone, as wide as Next is beside Back, centered. */
+.footerButtons[data-editing] { justify-content: center; }
+.footerButtons[data-editing] .nextButton { flex: none; width: calc(100% - 64px - 10px); }
 .backButton,
 .nextButton {
   height: 64px;

@@ -78,7 +78,8 @@ export default function RecentFlights({ draft, update }: Pick<StepProps, 'draft'
                     aria-pressed={isSelected}
                     onClick={() => toggle(f)}
                   >
-                    <span className={styles.checkbox} data-checked={isSelected || undefined} aria-hidden>
+                    {/* data-press-target: pressing the row presses in just the checkbox (lib/buttonPress). */}
+                    <span className={styles.checkbox} data-checked={isSelected || undefined} data-press-target aria-hidden>
                       {isSelected && <Check size={14} strokeWidth={3} />}
                     </span>
                     <span className={styles.recentRoute}>

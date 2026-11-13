@@ -5,6 +5,7 @@ import FlightCard, { FlightReactions } from '../components/FlightCard'
 import { useCardExpand, type PanelKind } from '../hooks/useCardExpand'
 import { SAMPLE_FEED, SAMPLE_FRIENDS } from '../mocks/social'
 import FlightDetails from './FlightDetails'
+import { keptSlot } from '../hooks/useKeptMaps'
 import listStyles from '../components/FlightList.module.css'
 
 // The social feed, and a feed flight's page (/feed/:id), in one, the same way as My flights
@@ -62,12 +63,14 @@ export default function HomePage() {
       </div>
       <div className="page" ref={page}>
         <div className={`stack ${listStyles.list}`}>
-          {SAMPLE_FEED.map((item) => {
+          {SAMPLE_FEED.map((item, i) => {
             const isShown = item.id === shownId
             const counts = { propsCount: item.props, commentsCount: item.comments }
             return (
               <FlightCard
                 key={item.id}
+                // The top maps stay ready (hooks/useKeptMaps), so this tab never shows them loading.
+                keepMapAs={keptSlot('feed', i)}
                 flight={item.flight}
                 pilot={item.pilot}
                 cardRef={cardRef(item.id)}

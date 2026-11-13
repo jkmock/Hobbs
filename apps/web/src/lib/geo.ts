@@ -51,3 +51,11 @@ export function legPath(leg: {
 }): [number, number][] {
   return leg.track && leg.track.length >= 2 ? leg.track : greatCirclePath(leg.originPoint, leg.destinationPoint)
 }
+
+// The airports where touch-and-goes were flown on these legs, to mark on a flight's maps
+// (the maps' airports prop).
+export function touchAndGoAirports(
+  legs: { stops?: { airport: string; point: { lat: number; lon: number } }[] }[],
+): { ident: string; point: { lat: number; lon: number } }[] {
+  return legs.flatMap((leg) => (leg.stops ?? []).map((stop) => ({ ident: stop.airport, point: stop.point })))
+}

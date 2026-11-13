@@ -1,12 +1,12 @@
-/* The header of a tab's list (Feed, My flights): extra room above it, and a navy title. */
+/* The header of each tab's page (Feed, My flights, Map, Goal, Profile): extra room above it,
+   and a navy title. */
 header.topHeader { padding-top: 44px; }
 .topHeader h1 { color: var(--accent); }
 
 /* A flight's page: Back (with an arrow) in place of a title, and Edit on the right. Both are
    text styled like the page's section labels ("Stats:", .label in FlightDetails.module.css),
    with no background. Their padding makes a big tap target. Back's text sits 4px in from the
-   page's left edge, where the labels sit; Edit's 14px in from the right, in line with the
-   card's contents. Both are nudged down toward the card (without moving it), so the gap
+   page's left edge, where the labels sit; Edit's 20px in from the right. Both are nudged down toward the card (without moving it), so the gap
    between them and the card is smaller. */
 :global(.btn).headerButton { /* outranks .btn whatever order the CSS loads in */
   height: 44px;
@@ -21,7 +21,9 @@ header.topHeader { padding-top: 44px; }
   font-size: 18px;
   font-weight: 550;
 }
-:global(.btn).headerButton.editButton { margin-right: 4px; }
+:global(.btn).headerButton.editButton { margin-right: 10px; }
+/* Delete, left of Edit, set apart from it so the two read as separate actions. */
+:global(.btn).headerButton.deleteButton { margin-right: 10px; }
 @media (hover: hover) { :global(.btn).headerButton:hover { color: var(--ink-2); } }
 
 /* A list of flight cards that is also each flight's page: My flights and the social feed

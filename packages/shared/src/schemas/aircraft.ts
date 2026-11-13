@@ -1,10 +1,17 @@
 import { z } from "zod";
 
+// US registrations are always N followed by a digit 1-9, so a tail number typed without the N
+// ("12345") gets it ("N12345"). Foreign registrations start with a letter (C-FABC, G-ABCD), and
+// the few that start with a digit have a hyphen (4X-ABC, 9V-SKA), so those are left alone.
+export function normalizeTailNumber(tail: string): string {
+  const t = tail.trim().toUpperCase();
+  return /^[1-9][A-Z0-9]*$/.test(t) ? `N${t}` : t;
+}
+
 // Reusable field rules
 const TailNumber = z
   .string()
-  .trim()
-  .toUpperCase()
+  .overwrite(normalizeTailNumber)
   .regex(/^[A-Z0-9-]{2,10}$/, "Invalid tail number");
 
 // POST /aircraft
@@ -28,8 +35,7 @@ export type UpdateAircraft = z.infer<typeof UpdateAircraftSchema>;
 export const AircraftSearchSchema = z.object({
   tail: z
     .string()
-    .trim()
-    .toUpperCase()
+    .overwrite(normalizeTailNumber)
     .regex(/^[A-Z0-9-]{1,10}$/, "Invalid tail number search"),
 });
 export type AircraftSearch = z.infer<typeof AircraftSearchSchema>;
