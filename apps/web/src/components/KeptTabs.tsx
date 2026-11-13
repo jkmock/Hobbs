@@ -4,6 +4,7 @@ import { KEPT_TABS, type KeptTab, type useKeptLocations } from '../hooks/useKept
 import HomePage from '../pages/HomePage'
 import FlightsPage from '../pages/FlightsPage'
 import MapPage from '../pages/MapPage'
+import { TabActiveContext } from '../lib/tabActive'
 import styles from './KeptTabs.module.css'
 
 // The Feed, My Flights and Map keep their state when you go to another tab: scroll position,
@@ -46,7 +47,9 @@ const KeptPage = memo(function KeptPage({
   const value = useMemo(() => ({ location, navigationType }), [location, navigationType])
   return (
     <div className={`${styles.page} ${active ? '' : styles.hidden}`} inert={!active} aria-hidden={!active || undefined}>
-      <LocationContext.Provider value={value}>{PAGES[tab]}</LocationContext.Provider>
+      <TabActiveContext.Provider value={active}>
+        <LocationContext.Provider value={value}>{PAGES[tab]}</LocationContext.Provider>
+      </TabActiveContext.Provider>
     </div>
   )
 })

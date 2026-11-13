@@ -2,6 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Transit
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import FlightMap, { type LoneAirport, type RouteLeg } from './FlightMap'
+import { CHART_COLORS } from '../lib/mapStyle'
+import { useStatusBarColor } from '../lib/statusBar'
 import styles from './ChartViewer.module.css'
 
 type Props = {
@@ -39,6 +41,8 @@ export default function ChartViewer({ legs, airports, title, onClose, from }: Pr
   // Shown and opening out once drawn, or after a moment if the tiles are slow.
   const [slow, setSlow] = useState(false)
   const ready = !origin || mapLoaded || slow
+  // The status bar is the map's color while the map fills the screen.
+  useStatusBarColor(phase === 'open' && ready ? CHART_COLORS.land : null)
   useEffect(() => {
     const timer = window.setTimeout(() => setSlow(true), 1500)
     return () => clearTimeout(timer)

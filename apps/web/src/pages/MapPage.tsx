@@ -8,6 +8,9 @@ import { useAllFlights } from '../hooks/useFlights'
 import { useMyAircraft } from '../hooks/useLookups'
 import { todayIso } from '../lib/format'
 import { MAP_TAB_FIT_PADDING, MAP_TAB_SLOT } from '../lib/mapTab'
+import { CHART_COLORS } from '../lib/mapStyle'
+import { useStatusBarColor } from '../lib/statusBar'
+import { useTabActive } from '../lib/tabActive'
 import type { Aircraft, Flight } from '../lib/types'
 import listStyles from '../components/FlightList.module.css'
 import styles from './MapPage.module.css'
@@ -79,6 +82,11 @@ export default function MapPage() {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [sheetOpen])
+
+  // The status bar turns the map's color while the map is showing (this page stays mounted,
+  // hidden, while another tab is open, so it checks it's the tab on screen).
+  const onScreen = useTabActive()
+  useStatusBarColor(onScreen && !isPending && flights.length > 0 ? CHART_COLORS.land : null)
 
   if (isPending || flights.length === 0) {
     return (
