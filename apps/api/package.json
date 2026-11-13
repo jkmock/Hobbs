@@ -17,9 +17,10 @@
     },
     "type": "module",
     "scripts": {
-        "dev": "tsx watch --env-file=../../.env src/index.ts",
+        "dev": "tsx watch --conditions=source --env-file=../../.env src/index.ts",
         "typecheck": "tsc",
-        "start": "NODE_ENV=production tsx src/index.ts"
+        "start": "NODE_ENV=production tsx --conditions=source src/index.ts",
+        "build": "pnpm --filter @hobbs/shared build"
     },
     "private": true
 }

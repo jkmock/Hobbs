@@ -1,12 +1,22 @@
 {
     "name": "@hobbs/shared",
-    "exports": "./src/index.ts",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "source": "./src/index.ts",
+            "default": "./dist/index.js"
+        }
+    },
     "type": "module",
     "scripts": {
+        "build": "tsc -p tsconfig.json --noEmit false",
         "typecheck": "tsc"
     },
     "private": true,
     "dependencies": {
         "zod": "^4.6.7"
+    },
+    "devDependencies": {
+        "typescript": "~7.0.2"
     }
 }

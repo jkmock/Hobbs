@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://hobbs-api.vercel.app/:path*" },
+    { "source": "/api/:path*", "destination": "https://hobbs-nu.vercel.app/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

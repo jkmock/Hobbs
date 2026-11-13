@@ -1,9 +1,11 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defaultClientConditions, defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // Use @hobbs/shared's TypeScript source directly (its "source" export), not its build.
+  resolve: { conditions: ['source', ...defaultClientConditions] },
   server: {
     port: 5173,
     strictPort: true, // fail instead of moving to 5174 (WEB_URL in .env expects 5173)
