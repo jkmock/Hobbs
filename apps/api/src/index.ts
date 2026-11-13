@@ -107,7 +107,14 @@ if (servesWeb) {
 }
 
 // Locally, only this machine can reach the API. A host sets PORT and needs it reachable.
-await app.listen({
-  host: process.env.HOST ?? (production ? "0.0.0.0" : "localhost"),
-  port: Number(process.env.PORT ?? 3000),
-});
+// Not awaited: on Vercel, listen() is taken over by the platform and its promise may never
+// settle, which would leave this module (and every request) waiting forever.
+app
+  .listen({
+    host: process.env.HOST ?? (production ? "0.0.0.0" : "localhost"),
+    port: Number(process.env.PORT ?? 3000),
+  })
+  .catch((err) => {
+    app.log.error(err);
+    process.exit(1);
+  });
