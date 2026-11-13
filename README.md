@@ -129,6 +129,18 @@ To change the schema:
 
 > Never edit a migration after it has been pushed. Others' databases have already run it and won't run it again. Write a new migration instead.
 
+## Deploying
+
+In production one Node server runs the whole app: it serves the built website and the API under `/api` (in development, Vite does the website and forwards `/api/*` to the API).
+
+- **Build command:** `pnpm install && pnpm build`
+- **Start command:** `pnpm start` (sets `NODE_ENV=production`; listens on `$PORT`)
+- **Health check:** `/health`
+
+Environment variables: `DATABASE_URL` (with `sslmode=require`), `WEB_URL` (the site's public URL), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` (`<WEB_URL>/api/auth/google/callback`, also added to the OAuth client's redirect URIs in Google Cloud), and optionally `FLIGHTAWARE_API_KEY` and `FLIGHTAWARE_MONTHLY_BUDGET`.
+
+Apply new migrations to the production database with `DATABASE_URL="<production url>" pnpm exec dbmate --no-dump-schema up`.
+
 ## Disclaimer
 
 Hobbs is a training and progress-tracking tool. It is not a substitute for your official pilot logbook.

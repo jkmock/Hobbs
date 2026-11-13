@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "pnpm --filter @hobbs/api dev",
     "dev:web": "pnpm --filter @hobbs/web dev",
+    "build": "pnpm --filter @hobbs/web build",
+    "start": "pnpm --filter @hobbs/api start",
     "db:up": "dbmate up",
     "db:status": "dbmate status",
     "db:rollback": "dbmate rollback",

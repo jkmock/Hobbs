@@ -134,6 +134,20 @@ CREATE TABLE public.airports (
 
 
 --
+-- Name: flight_comments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.flight_comments (
+    comment_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    flight_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    body text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT flight_comments_body_check CHECK (((char_length(body) >= 1) AND (char_length(body) <= 1000)))
+);
+
+
+--
 -- Name: flight_leg_stops; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -164,6 +178,17 @@ CREATE TABLE public.flight_legs (
     leg_time numeric(3,1),
     CONSTRAINT flight_legs_leg_order_check CHECK ((leg_order >= 1)),
     CONSTRAINT flight_legs_leg_time_check CHECK (((leg_time >= (0)::numeric) AND (leg_time <= (24)::numeric)))
+);
+
+
+--
+-- Name: flight_props; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.flight_props (
+    flight_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -237,6 +262,19 @@ CREATE TABLE public.flights (
     CONSTRAINT flights_night_landings_fs_check CHECK ((night_landings_fs >= 0)),
     CONSTRAINT flights_night_landings_tg_check CHECK ((night_landings_tg >= 0)),
     CONSTRAINT flights_total_time_check CHECK ((total_time > (0)::numeric))
+);
+
+
+--
+-- Name: friendships; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.friendships (
+    requester_id uuid NOT NULL,
+    addressee_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    accepted_at timestamp with time zone,
+    CONSTRAINT friendships_check CHECK ((requester_id <> addressee_id))
 );
 
 
@@ -349,6 +387,14 @@ ALTER TABLE ONLY public.airports
 
 
 --
+-- Name: flight_comments flight_comments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flight_comments
+    ADD CONSTRAINT flight_comments_pkey PRIMARY KEY (comment_id);
+
+
+--
 -- Name: flight_leg_stops flight_leg_stops_leg_id_stop_order_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -381,6 +427,14 @@ ALTER TABLE ONLY public.flight_legs
 
 
 --
+-- Name: flight_props flight_props_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flight_props
+    ADD CONSTRAINT flight_props_pkey PRIMARY KEY (flight_id, user_id);
+
+
+--
 -- Name: flightaware_tracks flightaware_tracks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -402,6 +456,14 @@ ALTER TABLE ONLY public.flightaware_usage
 
 ALTER TABLE ONLY public.flights
     ADD CONSTRAINT flights_pkey PRIMARY KEY (flight_id);
+
+
+--
+-- Name: friendships friendships_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.friendships
+    ADD CONSTRAINT friendships_pkey PRIMARY KEY (requester_id, addressee_id);
 
 
 --
@@ -499,6 +561,13 @@ CREATE INDEX airports_location_idx ON public.airports USING gist (airport_locati
 
 
 --
+-- Name: flight_comments_flight_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX flight_comments_flight_idx ON public.flight_comments USING btree (flight_id, created_at);
+
+
+--
 -- Name: flight_legs_destination_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -538,6 +607,20 @@ CREATE INDEX flights_instructor_idx ON public.flights USING btree (instructor_id
 --
 
 CREATE INDEX flights_user_date_idx ON public.flights USING btree (user_id, flight_date DESC);
+
+
+--
+-- Name: friendships_addressee_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX friendships_addressee_idx ON public.friendships USING btree (addressee_id);
+
+
+--
+-- Name: friendships_pair_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX friendships_pair_key ON public.friendships USING btree (LEAST(requester_id, addressee_id), GREATEST(requester_id, addressee_id));
 
 
 --
@@ -590,6 +673,22 @@ CREATE TRIGGER users_set_updated_at BEFORE UPDATE ON public.users FOR EACH ROW E
 
 
 --
+-- Name: flight_comments flight_comments_flight_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flight_comments
+    ADD CONSTRAINT flight_comments_flight_id_fkey FOREIGN KEY (flight_id) REFERENCES public.flights(flight_id) ON DELETE CASCADE;
+
+
+--
+-- Name: flight_comments flight_comments_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flight_comments
+    ADD CONSTRAINT flight_comments_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
 -- Name: flight_leg_stops flight_leg_stops_airport_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -630,6 +729,22 @@ ALTER TABLE ONLY public.flight_legs
 
 
 --
+-- Name: flight_props flight_props_flight_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flight_props
+    ADD CONSTRAINT flight_props_flight_id_fkey FOREIGN KEY (flight_id) REFERENCES public.flights(flight_id) ON DELETE CASCADE;
+
+
+--
+-- Name: flight_props flight_props_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flight_props
+    ADD CONSTRAINT flight_props_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
 -- Name: flights flights_aircraft_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -651,6 +766,22 @@ ALTER TABLE ONLY public.flights
 
 ALTER TABLE ONLY public.flights
     ADD CONSTRAINT flights_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
+-- Name: friendships friendships_addressee_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.friendships
+    ADD CONSTRAINT friendships_addressee_id_fkey FOREIGN KEY (addressee_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
+-- Name: friendships friendships_requester_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.friendships
+    ADD CONSTRAINT friendships_requester_id_fkey FOREIGN KEY (requester_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
 
 
 --
@@ -716,4 +847,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261112120000'),
     ('20261112130000'),
     ('20261112140000'),
-    ('20261112150000');
+    ('20261112150000'),
+    ('20261113100000');

@@ -1,6 +1,6 @@
 import { useFlightPages } from './useFlights'
 import { touchAndGoAirports } from '../lib/geo'
-import { SAMPLE_FEED } from '../mocks/social'
+import { useFeedPages } from './useSocial'
 import type { Flight } from '../lib/types'
 import type { LoneAirport, RouteLeg } from '../components/FlightMap'
 
@@ -20,6 +20,8 @@ export type KeptRoute = { tab: KeptTab; slot: string; legs: RouteLeg[]; airports
 export function useKeptRoutes(): KeptRoute[] {
   const flightPages = useFlightPages()
   const myFlights = flightPages.data?.pages.flatMap((page) => page.items) ?? []
+  const feedPages = useFeedPages()
+  const feed = feedPages.data?.pages.flatMap((page) => page.items) ?? []
   const routes = (tab: KeptTab, flights: Flight[]) =>
     flights.slice(0, KEPT_MAPS_PER_TAB).flatMap((flight, i) =>
       flight.legs.length > 0
@@ -27,7 +29,7 @@ export function useKeptRoutes(): KeptRoute[] {
         : [],
     )
   return [
-    ...routes('feed', SAMPLE_FEED.map((item) => item.flight)),
+    ...routes('feed', feed),
     ...routes('flights', myFlights),
   ]
 }

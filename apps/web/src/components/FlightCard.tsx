@@ -1,11 +1,13 @@
 import { lazy, Suspense, useEffect, useRef, useState, type PointerEvent, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router'
-import { Gauge, GraduationCap, MessageCircle, Moon, Plane, Route, Star, User, type LucideIcon } from 'lucide-react'
+import { Gauge, GraduationCap, MessageCircle, Moon, Plane, Route, User, type LucideIcon } from 'lucide-react'
 import type { Flight } from '../lib/types'
 import { formatDate, formatHours } from '../lib/format'
 import { pressIn, release } from '../lib/press'
+import { spin, squeeze, unsqueeze } from '../lib/propSpin'
 import { usePress } from '../hooks/usePress'
 import LiveRouteMap from './LiveRouteMap'
+import PropellerIcon from './PropellerIcon'
 import { touchAndGoAirports } from '../lib/geo'
 import { Avatar } from './controls'
 import styles from './FlightCard.module.css'
@@ -213,29 +215,93 @@ function CoverLink({ to, label }: { to: string; label: string }) {
   )
 }
 
-// Props and Comments, for a card's footer. Hobbs doesn't store props or comments yet, so
-// the counts are 0 except in the sample social feed. Each becomes a button when it has something to do (in the list, opening
-// the flight; on the flight's page, opening its props or comments under the footer).
+// Props and Comments, for a card's footer. Each becomes a button when it has something to do.
+// Props is either a count that opens who gave them (your own flights), or, with `giveProps`,
+// a Give Props / Gave Props toggle without a count (the feed). The propeller's outline turns
+// heavier and gold once you've given props.
 type ReactionsProps = {
   propsCount?: number
   commentsCount?: number
+  propped?: boolean
+  giveProps?: boolean
   propsOpen?: boolean
   commentsOpen?: boolean
   onComments?: () => void
   onProps?: () => void
 }
 
-export function FlightReactions({ propsCount = 0, commentsCount = 0, propsOpen, commentsOpen, onComments, onProps }: ReactionsProps = {}) {
+export function FlightReactions({ propsCount = 0, commentsCount = 0, propped = false, giveProps = false, propsOpen, commentsOpen, onComments, onProps }: ReactionsProps = {}) {
+  // Props has its own press: the propeller shrinks under your finger, and giving props (or,
+  // on your own flights, opening who gave them) spins it (lib/propSpin). Taking them back,
+  // closing, or sliding off just lets it grow back.
+  const propeller = useRef<SVGSVGElement>(null)
+  const squeezed = useRef(false)
+  const letGo = () => {
+    if (squeezed.current && propeller.current) unsqueeze(propeller.current)
+    squeezed.current = false
+  }
+  // The label still presses in and pops like any button (lib/buttonPress, through its
+  // data-press-target); the propeller beside it has its own press.
+  const propsPress = {
+    onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
+      if (e.button !== 0 || !propeller.current) return
+      squeezed.current = true
+      squeeze(propeller.current)
+    },
+    onPointerLeave: letGo,
+    onPointerCancel: letGo,
+  }
+  const onPropsClick = () => {
+    if (propeller.current) {
+      if (!propped) spin(propeller.current) // giving props, or opening who gave them
+      else unsqueeze(propeller.current)
+      squeezed.current = false
+    }
+    onProps?.()
+  }
+
   const props = (
     <>
-      <Star size={16} strokeWidth={1.75} aria-hidden />
-      <span className="mono">{propsCount}</span> Props
+      {/* Props given: the same outline, drawn heavier (and gold, in the CSS), not filled in. */}
+      <PropellerIcon ref={propeller} size={28} strokeWidth={propped ? 2.25 : 1.5} className={styles.propeller} aria-hidden />
+      {giveProps ? (
+        // Both labels sit in the same spot, one faded out, so the label is always as wide as the
+        // wider and switching between them cross-fades without the propeller shifting over.
+        <span className={styles.propsLabel} data-press-target>
+          <span data-off={propped || undefined} aria-hidden={propped || undefined}>
+            Give Props
+          </span>
+          <span data-off={!propped || undefined} aria-hidden={!propped || undefined}>
+            Gave Props
+          </span>
+        </span>
+      ) : (
+        // Bolder while selected; an invisible bold copy holds the width, as with Comments.
+        <span className={styles.propsCountLabel} data-press-target>
+          <span>
+            <span className="mono">{propsCount}</span> Props
+          </span>
+          <span aria-hidden>
+            <span className="mono">{propsCount}</span> Props
+          </span>
+        </span>
+      )}
+    </>
+  )
+  // Bolder, icon and text, while the comments are open. An invisible bold copy of the label
+  // holds its width, so turning bold doesn't nudge the icon over.
+  const commentsLabel = (
+    <>
+      <span className="mono">{commentsCount}</span> Comments
     </>
   )
   const comments = (
     <>
-      <MessageCircle size={16} strokeWidth={1.75} aria-hidden />
-      <span className="mono">{commentsCount}</span> Comments
+      <MessageCircle size={22} strokeWidth={commentsOpen ? 2.5 : 1.75} aria-hidden />
+      <span className={styles.commentsLabel}>
+        <span>{commentsLabel}</span>
+        <span aria-hidden>{commentsLabel}</span>
+      </span>
     </>
   )
   return (
@@ -244,8 +310,10 @@ export function FlightReactions({ propsCount = 0, commentsCount = 0, propsOpen, 
         <button
           type="button"
           className={`btn btn--ghost btn--sm ${styles.reactionButton}`}
-          onClick={onProps}
-          aria-expanded={propsOpen}
+          onClick={onPropsClick}
+          {...(giveProps ? { 'aria-pressed': propped } : { 'aria-expanded': propsOpen })}
+          {...propsPress}
+          data-propped={propped || undefined}
         >
           {props}
         </button>

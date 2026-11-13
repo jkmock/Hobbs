@@ -54,6 +54,8 @@ export function installButtonPress() {
     pressed = null
   }
 
+  // Capture phase, so a press is seen even where a component stops it going further (a flight
+  // card's Props and Comments stop it from pressing the card around them).
   document.addEventListener(
     'pointerdown',
     (e) => {
@@ -65,7 +67,7 @@ export function installButtonPress() {
       pressed = { el, target, pointerId: e.pointerId }
       pressIn(target)
     },
-    { passive: true },
+    { capture: true, passive: true },
   )
   // Dragged off the button (it won't be clicked): back out, as on iOS.
   document.addEventListener(
@@ -80,10 +82,10 @@ export function installButtonPress() {
         e.clientY > box.bottom + MOVE_SLOP
       if (outside) letGo()
     },
-    { passive: true },
+    { capture: true, passive: true },
   )
   for (const type of ['pointerup', 'pointercancel'] as const) {
-    document.addEventListener(type, (e) => e.pointerId === pressed?.pointerId && letGo(), { passive: true })
+    document.addEventListener(type, (e) => e.pointerId === pressed?.pointerId && letGo(), { capture: true, passive: true })
   }
   // Releasing outside the window, or the window losing focus mid-press.
   window.addEventListener('blur', letGo)

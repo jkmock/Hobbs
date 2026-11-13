@@ -146,8 +146,10 @@
 .footer {
   position: relative;
   display: flex;
-  gap: 4px;
-  padding: 6px 8px;
+  /* As tall as the pilot row at the card's top (its picture and name, down to the line under
+     them): 9px either side of the 40px buttons. No room at the sides or between the two, so
+     both labels fit at phone width, three-figure counts and all. */
+  padding: 9px 0;
   border-top: 1px solid var(--line);
 }
 /* Props and Comments each take half the width, icon and text centered in their half. */
@@ -157,7 +159,7 @@
 .footer > * + *::before {
   content: '';
   position: absolute;
-  left: -2.5px; /* the middle of the 4px gap */
+  left: -0.5px; /* on the line between the two halves */
   top: 17%;
   height: 66%;
   width: 1px;
@@ -171,6 +173,33 @@
 /* Comments when it opens the card's comments: same look, but clickable. */
 .reactionButton { color: var(--ink-2); }
 .reactionButton[aria-expanded='true'] { color: var(--ink); }
+/* Comments' label, bold while open; the hidden bold copy under it keeps its width the same. */
+.commentsLabel { display: inline-grid; }
+.commentsLabel > span { grid-area: 1 / 1; }
+.commentsLabel > span[aria-hidden] { visibility: hidden; font-weight: 650; }
+.reactionButton[aria-expanded='true'] .commentsLabel { font-weight: 650; }
+/* Props' count label (your own flights), 650 while selected, width held the same way. */
+.propsCountLabel { display: inline-grid; }
+.propsCountLabel > span { grid-area: 1 / 1; }
+.propsCountLabel > span[aria-hidden] { visibility: hidden; font-weight: 650; }
+.reactionButton[data-propped] .propsCountLabel { font-weight: 650; }
+/* Props you've given: the label in the accent blue, and the propeller (drawn heavier) in gold. */
+.reactionButton[data-propped] { color: var(--accent); }
+.reactionButton[data-propped] .propeller { color: var(--gold); }
+/* The propeller can grow while it spins; it draws over the button's edges rather than being cut off. */
+.propeller { flex-shrink: 0; }
+/* Give Props' label, pressed and popped on its own (inline-grid, so it can scale). Give Props
+   and Gave Props are stacked in one cell, so it's as wide as the wider, and the one not in use
+   fades out. */
+.propsLabel { display: inline-grid; justify-items: start; }
+.propsLabel > span { grid-area: 1 / 1; transition: opacity 180ms ease; }
+.propsLabel > [data-off] { opacity: 0; }
+/* Gave Props, the second of the two, is bolder (650). It always is, even faded out, so the
+   label's width never changes. */
+.propsLabel > span:last-child { font-weight: 650; }
+/* Larger than a small button's 13px text. `.footer` outranks .btn--sm whatever order the CSS loads in. */
+.footer .reaction,
+.footer .reactionButton { height: 40px; padding-inline: 4px; font-size: 18px; }
 
 /* Under the footer, inside the card: slides open (growing from no height, fading in) and
    shut. A grid row going from 0fr to 1fr animates to the content's own height. */

@@ -1,6 +1,9 @@
 import Fastify from "fastify";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { pool } from "./db.js";
 import cookie from "@fastify/cookie";
+import fastifyStatic from "@fastify/static";
 
 import aircraftRoutes from "./routes/aircraft.js";
 import airportRoutes from "./routes/airports.js";
@@ -9,9 +12,26 @@ import flightRoutes from "./routes/flights.js";
 import flightAwareRoutes from "./routes/flightaware.js";
 import authRoutes from "./routes/auth.js";
 import googleRoutes from "./routes/google.js";
+import socialRoutes from "./routes/social.js";
 import { registerAuth } from "./auth.js";
 
-const app = Fastify({ logger: true });
+// Three ways this runs:
+// - Development: Vite serves the website and forwards /api/* here with the prefix removed,
+//   so the API's routes have no prefix.
+// - Vercel: the same, with the website's Vercel project (apps/web/vercel.json) forwarding
+//   /api/* to this one, which Vercel runs as a function.
+// - `pnpm start` on a host of its own: this one server is the whole app. It serves the built
+//   website (apps/web/dist, from `pnpm build`) and the API under /api.
+// Either way the browser sees one origin, so the session cookie just works.
+const production = process.env.NODE_ENV === "production";
+const servesWeb = production && !process.env.VERCEL;
+const webDist = fileURLToPath(new URL("../../web/dist", import.meta.url));
+if (servesWeb && !existsSync(webDist)) {
+  throw new Error(`No website build at ${webDist}. Run \`pnpm build\` first.`);
+}
+
+// Behind a hosting platform's proxy, trust its X-Forwarded-* headers (client IP, https).
+const app = Fastify({ logger: true, trustProxy: production });
 app.register(cookie);
 
 registerAuth(app);
@@ -52,12 +72,40 @@ async function shutdown(signal: string) {
 process.on("SIGINT", () => void shutdown("SIGINT"));   // Ctrl+C
 process.on("SIGTERM", () => void shutdown("SIGTERM")); // sent by hosting platforms and tsx watch restarts
 
-app.register(airportRoutes);
-app.register(aircraftRoutes);
-app.register(instructorRoutes);
-app.register(flightRoutes);
-app.register(flightAwareRoutes);
-app.register(authRoutes);
-app.register(googleRoutes);
+app.register(
+  async (api) => {
+    api.register(airportRoutes);
+    api.register(aircraftRoutes);
+    api.register(instructorRoutes);
+    api.register(flightRoutes);
+    api.register(flightAwareRoutes);
+    api.register(authRoutes);
+    api.register(googleRoutes);
+    api.register(socialRoutes);
+  },
+  { prefix: servesWeb ? "/api" : "" },
+);
 
-await app.listen({ port: 3000 });
+if (servesWeb) {
+  app.register(fastifyStatic, {
+    root: webDist,
+    // Vite's /assets files have a content hash in their names, so they can be cached for good.
+    setHeaders: (res, path) => {
+      if (path.includes("/assets/")) res.header("Cache-Control", "public, max-age=31536000, immutable");
+    },
+  });
+  // Any other page (/flights, /friends, …) is the single-page app: send index.html and let
+  // the router take it from there. Unknown /api routes stay JSON 404s.
+  app.setNotFoundHandler((request, reply) => {
+    if (request.method === "GET" && !request.url.startsWith("/api/")) {
+      return reply.sendFile("index.html");
+    }
+    return reply.code(404).send({ error: "Not found" });
+  });
+}
+
+// Locally, only this machine can reach the API. A host sets PORT and needs it reachable.
+await app.listen({
+  host: process.env.HOST ?? (production ? "0.0.0.0" : "localhost"),
+  port: Number(process.env.PORT ?? 3000),
+});

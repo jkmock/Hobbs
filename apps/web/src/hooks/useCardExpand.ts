@@ -34,21 +34,24 @@ export function useCardExpand(routeId: string | null) {
   // the list's first load).
   const [cameBackFrom, setCameBackFrom] = useState<string | null>(null)
 
-  // The flight's props or comments, under its card's footer. Kept (with open false) after
-  // closing, so what was showing can slide shut.
+  // A flight's props or comments, under its card's footer: on the flight's page, or right in
+  // the list (one card at a time). Kept (with open false) after closing, so what was showing
+  // can slide shut.
   const [panel, setPanel] = useState<{ id: string; kind: PanelKind; open: boolean } | null>(null)
   // The flight whose card has finished moving into place: a panel asked for as the flight
   // opens waits for this, so it opens under a card that's sitting still.
   const [settledId, setSettledId] = useState<string | null>(routeId)
-  // Open on the flight's page; it slides shut as soon as the X is pressed.
-  const panelOpen = shownId !== null && routeId === shownId && settledId === shownId && panel?.id === shownId && panel.open
+  // Whether this card's panel is open. On the flight's page it waits for the card to settle,
+  // and slides shut as soon as Back is pressed; in the list it opens straight away, and shuts
+  // when a flight is opened.
+  function panelOpenFor(id: string) {
+    if (panel?.id !== id || !panel.open) return false
+    if (shownId === null) return routeId === null
+    return id === shownId && routeId === shownId && settledId === shownId
+  }
+  const panelOpen = shownId !== null && panelOpenFor(shownId)
   function togglePanel(id: string, kind: PanelKind) {
     setPanel((p) => ({ id, kind, open: !(p?.id === id && p.kind === kind && p.open) }))
-  }
-  // Opening a flight from its Props or Comments in the list: they open once its card has
-  // moved into place. (The caller then goes to the flight's page.)
-  function openPanel(id: string, kind: PanelKind) {
-    setPanel({ id, kind, open: true })
   }
 
   const page = useRef<HTMLDivElement>(null)
@@ -83,13 +86,14 @@ export function useCardExpand(routeId: string | null) {
       move.current = id && el ? { id, top, pressed: pressed ? scale : null } : null
       if (shownId === null && page.current) listScroll.current = page.current.scrollTop
       setCameBackFrom(routeId === null ? shownId : null)
-      // Already sliding shut; a plain tap reopens the flight without it.
-      if (routeId === null) setPanel((p) => (p ? { ...p, open: false } : p))
+      // Already sliding shut; a plain tap reopens the flight without it. Opening a different
+      // flight than the one whose panel is open in the list shuts that one too.
+      if (routeId === null || panel?.id !== routeId) setPanel((p) => (p ? { ...p, open: false } : p))
       setSettledId(null) // the card is about to move
       setShownId(routeId)
     }, FADE_MS)
     return () => clearTimeout(timer)
-  }, [leaving, routeId, shownId])
+  }, [leaving, routeId, shownId, panel?.id])
 
   // Right after the swap, before it's drawn: scroll to the top (or back to where the list
   // was), then move the card from its old spot to its new one. Opening a flight, it glides up
@@ -172,12 +176,13 @@ export function useCardExpand(routeId: string | null) {
     otherClass,
     panel,
     panelOpen,
-    propsOpen: panelOpen && panel?.kind === 'props',
-    commentsOpen: panelOpen && panel?.kind === 'comments',
+    panelOpenFor,
+    // Whether this card's Props or Comments is the one open, for its footer button.
+    isOpen: (id: string, kind: PanelKind) => panelOpenFor(id) && panel?.kind === kind,
     togglePanel,
-    openPanel,
-    // Kept on the card coming back to the list too, so an open panel can finish sliding shut.
-    hasPanel: (id: string) => id === shownId || id === cameBackFrom,
+    // The card with a panel (open, or sliding shut): the flight on show, the one coming back
+    // to the list, or the one whose panel was opened in the list.
+    hasPanel: (id: string) => id === shownId || id === cameBackFrom || panel?.id === id,
     fadeOut: styles.fadeOut,
   }
 }

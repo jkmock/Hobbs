@@ -24,3 +24,13 @@ export function todayIso(): string {
 export function initials(firstName: string, lastName: string): string {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase()
 }
+
+// How long ago something happened, short: "now", "5m", "3h", "2d", then the date ("Nov 3").
+export function timeAgo(iso: string, now = Date.now()): string {
+  const seconds = Math.max(0, (now - new Date(iso).getTime()) / 1000)
+  if (seconds < 60) return 'now'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
+  if (seconds < 86_400) return `${Math.floor(seconds / 3600)}h`
+  if (seconds < 7 * 86_400) return `${Math.floor(seconds / 86_400)}d`
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}

@@ -16,13 +16,13 @@ const CursorSchema = z.object({
   c: z.string().min(1),
   id: z.uuid(),
 });
-type Cursor = z.infer<typeof CursorSchema>;
+export type Cursor = z.infer<typeof CursorSchema>;
 
-function encodeCursor(cursor: Cursor): string {
+export function encodeCursor(cursor: Cursor): string {
   return Buffer.from(JSON.stringify(cursor)).toString("base64url");
 }
 
-function decodeCursor(value: string): Cursor | null {
+export function decodeCursor(value: string): Cursor | null {
   try {
     const parsed = CursorSchema.safeParse(JSON.parse(Buffer.from(value, "base64url").toString()));
     return parsed.success ? parsed.data : null;
@@ -32,7 +32,7 @@ function decodeCursor(value: string): Cursor | null {
 }
 
 // Shared column list for the flights table. Legs are loaded separately.
-const FLIGHT_COLUMNS = `
+export const FLIGHT_COLUMNS = `
   flight_id                 AS id,
   aircraft_id               AS "aircraftId",
   instructor_id             AS "instructorId",
@@ -76,7 +76,7 @@ type Leg = {
 };
 
 // Load the legs for several flights in ONE query, grouped by flight id
-async function loadLegs(flightIds: string[]): Promise<Map<string, Leg[]>> {
+export async function loadLegs(flightIds: string[]): Promise<Map<string, Leg[]>> {
   const result = await pool.query(
     `SELECT fl.flight_id,
             fl.leg_order       AS "order",
@@ -126,6 +126,21 @@ async function loadLegs(flightIds: string[]): Promise<Map<string, Leg[]>> {
     legsByFlight.set(row.flight_id, legs);
   }
   return legsByFlight;
+}
+
+// Props and comments on these flights, as seen by `viewerId`: how many of each, and whether
+// the viewer gave props. One query for any number of flights.
+export type Social = { propsCount: number; commentsCount: number; proppedByMe: boolean };
+export async function loadSocial(flightIds: string[], viewerId: string): Promise<Map<string, Social>> {
+  const result = await pool.query(
+    `SELECT f.id,
+            (SELECT count(*) FROM flight_props p WHERE p.flight_id = f.id)::int    AS "propsCount",
+            (SELECT count(*) FROM flight_comments c WHERE c.flight_id = f.id)::int AS "commentsCount",
+            EXISTS (SELECT 1 FROM flight_props p WHERE p.flight_id = f.id AND p.user_id = $2) AS "proppedByMe"
+     FROM unnest($1::uuid[]) AS f(id)`,
+    [flightIds, viewerId],
+  );
+  return new Map(result.rows.map(({ id, ...social }) => [id, social as Social]));
 }
 
 // Tracks for the legs imported from FlightAware, keyed by FlightAware flight id.
@@ -199,8 +214,8 @@ export default async function flightRoutes(app: FastifyInstance) {
     }
 
     const flight = result.rows[0];
-    const legs = await loadLegs([flight.id]);
-    return { ...flight, legs: legs.get(flight.id) ?? [] };
+    const [legs, social] = await Promise.all([loadLegs([flight.id]), loadSocial([flight.id], getCurrentUserId(request))]);
+    return { ...flight, ...social.get(flight.id), legs: legs.get(flight.id) ?? [] };
   });
 
   app.get("/flights", async (request, reply) => {
@@ -237,8 +252,9 @@ export default async function flightRoutes(app: FastifyInstance) {
     const nextCursor =
       hasMore && last ? encodeCursor({ d: last.flightDate, c: last.cursorCreatedAt, id: last.id }) : null;
 
-    const legs = await loadLegs(page.map((f) => f.id));
-    const items = page.map(({ cursorCreatedAt: _, ...f }) => ({ ...f, legs: legs.get(f.id) ?? [] }));
+    const ids = page.map((f) => f.id);
+    const [legs, social] = await Promise.all([loadLegs(ids), loadSocial(ids, getCurrentUserId(request))]);
+    const items = page.map(({ cursorCreatedAt: _, ...f }) => ({ ...f, ...social.get(f.id), legs: legs.get(f.id) ?? [] }));
 
     return { items, nextCursor };
   });

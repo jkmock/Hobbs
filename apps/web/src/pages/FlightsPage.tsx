@@ -4,6 +4,7 @@ import { ArrowLeft, Plus } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import ConfirmDialog from '../components/ConfirmDialog'
 import FlightCard, { FlightReactions } from '../components/FlightCard'
+import { CommentsPanel, PropsPanel } from '../components/FlightSocial'
 import { useDeleteFlight, useFlight, useFlightPages } from '../hooks/useFlights'
 import { useCardExpand } from '../hooks/useCardExpand'
 import type { Flight } from '../lib/types'
@@ -24,7 +25,7 @@ export default function FlightsPage() {
   const flights = data?.pages.flatMap((page) => page.items) ?? []
 
   const expand = useCardExpand(routeId)
-  const { shownId, leaving, page, cards, cardRef, detailsDelay, swapClass, otherClass, panel, panelOpen, propsOpen, commentsOpen, togglePanel } = expand
+  const { shownId, leaving, page, cards, cardRef, detailsDelay, swapClass, otherClass, panel, togglePanel } = expand
 
   // The flight itself: fresh from the server, or the list's copy meanwhile. Also covers a
   // flight opened by link that isn't in the loaded part of the list.
@@ -48,8 +49,23 @@ export default function FlightsPage() {
     })
   }
 
-  const panelBelow = (
-    <p className={styles.panelText}>{panel?.kind === 'props' ? 'No props yet.' : 'No comments yet.'}</p>
+  // Props (who gave them) or Comments open under the card's footer, in the list or on the flight's page.
+  const panelFlight = panel?.id === flight?.id ? flight : flights.find((f) => f.id === panel?.id)
+  const panelBelow =
+    panelFlight && (panel?.kind === 'props' ? <PropsPanel flightId={panelFlight.id} /> : <CommentsPanel flightId={panelFlight.id} />)
+  // A card's footer: Props and Comments, each opening (or closing) its panel under the card.
+  const reactionsFor = (f: Flight) => (
+    <FlightReactions
+      propsCount={f.propsCount}
+      commentsCount={f.commentsCount}
+      // Your own flights: Props looks selected (gold, heavier propeller, blue label) only
+      // while its panel is open, not because props were given.
+      propped={expand.isOpen(f.id, 'props')}
+      propsOpen={expand.isOpen(f.id, 'props')}
+      commentsOpen={expand.isOpen(f.id, 'comments')}
+      onProps={() => togglePanel(f.id, 'props')}
+      onComments={() => togglePanel(f.id, 'comments')}
+    />
   )
 
   // A flight just logged (LogFlightPage passes its id): its card pops into the list, scrolled
@@ -78,11 +94,6 @@ export default function FlightsPage() {
     navigate('/flights', { replace: true, state: null })
   })
 
-  // Opening a flight from its Props or Comments in the list (the card's own tap is its link).
-  function openFlight(id: string, kind: 'props' | 'comments') {
-    expand.openPanel(id, kind)
-    navigate(`/flights/${id}`)
-  }
 
   const showingFlight = shownId !== null
 
@@ -148,16 +159,9 @@ export default function FlightsPage() {
               flight={flight}
               cardRef={cardRef(flight.id)}
               pressable
-              footer={
-                <FlightReactions
-                propsOpen={propsOpen}
-                commentsOpen={commentsOpen}
-                onProps={() => togglePanel(flight.id, 'props')}
-                onComments={() => togglePanel(flight.id, 'comments')}
-              />
-              }
+              footer={reactionsFor(flight)}
               below={panelBelow}
-              belowOpen={panelOpen}
+              belowOpen={expand.panelOpenFor(flight.id)}
             />
           )}
           {flights.map((f, i) => {
@@ -172,22 +176,9 @@ export default function FlightsPage() {
                 className={otherClass(f.id)}
                 to={showingFlight ? undefined : `/flights/${f.id}`}
                 pressable={isShown} // on the flight's page, its card presses and pops for fun
-                footer={
-                  isShown ? (
-                    <FlightReactions
-                      propsOpen={propsOpen}
-                      commentsOpen={commentsOpen}
-                      onProps={() => togglePanel(f.id, 'props')}
-                      onComments={() => togglePanel(f.id, 'comments')}
-                    />
-                  ) : (
-                    // In the list, either one opens the flight, then its props or comments.
-                    <FlightReactions onProps={() => openFlight(f.id, 'props')} onComments={() => openFlight(f.id, 'comments')} />
-                  )
-                }
-                // Hobbs doesn't store props or comments yet, so there are never any to show.
-                below={expand.hasPanel(f.id) && panelBelow}
-                belowOpen={panelOpen}
+                footer={reactionsFor(isShown && flight ? flight : f)}
+                below={expand.hasPanel(f.id) && panel?.id === f.id && panelBelow}
+                belowOpen={expand.panelOpenFor(f.id)}
               />
             )
           })}

@@ -68,7 +68,26 @@ export type Flight = {
   legs: Leg[]
   createdAt: string
   updatedAt: string
+  // Props and comments (lists and single flights include them; a just-saved flight may not).
+  propsCount?: number
+  commentsCount?: number
+  proppedByMe?: boolean
 }
+
+// --- Social: friends, the feed, props and comments ---
+
+// How you and someone are connected: friends, you asked them, they asked you, or neither.
+export type PersonStatus = 'friend' | 'requested' | 'incoming' | 'none'
+export type Person = { id: string; firstName: string; lastName: string }
+export type PersonWithStatus = Person & { status: PersonStatus }
+export type Friends = { friends: PersonWithStatus[]; incoming: PersonWithStatus[]; outgoing: PersonWithStatus[] }
+
+// A flight in the feed: yours or a friend's, with who flew it.
+export type FeedFlight = Flight & { pilotId: string; pilot: Person }
+
+export type Social = { propsCount: number; commentsCount: number; proppedByMe: boolean }
+export type PropGiver = Person & { createdAt: string }
+export type Comment = { id: string; body: string; createdAt: string; author: Person; canDelete: boolean }
 
 export type Aircraft = {
   id: string

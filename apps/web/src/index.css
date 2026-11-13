@@ -32,6 +32,8 @@
   --highlight: var(--accent);
   --good: light-dark(#2e7a4c, #5bbf83);
   --danger: light-dark(#b4382c, #e5675a);
+  /* Props given: the propeller in gold. */
+  --gold: light-dark(#c8920c, #f0be3f);
 
   --radius: 12px;
   --radius-sm: 8px;

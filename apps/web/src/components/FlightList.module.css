@@ -48,5 +48,6 @@ header.topHeader { padding-top: 44px; }
   from { opacity: 0; }
 }
 
-/* Under a card's footer, when its props or comments are open. */
-.panelText { font-size: 14px; color: var(--ink-2); text-align: center; }
+
+/* Add friends / My Friends: clips its contents while it grows back from the Friends page's Done. */
+.morphButton { overflow: hidden; }

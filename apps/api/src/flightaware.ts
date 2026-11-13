@@ -7,22 +7,19 @@
 // Spending cap: every billed request is logged in flightaware_usage with an estimated cost.
 // Once the calendar month's total (UTC) would pass FLIGHTAWARE_MONTHLY_BUDGET (default $4.50,
 // under the $5 of free usage FlightAware gives each month), no more requests are made until
-// the 1st. The estimates lean high, so the cap trips early rather than late.
+// the 1st. The estimates match FlightAware's usage page (rounded up slightly).
 
 import { pool } from "./db.js";
 
 const BASE_URL = "https://aeroapi.flightaware.com/aeroapi";
 const RECENT_CACHE_MS = 10 * 60 * 1000;
 
-// FlightAware bills per "result set" of up to 15 records.
+// FlightAware bills per page. Per its usage page, each of these calls is one page, however
+// many flights or positions come back.
 const COST = {
-  flightsLookup: 0.01, // /flights/{ident}: one result set (up to 15 flights); the real fee is likely lower
-  trackResultSet: 0.012, // /flights/{id}/track
+  flightsLookup: 0.005, // /flights/{ident}
+  track: 0.012, // /flights/{id}/track
 };
-// Unconfirmed: whether a track is billed once, or once per 15 positions. Until FlightAware's usage
-// page shows which, assume per 15 positions (the expensive case). If it turns out a track is
-// billed once, set this to false so the budget isn't used up too soon.
-const TRACK_BILLED_PER_15_POSITIONS = true;
 
 function monthlyBudget(): number {
   const value = Number(process.env.FLIGHTAWARE_MONTHLY_BUDGET ?? "4.50");
@@ -96,17 +93,11 @@ export type RecentFlight = {
   arrivedAt: string | null;
 };
 
-// Checks the budget against the cost known up front, makes the request, then logs the
-// actual cost (which for a track depends on how many positions came back).
-async function aeroApi<T>(
-  endpoint: string,
-  path: string,
-  upfrontCost: number,
-  actualCost: (data: T) => number = () => upfrontCost,
-): Promise<T> {
+// Checks the budget, makes the request, then logs its cost.
+async function aeroApi<T>(endpoint: string, path: string, cost: number): Promise<T> {
   const key = process.env.FLIGHTAWARE_API_KEY;
   if (!key) throw new FlightAwareNotConfigured();
-  await ensureBudget(upfrontCost);
+  await ensureBudget(cost);
 
   const response = await fetch(`${BASE_URL}${path}`, { headers: { "x-apikey": key } });
   if (!response.ok) {
@@ -114,7 +105,7 @@ async function aeroApi<T>(
     throw new Error(`FlightAware ${response.status} for ${path}: ${body.slice(0, 200)}`);
   }
   const data = (await response.json()) as T;
-  await recordUsage(endpoint, actualCost(data));
+  await recordUsage(endpoint, cost);
   return data;
 }
 
@@ -223,11 +214,7 @@ async function flightTrack(faFlightId: string): Promise<FaPosition[]> {
   const data = await aeroApi<{ positions: FaPosition[] }>(
     "track",
     `/flights/${encodeURIComponent(faFlightId)}/track`,
-    COST.trackResultSet,
-    (d) =>
-      TRACK_BILLED_PER_15_POSITIONS
-        ? COST.trackResultSet * Math.max(1, Math.ceil(d.positions.length / 15))
-        : COST.trackResultSet,
+    COST.track,
   );
   return data.positions;
 }
