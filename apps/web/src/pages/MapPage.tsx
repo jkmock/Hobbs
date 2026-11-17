@@ -87,27 +87,22 @@ export default function MapPage() {
   // The status bar turns the map's color while the map is showing (this page stays mounted,
   // hidden, while another tab is open, so it checks it's the tab on screen).
   const onScreen = useTabActive()
-  useStatusBarColor(onScreen && !isPending && flights.length > 0 ? CHART_COLORS.land : null)
+  useStatusBarColor(onScreen && !isPending ? CHART_COLORS.land : null)
 
-  if (isPending || flights.length === 0) {
+  if (isPending) {
     return (
       <>
         <PageHeader title="Map" className={listStyles.topHeader} />
         <div className="page">
-          {isPending ? (
-            <PageLoading />
-          ) : (
-            <div className="empty">
-              <p>Your routes will be drawn here.</p>
-              <Link to="/flights/new" className="btn btn--primary">
-                Log a flight
-              </Link>
-            </div>
-          )}
+          <PageLoading />
         </div>
       </>
     )
   }
+
+  // No flights yet: the map still shows (the US, where it starts with no routes), with the
+  // same top card and a nudge to log the first flight.
+  const noFlights = flights.length === 0
 
   return (
     <div className={styles.screen}>
@@ -199,10 +194,21 @@ export default function MapPage() {
 
       {legs.length === 0 && !sheetOpen && (
         <div className={`card ${styles.panel} ${styles.bottom} ${styles.none}`}>
-          <span className="muted">No routes match these filters.</span>
-          <button type="button" className="btn btn--sm" onClick={() => setFilters(NO_FILTERS)}>
-            Clear filters
-          </button>
+          {noFlights ? (
+            <>
+              <span className="muted">Your routes will be drawn here.</span>
+              <Link to="/flights/new" className="btn btn--sm btn--primary">
+                Log a flight
+              </Link>
+            </>
+          ) : (
+            <>
+              <span className="muted">No routes match these filters.</span>
+              <button type="button" className="btn btn--sm" onClick={() => setFilters(NO_FILTERS)}>
+                Clear filters
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

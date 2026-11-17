@@ -58,6 +58,12 @@
 }
 
 /* A choice in Settings overrides the system setting. */
+/* The iOS app's native tab bar (iOS 26+, lib/nativeTabBar) sits where the system's would:
+   62pt tall, 21pt up from the bottom of the screen (through the home indicator's area). */
+:root.native-tabbar {
+  --tabbar-height: 62px;
+  --tabbar-gap: calc(21px - env(safe-area-inset-bottom));
+}
 :root[data-theme='light'] { color-scheme: light; }
 :root[data-theme='dark'] { color-scheme: dark; }
 
@@ -255,6 +261,17 @@ textarea.input { height: auto; min-height: 88px; padding: 10px 12px; resize: ver
   color: var(--ink-2);
 }
 .empty .btn { margin-top: 14px; }
+/* An empty Feed or My Flights: about the size of the flight card that will take its place,
+   with the message and the button spread out over it. */
+.empty.empty--card {
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  padding: 32px 24px;
+}
+.empty.empty--card .btn { margin-top: 0; }
 
 .notice {
   padding: 10px 12px;

@@ -1,10 +1,24 @@
 import type { ReactNode } from 'react'
+import { useNavigate } from 'react-router'
+import { useAppleSignIn, useGoogleSignIn } from '../hooks/useAuth'
 import { isNative } from '../lib/native'
+import { wasCanceled } from '../lib/nativeAuth'
 import styles from './AuthShell.module.css'
 
-// Shared frame for login and signup: the logo and wordmark on top, then one card holding
-// everything else (title, the form, Google, and the link to the other screen).
-export default function AuthShell({ title, children, footer }: { title: string; children: ReactNode; footer: ReactNode }) {
+// Shared frame for login, signup and setting a password: the logo and wordmark on top, then
+// one card holding everything else (title, the form, Google, and the link to the other screen).
+// `google: false` leaves out Continue with Google (Set a password, already signed in with it).
+export default function AuthShell({
+  title,
+  children,
+  footer,
+  google = true,
+}: {
+  title: string
+  children: ReactNode
+  footer: ReactNode
+  google?: boolean
+}) {
   return (
     <div className={`page ${styles.shell}`}>
       <div className={styles.brand}>
@@ -22,9 +36,10 @@ export default function AuthShell({ title, children, footer }: { title: string; 
         <h1 className={styles.title}>{title}</h1>
         {children}
 
-        {/* Not in the iOS app yet: Google won't sign anyone in from inside an app's web view.
-            It has to open in the system browser and come back to the app, which isn't built. */}
-        {!isNative && (
+        {/* In the iOS app: Apple and Google, both through Apple's own sign-in sheets (Google
+            won't sign anyone in inside an app's web view). */}
+        {google && isNative && <NativeSignIn />}
+        {google && !isNative && (
           <>
             <div className={styles.divider}>or</div>
 
@@ -38,6 +53,39 @@ export default function AuthShell({ title, children, footer }: { title: string; 
         <p className={styles.footer}>{footer}</p>
       </section>
     </div>
+  )
+}
+
+function NativeSignIn() {
+  const apple = useAppleSignIn()
+  const google = useGoogleSignIn()
+  const navigate = useNavigate()
+  // Signed in: to the app (RequireAuth asks a new Google account for a password first).
+  const done = { onSuccess: () => navigate('/', { replace: true }) }
+  const busy = apple.isPending || google.isPending
+  const error = [apple.error, google.error].find((e) => e && !wasCanceled(e))
+  return (
+    <>
+      <div className={styles.divider}>or</div>
+      <div className="stack">
+        <button type="button" className={`btn btn--lg btn--block ${styles.apple}`} disabled={busy} onClick={() => apple.mutate(undefined, done)}>
+          <AppleMark /> Continue with Apple
+        </button>
+        <button type="button" className="btn btn--lg btn--block" disabled={busy} onClick={() => google.mutate(undefined, done)}>
+          <GoogleMark /> Continue with Google
+        </button>
+        {error && <p className="error-text">{error.message}</p>}
+      </div>
+    </>
+  )
+}
+
+// Apple's logo, for the Sign in with Apple button (Apple's guidelines: black, or white in dark mode).
+function AppleMark() {
+  return (
+    <svg width="17" height="20" viewBox="0 0 17 20" fill="currentColor" aria-hidden>
+      <path d="M14.07 10.62c-.02-2.13 1.74-3.15 1.82-3.2-.99-1.45-2.53-1.65-3.08-1.67-1.31-.13-2.56.77-3.22.77-.67 0-1.69-.75-2.78-.73-1.43.02-2.75.83-3.48 2.11-1.49 2.58-.38 6.39 1.07 8.48.71 1.02 1.55 2.17 2.66 2.13 1.07-.04 1.47-.69 2.76-.69 1.29 0 1.65.69 2.78.67 1.15-.02 1.88-1.04 2.58-2.07.81-1.19 1.15-2.34 1.17-2.4-.03-.01-2.24-.86-2.26-3.4zM11.95 4.37c.59-.71.98-1.7.88-2.69-.85.03-1.88.57-2.49 1.28-.55.63-1.03 1.64-.9 2.61.95.07 1.92-.48 2.51-1.2z" />
+    </svg>
   )
 }
 

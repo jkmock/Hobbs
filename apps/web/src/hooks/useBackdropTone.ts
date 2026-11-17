@@ -5,7 +5,8 @@ import { useEffect, type RefObject } from 'react'
 // finds the element painted behind each link's center and works out its background color
 // (a gradient counts as the average of its colors; a map canvas or image counts as whatever
 // is behind it), blended with the bar's own tint.
-export function useBackdropTone(barRef: RefObject<HTMLElement | null>) {
+// `shown`: whether the bar is on the page now (the check starts when it appears).
+export function useBackdropTone(barRef: RefObject<HTMLElement | null>, shown = true) {
   useEffect(() => {
     const bar = barRef.current
     if (!bar) return
@@ -55,7 +56,7 @@ export function useBackdropTone(barRef: RefObject<HTMLElement | null>) {
       window.removeEventListener('resize', schedule)
       clearInterval(timer)
     }
-  }, [barRef])
+  }, [barRef, shown])
 }
 
 type Rgba = [number, number, number, number] // 0-255, alpha 0-1

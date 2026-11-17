@@ -9,6 +9,8 @@ export type User = {
   firstName: string
   lastName: string
   avatarVersion: string | null // null: no profile picture (see avatarUrl)
+  hasPassword: boolean // false: made with Google or Apple, and no password set yet
+  needsPassword: boolean // true: a Google account with no password, asked for one first (SetPasswordPage)
 }
 
 export type Point = { lat: number; lon: number }

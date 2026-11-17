@@ -10,6 +10,7 @@ import flightRoutes from "./routes/flights.js";
 import flightAwareRoutes from "./routes/flightaware.js";
 import authRoutes from "./routes/auth.js";
 import googleRoutes from "./routes/google.js";
+import appleRoutes from "./routes/apple.js";
 import socialRoutes from "./routes/social.js";
 import profileRoutes from "./routes/profile.js";
 import goalRoutes from "./routes/goal.js";
@@ -80,6 +81,7 @@ app.register(
     api.register(flightAwareRoutes);
     api.register(authRoutes);
     api.register(googleRoutes);
+    api.register(appleRoutes);
     api.register(socialRoutes);
     api.register(profileRoutes);
     api.register(goalRoutes);

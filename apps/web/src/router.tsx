@@ -3,6 +3,7 @@ import { BareLayout, TabLayout } from './components/AppLayout'
 import RequireAuth from './components/RequireAuth'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
+import SetPasswordPage from './pages/SetPasswordPage'
 import HomePage from './pages/HomePage'
 import FlightsPage from './pages/FlightsPage'
 import MapPage from './pages/MapPage'
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
               { path: '/flights/:id/edit', element: <LogFlightPage /> },
               { path: '/friends', element: <FriendsPage /> },
               { path: '/settings', element: <SettingsPage /> },
+              { path: '/set-password', element: <SetPasswordPage /> },
             ],
           },
         ],

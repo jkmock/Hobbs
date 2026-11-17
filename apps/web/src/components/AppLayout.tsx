@@ -2,13 +2,16 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 
 import { NavLink, Outlet, useLocation, useMatch, useNavigate } from 'react-router'
 import KeptTabs from './KeptTabs'
 import { keptTabOf, useKeptLocations } from '../hooks/useKeptLocations'
-import { ChartBar, CircleUser, Earth, Plane, UsersRoundCollaboration } from 'lucide-react'
+import { ChartBar, CircleUser, Earth, Plane, Users } from 'lucide-react'
 import { useBackdropTone } from '../hooks/useBackdropTone'
 import MapPreloader from './MapPreloader'
+import { isNative } from '../lib/native'
+import { NativeTabBar, nativeTabBarAvailable, tabBarColors } from '../lib/nativeTabBar'
+import { onSplashGone, splashShowing } from '../lib/splash'
 import styles from './AppLayout.module.css'
 
 const TABS = [
-  { to: '/', label: 'Feed', icon: UsersRoundCollaboration },
+  { to: '/', label: 'Feed', icon: Users },
   { to: '/flights', label: 'Flights', icon: Plane },
   { to: '/map', label: 'Map', icon: Earth },
   { to: '/goal', label: 'Goal', icon: ChartBar },
@@ -25,14 +28,77 @@ export function TabLayout() {
   // The Feed, My Flights and Map stay as they were left when another tab is used (KeptTabs).
   const kept = useKeptLocations()
 
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
+
+  // Opens tab i: back to where that tab was left (a kept tab), or its first page.
+  const openTab = (i: number) => {
+    const tab = TABS[i]
+    if (!tab) return
+    const keptTab = keptTabOf(tab.to)
+    const left = keptTab ? kept.saved[keptTab] : undefined
+    navigate(left ? left.pathname + left.search : tab.to)
+  }
+  const openTabRef = useRef(openTab)
+  useLayoutEffect(() => {
+    openTabRef.current = openTab
+  })
+
+  // In the iOS app (iOS 26+) the bar is native Liquid Glass (lib/nativeTabBar) and this page
+  // only tells it what to show; elsewhere the web bar below. null while that's being asked.
+  const [nativeBar, setNativeBar] = useState<boolean | null>(isNative ? null : false)
+  useEffect(() => {
+    let current = true
+    void nativeTabBarAvailable().then((available) => current && setNativeBar(available))
+    return () => {
+      current = false
+    }
+  }, [])
+  // The page leaves room for the native bar where it sits (.native-tabbar in index.css).
+  useEffect(() => {
+    document.documentElement.classList.toggle('native-tabbar', nativeBar === true)
+  }, [nativeBar])
+  // The selected tab, matched the way NavLink marks .active below (Feed only at "/").
+  const selectedTab = TABS.findIndex(({ to }) =>
+    to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`),
+  )
+  // Bumped when the theme changes (system or Settings), so the native bar's colors follow.
+  const [themeTick, setThemeTick] = useState(0)
+  useEffect(() => {
+    if (!nativeBar) return
+    const bump = () => setThemeTick((t) => t + 1)
+    const observer = new MutationObserver(bump)
+    observer.observe(document.documentElement, { attributeFilter: ['data-theme'] })
+    const scheme = matchMedia('(prefers-color-scheme: dark)')
+    scheme.addEventListener('change', bump)
+    return () => {
+      observer.disconnect()
+      scheme.removeEventListener('change', bump)
+    }
+  }, [nativeBar])
+  // The native bar sits above the page, so it waits for the launch splash to start leaving.
+  const [splashGone, setSplashGone] = useState(() => !splashShowing())
+  useEffect(() => onSplashGone(() => setSplashGone(true)), [])
+  useEffect(() => {
+    if (!nativeBar) return
+    void NativeTabBar.setState({ visible: splashGone && !onFlight, selected: selectedTab, ...tabBarColors() })
+  }, [nativeBar, splashGone, onFlight, selectedTab, themeTick])
+  // Taps on the native bar open tabs here; leaving the tab pages (BareLayout) hides it.
+  useEffect(() => {
+    if (!nativeBar) return
+    const listener = NativeTabBar.addListener('tabSelected', ({ index }) => openTabRef.current(index))
+    return () => {
+      void listener.then((l) => l.remove())
+      void NativeTabBar.setState({ visible: false, selected: -1, ...tabBarColors() })
+    }
+  }, [nativeBar])
+
   // The selection pill slides between tabs: measure the selected tab (NavLink marks it
   // .active) whenever the route changes or the bar resizes, and move the pill there.
   const navRef = useRef<HTMLElement>(null)
   const pillRef = useRef<HTMLSpanElement>(null)
   // Icons turn white over dark content behind the glass (data-on-dark on each tab).
-  useBackdropTone(navRef)
-  const { pathname } = useLocation()
-  const navigate = useNavigate()
+  useBackdropTone(navRef, nativeBar === false)
   const [pill, setPill] = useState<{ x: number; width: number } | null>(null)
   const [hasSelection, setHasSelection] = useState(false)
   useLayoutEffect(() => {
@@ -48,7 +114,7 @@ export function TabLayout() {
     const observer = new ResizeObserver(measure)
     observer.observe(nav)
     return () => observer.disconnect()
-  }, [pathname])
+  }, [pathname, nativeBar])
   // Transitions start after the pill's first placement, so it doesn't slide in on load.
   const [animated, setAnimated] = useState(false)
   useEffect(() => {
@@ -148,13 +214,7 @@ export function TabLayout() {
     setHeld(false)
     // The tab opens now; the pill catches up.
     const i = nearestTab(fingerX(e))
-    const tab = TABS[i]
-    if (tab && !tabEls()[i]?.classList.contains('active')) {
-      // Back to where that tab was left (a kept tab), or its first page.
-      const keptTab = keptTabOf(tab.to)
-      const left = keptTab ? kept.saved[keptTab] : undefined
-      navigate(left ? left.pathname + left.search : tab.to)
-    }
+    if (!tabEls()[i]?.classList.contains('active')) openTab(i)
     moveTo(tabEls()[i]?.offsetLeft ?? 0, true)
   }
   // Interrupted (the system took the touch): back to the selected tab, opening nothing.
@@ -170,52 +230,54 @@ export function TabLayout() {
       <KeptTabs {...kept} />
       {/* The other tabs' maps, built ahead so their first visit shows them drawn. */}
       <MapPreloader open={Object.keys(kept.saved)} />
-      <nav
-        ref={navRef}
-        className={`${styles.tabbar} ${onFlight ? styles.tabbarHidden : ''}`}
-        aria-label="Main"
-        inert={onFlight}
-        data-no-press // the bar has its own press: the pill (see lib/buttonPress)
-        data-dragging={driven || undefined}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
-        onLostPointerCapture={onPointerCancel}
-        // Taps and clicks open tabs through the gesture above; the links' own clicks are only
-        // for the keyboard (Enter on a focused tab, a click with detail 0).
-        onClickCapture={(e) => e.detail !== 0 && e.preventDefault()}
-      >
-        {pill && (
-          <span
-            ref={pillRef}
-            aria-hidden
-            className={[
-              styles.indicator,
-              animated && styles.indicatorAnimated,
-              driven && styles.indicatorDriven,
-              held && styles.indicatorHeld,
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            style={{ width: pill.width, opacity: hasSelection || driven ? 1 : 0 }}
-          />
-        )}
-        {TABS.map(({ to, label, icon: Icon }, i) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            className={styles.tab}
-            aria-label={label}
-            title={label}
-            data-under={under === i || undefined}
-            draggable={false} // a mouse drag moves the pill, not the link
-          >
-            <Icon size={30} strokeWidth={1.75} aria-hidden />
-          </NavLink>
-        ))}
-      </nav>
+      {nativeBar === false && (
+        <nav
+          ref={navRef}
+          className={`${styles.tabbar} ${onFlight ? styles.tabbarHidden : ''}`}
+          aria-label="Main"
+          inert={onFlight}
+          data-no-press // the bar has its own press: the pill (see lib/buttonPress)
+          data-dragging={driven || undefined}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
+          onLostPointerCapture={onPointerCancel}
+          // Taps and clicks open tabs through the gesture above; the links' own clicks are only
+          // for the keyboard (Enter on a focused tab, a click with detail 0).
+          onClickCapture={(e) => e.detail !== 0 && e.preventDefault()}
+        >
+          {pill && (
+            <span
+              ref={pillRef}
+              aria-hidden
+              className={[
+                styles.indicator,
+                animated && styles.indicatorAnimated,
+                driven && styles.indicatorDriven,
+                held && styles.indicatorHeld,
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              style={{ width: pill.width, opacity: hasSelection || driven ? 1 : 0 }}
+            />
+          )}
+          {TABS.map(({ to, label, icon: Icon }, i) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/'}
+              className={styles.tab}
+              aria-label={label}
+              title={label}
+              data-under={under === i || undefined}
+              draggable={false} // a mouse drag moves the pill, not the link
+            >
+              <Icon size={30} strokeWidth={1.75} aria-hidden />
+            </NavLink>
+          ))}
+        </nav>
+      )}
     </div>
   )
 }

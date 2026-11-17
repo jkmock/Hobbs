@@ -80,7 +80,7 @@ export default function HomePage() {
             {isPending && <PageLoading />}
             {isError && <p className="error-text">{error.message}</p>}
             {!isPending && !isError && feed.length === 0 && checkrides.length === 0 && (
-              <div className="empty">
+              <div className="empty empty--card">
                 <p>
                   {hasFriends
                     ? 'No flights yet. Yours and your friends’ show up here as they’re logged.'

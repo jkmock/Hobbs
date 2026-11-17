@@ -152,7 +152,7 @@ export default function FlightsPage() {
             {isPending && <PageLoading />}
             {isError && <p className="error-text">{error.message}</p>}
             {!isPending && flights.length === 0 && (
-              <div className="empty">
+              <div className="empty empty--card">
                 <p>No flights yet. Your first entry starts the logbook.</p>
                 <Link to="/flights/new" className="btn btn--primary">
                   Log your first flight

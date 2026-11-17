@@ -32,6 +32,18 @@ export function splashShowing() {
   return !gone
 }
 
+// Calls `listener` once the splash starts to leave (at once if it already has). Returns an
+// unsubscribe. For things drawn above the page, like the iOS app's native tab bar.
+const goneListeners = new Set<() => void>()
+export function onSplashGone(listener: () => void): () => void {
+  if (gone) {
+    listener()
+    return () => {}
+  }
+  goneListeners.add(listener)
+  return () => goneListeners.delete(listener)
+}
+
 // Holds the splash up until the returned function is called.
 export function holdSplash(): () => void {
   if (gone) return () => {}
@@ -86,6 +98,8 @@ function dismiss() {
   if (gone) return
   gone = true
   clearTimeout(settle)
+  goneListeners.forEach((listener) => listener())
+  goneListeners.clear()
   const el = document.getElementById('splash')
   releaseStatusBar?.()
   if (!el) return

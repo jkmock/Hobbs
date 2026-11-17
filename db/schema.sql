@@ -344,7 +344,7 @@ CREATE TABLE public.user_identities (
     provider text NOT NULL,
     provider_user_id text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT user_identities_provider_check CHECK ((provider = 'google'::text))
+    CONSTRAINT user_identities_provider_check CHECK ((provider = ANY (ARRAY['google'::text, 'apple'::text])))
 );
 
 
@@ -886,4 +886,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261116130000'),
     ('20261116140000'),
     ('20261116150000'),
-    ('20261116160000');
+    ('20261116160000'),
+    ('20261117090000');

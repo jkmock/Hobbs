@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { z } from 'zod'
-import type { LoginSchema, SignupSchema } from '@hobbs/shared'
+import type { LoginSchema, SetPasswordSchema, SignupSchema } from '@hobbs/shared'
 import { api, ApiError } from '../lib/api'
+import { signInWithApple, signInWithGoogle } from '../lib/nativeAuth'
 import type { User } from '../lib/types'
 
 const ME_KEY = ['me']
@@ -37,6 +38,37 @@ export function useSignup() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: z.input<typeof SignupSchema>) => api<User>('/auth/signup', { method: 'POST', body }),
+    onSuccess: (user) => queryClient.setQueryData(ME_KEY, user),
+  })
+}
+
+// In the iOS app: Sign in with Apple (the API checks Apple's token and signs in).
+export function useAppleSignIn() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => api<User>('/auth/apple', { method: 'POST', body: await signInWithApple() }),
+    onSuccess: (user) => queryClient.setQueryData(ME_KEY, user),
+  })
+}
+
+// In the iOS app: Google, in Apple's sign-in sheet. The session is stored natively; then who's
+// logged in is asked again.
+export function useGoogleSignIn() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      await signInWithGoogle()
+      return api<User>('/auth/me')
+    },
+    onSuccess: (user) => queryClient.setQueryData(ME_KEY, user),
+  })
+}
+
+// The first password for an account made with Google (SetPasswordPage).
+export function useSetPassword() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: z.input<typeof SetPasswordSchema>) => api<User>('/auth/password', { method: 'POST', body }),
     onSuccess: (user) => queryClient.setQueryData(ME_KEY, user),
   })
 }

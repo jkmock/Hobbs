@@ -52,6 +52,8 @@ class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         UIScrollView.hideTopEdgeEffects()
+        bridge?.registerPluginInstance(NativeTabBarPlugin()) // NativeTabBar.swift
+        bridge?.registerPluginInstance(AuthPlugin()) // AuthPlugin.swift: Apple and Google sign-in
     }
 }
 

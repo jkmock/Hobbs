@@ -76,3 +76,21 @@
   font-size: 14px;
   color: var(--ink-2);
 }
+/* A button in the footer (Log out) looks like its links. */
+.footer button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Sign in with Apple: black with white text, or white with black text in dark mode (Apple's
+   guidelines for the button). */
+.apple {
+  background: light-dark(#000000, #ffffff);
+  border-color: light-dark(#000000, #ffffff);
+  color: light-dark(#ffffff, #000000);
+}
