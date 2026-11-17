@@ -3,15 +3,21 @@ import { Link, useLocation, useMatch, useNavigate } from 'react-router'
 import { ArrowLeft, Plus } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import ConfirmDialog from '../components/ConfirmDialog'
-import FlightCard, { FlightReactions } from '../components/FlightCard'
+import FlightCard, { CheckrideCard, FlightReactions } from '../components/FlightCard'
 import { CommentsPanel, PropsPanel } from '../components/FlightSocial'
 import { useDeleteFlight, useFlight, useFlightPages } from '../hooks/useFlights'
 import { useCardExpand } from '../hooks/useCardExpand'
-import type { Flight } from '../lib/types'
+import type { Checkride, Flight } from '../lib/types'
+import { Segmented } from '../components/controls'
+import { useUpdateCheckride } from '../hooks/useGoal'
+import { goalById } from '../lib/progress'
+import { mergeByDate } from '../lib/posts'
 import FlightDetails from './FlightDetails'
 import { keptSlot } from '../hooks/useKeptMaps'
 import { POP_SCALE } from '../lib/press'
 import styles from '../components/FlightList.module.css'
+import { useSplashHold } from '../lib/splash'
+import PageLoading from '../components/PageLoading'
 
 // A newly logged flight's card pops into the list, a moment after the list shows.
 const ARRIVE_MS = 450
@@ -22,7 +28,12 @@ const ARRIVE_DELAY_MS = 150
 export default function FlightsPage() {
   const routeId = useMatch('/flights/:id')?.params.id ?? null
   const { data, isPending, isError, error, hasNextPage, fetchNextPage, isFetchingNextPage } = useFlightPages()
+  // The launch splash stays up until the first page is in.
+  useSplashHold(isPending)
   const flights = data?.pages.flatMap((page) => page.items) ?? []
+  // Your checkrides, in among the flights by date.
+  const checkrides = data?.pages.flatMap((page) => page.checkrides ?? []) ?? []
+  const entries = mergeByDate(flights, checkrides)
 
   const expand = useCardExpand(routeId)
   const { shownId, leaving, page, cards, cardRef, detailsDelay, swapClass, otherClass, panel, togglePanel } = expand
@@ -54,7 +65,7 @@ export default function FlightsPage() {
   const panelBelow =
     panelFlight && (panel?.kind === 'props' ? <PropsPanel flightId={panelFlight.id} /> : <CommentsPanel flightId={panelFlight.id} />)
   // A card's footer: Props and Comments, each opening (or closing) its panel under the card.
-  const reactionsFor = (f: Flight) => (
+  const reactionsFor = (f: Pick<Flight, 'id' | 'propsCount' | 'commentsCount'>) => (
     <FlightReactions
       propsCount={f.propsCount}
       commentsCount={f.commentsCount}
@@ -138,7 +149,7 @@ export default function FlightsPage() {
       <div className="page" ref={page}>
         {!showingFlight && (
           <>
-            {isPending && <p className="muted">Loading flights…</p>}
+            {isPending && <PageLoading />}
             {isError && <p className="error-text">{error.message}</p>}
             {!isPending && flights.length === 0 && (
               <div className="empty">
@@ -164,7 +175,35 @@ export default function FlightsPage() {
               belowOpen={expand.panelOpenFor(flight.id)}
             />
           )}
-          {flights.map((f, i) => {
+          {entries.map((entry) => {
+            if (entry.kind === 'checkride') {
+              const c = entry.checkride
+              const goal = goalById(c.goal)
+              return (
+                <CheckrideCard
+                  key={`checkride-${c.id}`}
+                  checkride={c}
+                  className={otherClass(`checkride-${c.id}`)}
+                  onSelect={() => togglePanel(c.id, 'visibility')}
+                  selectLabel={`${goal.title} checkride: ${c.visibility === 'public' ? 'public' : 'private'}. Change who can see it`}
+                  footer={reactionsFor(c)}
+                  below={
+                    expand.hasPanel(c.id) &&
+                    panel?.id === c.id &&
+                    (panel.kind === 'visibility' ? (
+                      <CheckrideVisibility checkride={c} />
+                    ) : panel.kind === 'props' ? (
+                      <PropsPanel flightId={c.id} />
+                    ) : (
+                      <CommentsPanel flightId={c.id} />
+                    ))
+                  }
+                  belowOpen={expand.panelOpenFor(c.id)}
+                />
+              )
+            }
+            const f = entry.flight
+            const i = flights.indexOf(f)
             const isShown = f.id === shownId
             return (
               <FlightCard
@@ -212,5 +251,29 @@ export default function FlightsPage() {
         onCancel={() => setConfirmingDelete(false)}
       />
     </>
+  )
+}
+
+// Under a checkride's card in My flights (tap the card): who can see it. Changes save at once.
+function CheckrideVisibility({ checkride }: { checkride: Checkride }) {
+  const update = useUpdateCheckride()
+  const visibility = update.isPending && update.variables ? update.variables.visibility : checkride.visibility
+  return (
+    <div className={styles.checkrideVisibility}>
+      <span>Visibility</span>
+      <Segmented<'public' | 'private'>
+        label="Visibility"
+        value={visibility}
+        onChange={(v) => v !== checkride.visibility && update.mutate({ id: checkride.id, visibility: v })}
+        options={[
+          { value: 'public', label: 'Public' },
+          { value: 'private', label: 'Private' },
+        ]}
+      />
+      <p className={styles.checkrideVisibilityHint}>
+        {visibility === 'public' ? 'Your friends can see it in their feed.' : 'Only you can see it.'}
+      </p>
+      {update.error && <p className="error-text">{update.error.message}</p>}
+    </div>
   )
 }

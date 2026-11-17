@@ -40,6 +40,30 @@
 
 /* Whose flight, in the social feed: their picture and name above the date, set off by a line
    across the card (like the footer's), with a little more room than the card's other rows. */
+/* A checkride post: a big ribbon over what it earned, centered (like the Goal tab's). */
+.checkride {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 12px;
+  text-align: center;
+  color: var(--accent);
+}
+.checkride p { font-size: 17px; font-weight: 600; line-height: 1.35; color: var(--ink); }
+/* My flights: the whole card is the button that opens its visibility (under the footer, which
+   sits above it). */
+.cardButton {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: inherit;
+  cursor: pointer;
+}
+
 .pilot {
   display: flex;
   align-items: center;

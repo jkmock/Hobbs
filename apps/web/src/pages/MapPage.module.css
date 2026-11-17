@@ -33,7 +33,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px 14px 12px;
+  padding: 14px; /* the same all round */
   /* Open, it grows down to just above the tab bar at most; the filters scroll inside. */
   max-height: calc(100% - 30px - var(--safe-top) - var(--above-tabbar));
 }

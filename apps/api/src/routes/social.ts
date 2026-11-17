@@ -8,6 +8,8 @@ import {
   UserIdParamsSchema,
 } from "@hobbs/shared";
 import { getCurrentUserId, requireAuth } from "../auth.js";
+import { avatarVersion } from "../users.js";
+import { CHECKRIDE_COLUMNS } from "./goal.js";
 import { decodeCursor, encodeCursor, FLIGHT_COLUMNS, loadLegs, loadSocial, type Cursor } from "./flights.js";
 
 // Friends, the feed of friends' flights, and props and comments on flights.
@@ -23,7 +25,9 @@ const STATUS = `
     WHEN f.addressee_id = $1 THEN 'incoming'
     ELSE 'none'
   END`;
-const PERSON_COLUMNS = `u.user_id AS id, u.first_name AS "firstName", u.last_name AS "lastName"`;
+const PERSON_COLUMNS = `u.user_id AS id, u.first_name AS "firstName", u.last_name AS "lastName", ${avatarVersion("u")} AS "avatarVersion"`;
+// The same, as a JSON object inside another row (a flight's pilot, a comment's author).
+const PERSON_JSON = `json_build_object('id', u.user_id, 'firstName', u.first_name, 'lastName', u.last_name, 'avatarVersion', ${avatarVersion("u")})`;
 // The friendship row (if any) between the viewer ($1) and `u`.
 const JOIN_FRIENDSHIP = `
   LEFT JOIN friendships f
@@ -38,19 +42,34 @@ const VISIBLE_PILOTS = `
   FROM friendships
   WHERE accepted_at IS NOT NULL AND (requester_id = $1 OR addressee_id = $1)`;
 
+// The flights the viewer ($1) sees: all their own, and their friends' public ones.
+const VISIBLE_FLIGHT = `(user_id = $1 OR (visibility = 'public' AND user_id IN (${VISIBLE_PILOTS})))`;
+// The posts (flights and checkrides) the feed lists for the viewer ($1): public ones only,
+// theirs and their friends'. Their private ones stay out of the feed (they're in My flights).
+const IN_FEED = `(visibility = 'public' AND user_id IN (${VISIBLE_PILOTS}))`;
+
+// Who a checkride belongs to, as a person.
+const CHECKRIDE_PILOT = `(SELECT ${PERSON_JSON} FROM users u WHERE u.user_id = checkrides.user_id)`;
+
 // A feed item's flight: the flight's columns plus who flew it.
 const FEED_COLUMNS = `${FLIGHT_COLUMNS},
   user_id AS "pilotId",
-  (SELECT json_build_object('id', u.user_id, 'firstName', u.first_name, 'lastName', u.last_name)
+  (SELECT ${PERSON_JSON}
    FROM users u WHERE u.user_id = flights.user_id) AS pilot`;
 
-// The flight's pilot, if the viewer can see it; null if it doesn't exist or isn't theirs to see.
-async function visibleFlightOwner(flightId: string, viewerId: string): Promise<string | null> {
-  const result = await pool.query<{ user_id: string }>(
-    `SELECT user_id FROM flights WHERE flight_id = $2 AND user_id IN (${VISIBLE_PILOTS})`,
-    [viewerId, flightId],
+// A post: a flight or a checkride, each with its props and comments. Its owner and which column
+// of flight_props and flight_comments points at it, if the viewer can see it; null if it
+// doesn't exist or isn't theirs to see.
+type Post = { owner: string; column: "flight_id" | "checkride_id" };
+async function visiblePost(postId: string, viewerId: string): Promise<Post | null> {
+  const result = await pool.query<{ owner: string; col: Post["column"] }>(
+    `SELECT user_id AS owner, 'flight_id' AS col FROM flights WHERE flight_id = $2 AND ${VISIBLE_FLIGHT}
+     UNION ALL
+     SELECT user_id, 'checkride_id' FROM checkrides WHERE checkride_id = $2 AND ${VISIBLE_FLIGHT}`,
+    [viewerId, postId],
   );
-  return result.rows[0]?.user_id ?? null;
+  const row = result.rows[0];
+  return row ? { owner: row.owner, column: row.col } : null;
 }
 
 const invalid = (reply: FastifyReply, issues: unknown) => reply.code(400).send({ error: "Invalid request", issues });
@@ -138,7 +157,7 @@ export default async function socialRoutes(app: FastifyInstance) {
 
   // --- The feed ---
 
-  // Your flights and your friends', newest first, a page at a time (like GET /flights).
+  // Your public flights and your friends', newest first, a page at a time (like GET /flights).
   app.get("/feed", async (request, reply) => {
     const parsed = FlightListQuerySchema.safeParse(request.query);
     if (!parsed.success) return invalid(reply, parsed.error.issues);
@@ -153,7 +172,7 @@ export default async function socialRoutes(app: FastifyInstance) {
     const result = await pool.query(
       `SELECT ${FEED_COLUMNS}, created_at::text AS "cursorCreatedAt"
        FROM flights
-       WHERE user_id IN (${VISIBLE_PILOTS})
+       WHERE ${IN_FEED}
          AND ($2::date IS NULL
               OR (flight_date, created_at, flight_id) < ($2::date, $3::timestamptz, $4::uuid))
        ORDER BY flight_date DESC, created_at DESC, flight_id DESC
@@ -167,10 +186,24 @@ export default async function socialRoutes(app: FastifyInstance) {
     const nextCursor =
       hasMore && last ? encodeCursor({ d: last.flightDate, c: last.cursorCreatedAt, id: last.id }) : null;
 
+    // Checkrides passed (yours, and friends' public ones) that fall among this page's flights:
+    // after the last page's last flight and, unless this is the last page, not before this
+    // page's last flight. So each shows on exactly one page, in date order with the flights.
+    const checkrides = await pool.query(
+      `SELECT ${CHECKRIDE_COLUMNS}, ${CHECKRIDE_PILOT} AS pilot
+       FROM checkrides
+       WHERE ${IN_FEED}
+         AND ($2::date IS NULL OR (passed_on, created_at) < ($2::date, $3::timestamptz))
+         AND ($4::date IS NULL OR (passed_on, created_at) >= ($4::date, $5::timestamptz))
+       ORDER BY passed_on DESC, created_at DESC`,
+      [me, cursor?.d ?? null, cursor?.c ?? null, hasMore ? last?.flightDate : null, hasMore ? last?.cursorCreatedAt : null],
+    );
+
     const ids = page.map((f) => f.id);
     const [legs, social] = await Promise.all([loadLegs(ids), loadSocial(ids, me)]);
     const items = page.map(({ cursorCreatedAt: _, ...f }) => ({ ...f, ...social.get(f.id), legs: legs.get(f.id) ?? [] }));
-    return { items, nextCursor };
+    const checkrideSocial = await loadSocial(checkrides.rows.map((c) => c.id), me);
+    return { items, checkrides: checkrides.rows.map((c) => ({ ...c, ...checkrideSocial.get(c.id) })), nextCursor };
   });
 
   // One feed flight (a link to a friend's flight, say).
@@ -179,7 +212,7 @@ export default async function socialRoutes(app: FastifyInstance) {
     if (!params.success) return invalid(reply, params.error.issues);
     const me = getCurrentUserId(request);
     const result = await pool.query(
-      `SELECT ${FEED_COLUMNS} FROM flights WHERE flight_id = $2 AND user_id IN (${VISIBLE_PILOTS})`,
+      `SELECT ${FEED_COLUMNS} FROM flights WHERE flight_id = $2 AND ${VISIBLE_FLIGHT}`,
       [me, params.data.id],
     );
     const flight = result.rows[0];
@@ -195,11 +228,12 @@ export default async function socialRoutes(app: FastifyInstance) {
     const params = IdParamsSchema.safeParse(request.params);
     if (!params.success) return invalid(reply, params.error.issues);
     const me = getCurrentUserId(request);
-    if (!(await visibleFlightOwner(params.data.id, me))) return notFound(reply);
+    const post = await visiblePost(params.data.id, me);
+    if (!post) return notFound(reply);
     const result = await pool.query(
       `SELECT ${PERSON_COLUMNS}, p.created_at AS "createdAt"
        FROM flight_props p JOIN users u ON u.user_id = p.user_id
-       WHERE p.flight_id = $1
+       WHERE p.${post.column} = $1
        ORDER BY p.created_at DESC`,
       [params.data.id],
     );
@@ -211,9 +245,10 @@ export default async function socialRoutes(app: FastifyInstance) {
     const params = IdParamsSchema.safeParse(request.params);
     if (!params.success) return invalid(reply, params.error.issues);
     const me = getCurrentUserId(request);
-    if (!(await visibleFlightOwner(params.data.id, me))) return notFound(reply);
+    const post = await visiblePost(params.data.id, me);
+    if (!post) return notFound(reply);
     await pool.query(
-      `INSERT INTO flight_props (flight_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      `INSERT INTO flight_props (${post.column}, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
       [params.data.id, me],
     );
     return (await loadSocial([params.data.id], me)).get(params.data.id);
@@ -224,8 +259,9 @@ export default async function socialRoutes(app: FastifyInstance) {
     const params = IdParamsSchema.safeParse(request.params);
     if (!params.success) return invalid(reply, params.error.issues);
     const me = getCurrentUserId(request);
-    if (!(await visibleFlightOwner(params.data.id, me))) return notFound(reply);
-    await pool.query(`DELETE FROM flight_props WHERE flight_id = $1 AND user_id = $2`, [params.data.id, me]);
+    const post = await visiblePost(params.data.id, me);
+    if (!post) return notFound(reply);
+    await pool.query(`DELETE FROM flight_props WHERE ${post.column} = $1 AND user_id = $2`, [params.data.id, me]);
     return (await loadSocial([params.data.id], me)).get(params.data.id);
   });
 
@@ -236,16 +272,16 @@ export default async function socialRoutes(app: FastifyInstance) {
     const params = IdParamsSchema.safeParse(request.params);
     if (!params.success) return invalid(reply, params.error.issues);
     const me = getCurrentUserId(request);
-    const owner = await visibleFlightOwner(params.data.id, me);
-    if (!owner) return notFound(reply);
+    const post = await visiblePost(params.data.id, me);
+    if (!post) return notFound(reply);
     const result = await pool.query(
       `SELECT c.comment_id AS id, c.body, c.created_at AS "createdAt",
-              json_build_object('id', u.user_id, 'firstName', u.first_name, 'lastName', u.last_name) AS author,
+              ${PERSON_JSON} AS author,
               (c.user_id = $2 OR $3::uuid = $2) AS "canDelete"
        FROM flight_comments c JOIN users u ON u.user_id = c.user_id
-       WHERE c.flight_id = $1
+       WHERE c.${post.column} = $1
        ORDER BY c.created_at`,
-      [params.data.id, me, owner],
+      [params.data.id, me, post.owner],
     );
     return result.rows;
   });
@@ -256,14 +292,15 @@ export default async function socialRoutes(app: FastifyInstance) {
     const body = CreateCommentSchema.safeParse(request.body);
     if (!body.success) return invalid(reply, body.error.issues);
     const me = getCurrentUserId(request);
-    if (!(await visibleFlightOwner(params.data.id, me))) return notFound(reply);
+    const post = await visiblePost(params.data.id, me);
+    if (!post) return notFound(reply);
     const result = await pool.query(
       `WITH c AS (
-         INSERT INTO flight_comments (flight_id, user_id, body) VALUES ($1, $2, $3)
+         INSERT INTO flight_comments (${post.column}, user_id, body) VALUES ($1, $2, $3)
          RETURNING comment_id, body, created_at, user_id
        )
        SELECT c.comment_id AS id, c.body, c.created_at AS "createdAt",
-              json_build_object('id', u.user_id, 'firstName', u.first_name, 'lastName', u.last_name) AS author,
+              ${PERSON_JSON} AS author,
               true AS "canDelete"
        FROM c JOIN users u ON u.user_id = c.user_id`,
       [params.data.id, me, body.data.body],
@@ -271,14 +308,16 @@ export default async function socialRoutes(app: FastifyInstance) {
     return reply.code(201).send(result.rows[0]);
   });
 
-  // Your own comment, or any comment on your own flight.
+  // Your own comment, or any comment on your own flight or checkride.
   app.delete("/comments/:id", async (request, reply) => {
     const params = IdParamsSchema.safeParse(request.params);
     if (!params.success) return invalid(reply, params.error.issues);
     const result = await pool.query(
       `DELETE FROM flight_comments c
-       USING flights fl
-       WHERE c.comment_id = $1 AND fl.flight_id = c.flight_id AND (c.user_id = $2 OR fl.user_id = $2)`,
+       WHERE c.comment_id = $1
+         AND (c.user_id = $2
+              OR EXISTS (SELECT 1 FROM flights fl WHERE fl.flight_id = c.flight_id AND fl.user_id = $2)
+              OR EXISTS (SELECT 1 FROM checkrides cr WHERE cr.checkride_id = c.checkride_id AND cr.user_id = $2))`,
       [params.data.id, getCurrentUserId(request)],
     );
     if (result.rowCount === 0) return reply.code(404).send({ error: "Comment not found" });

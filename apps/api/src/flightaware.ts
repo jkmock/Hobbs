@@ -99,7 +99,21 @@ async function aeroApi<T>(endpoint: string, path: string, cost: number): Promise
   if (!key) throw new FlightAwareNotConfigured();
   await ensureBudget(cost);
 
-  const response = await fetch(`${BASE_URL}${path}`, { headers: { "x-apikey": key } });
+  // FlightAware now and then answers 503 "Internal error" (or the connection drops) and is
+  // fine a moment later, so server-side failures are tried again, twice, before giving up.
+  // Only successful requests are logged as spent.
+  const delays = [700, 2000];
+  let response: Response;
+  for (let attempt = 0; ; attempt++) {
+    const retry = delays[attempt];
+    try {
+      response = await fetch(`${BASE_URL}${path}`, { headers: { "x-apikey": key } });
+      if (response.status < 500 || retry === undefined) break;
+    } catch (err) {
+      if (retry === undefined) throw err;
+    }
+    await new Promise((resolve) => setTimeout(resolve, retry));
+  }
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     throw new Error(`FlightAware ${response.status} for ${path}: ${body.slice(0, 200)}`);

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Send, Trash2 } from 'lucide-react'
 import { Avatar } from './controls'
+import ConfirmDialog from './ConfirmDialog'
 import { useAddComment, useComments, useDeleteComment, usePropGivers } from '../hooks/useSocial'
 import { timeAgo } from '../lib/format'
 import styles from './FlightSocial.module.css'
@@ -22,7 +23,7 @@ export function PropsPanel({ flightId }: { flightId: string }) {
         <ul className={styles.people}>
           {givers.data.map((p) => (
             <li key={p.id}>
-              <Avatar firstName={p.firstName} lastName={p.lastName} size={28} />
+              <Avatar person={p} size={28} />
               <span className={styles.name}>
                 {p.firstName} {p.lastName}
               </span>
@@ -42,6 +43,12 @@ export function CommentsPanel({ flightId }: { flightId: string }) {
   const add = useAddComment(flightId)
   const remove = useDeleteComment(flightId)
   const [draft, setDraft] = useState('')
+  // The comment Delete was tapped on, asked about before it's deleted.
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const closeDelete = () => {
+    setDeleting(null)
+    remove.reset()
+  }
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -62,7 +69,7 @@ export function CommentsPanel({ flightId }: { flightId: string }) {
         <ul className={styles.comments}>
           {comments.data.map((c) => (
             <li key={c.id}>
-              <Avatar firstName={c.author.firstName} lastName={c.author.lastName} size={28} className={styles.commentAvatar} />
+              <Avatar person={c.author} size={28} className={styles.commentAvatar} />
               <div className={styles.comment}>
                 <p className={styles.byline}>
                   <span className={styles.name}>
@@ -78,7 +85,7 @@ export function CommentsPanel({ flightId }: { flightId: string }) {
                   className={`icon-btn ${styles.delete}`}
                   aria-label="Delete comment"
                   disabled={remove.isPending}
-                  onClick={() => remove.mutate(c.id)}
+                  onClick={() => setDeleting(c.id)}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -102,6 +109,20 @@ export function CommentsPanel({ flightId }: { flightId: string }) {
         </button>
       </form>
       {add.error && <p className="error-text">{add.error.message}</p>}
+
+      <ConfirmDialog
+        open={deleting !== null}
+        title="Delete this comment?"
+        confirmLabel="Delete"
+        busyLabel="Deleting…"
+        busy={remove.isPending}
+        error={remove.error?.message}
+        danger
+        onConfirm={() => deleting && remove.mutate(deleting, { onSuccess: closeDelete })}
+        onCancel={closeDelete}
+      >
+        This can’t be undone.
+      </ConfirmDialog>
     </div>
   )
 }

@@ -51,3 +51,7 @@ header.topHeader { padding-top: 44px; }
 
 /* Add friends / My Friends: clips its contents while it grows back from the Friends page's Done. */
 .morphButton { overflow: hidden; }
+
+/* A checkride's visibility, opened under its card in My flights. */
+.checkrideVisibility { display: flex; flex-direction: column; gap: 8px; font-size: 16px; color: var(--ink); }
+.checkrideVisibilityHint { font-size: 13px; color: var(--ink-2); }

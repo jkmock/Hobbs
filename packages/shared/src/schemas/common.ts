@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// For routes like /aircraft/:id, /flights/:id, /instructors/:id
+// For routes like /aircraft/:id, /flights/:id
 export const IdParamsSchema = z.object({
   id: z.uuid(),
 });

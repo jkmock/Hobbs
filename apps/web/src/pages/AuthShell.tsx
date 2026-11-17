@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import styles from './AuthShell.module.css'
 
-// Shared frame for login and signup: wordmark, the form, Google, and a footer link.
+// Shared frame for login and signup: the logo and wordmark on top, then one card holding
+// everything else (title, the form, Google, and the link to the other screen).
 export default function AuthShell({ title, children, footer }: { title: string; children: ReactNode; footer: ReactNode }) {
   return (
     <div className={`page ${styles.shell}`}>
@@ -16,17 +17,19 @@ export default function AuthShell({ title, children, footer }: { title: string; 
         <p className="muted">The logbook for student pilots</p>
       </div>
 
-      <h1 className={styles.title}>{title}</h1>
-      {children}
+      <section className={`card ${styles.card}`}>
+        <h1 className={styles.title}>{title}</h1>
+        {children}
 
-      <div className={styles.divider}>or</div>
+        <div className={styles.divider}>or</div>
 
-      {/* A plain link, not fetch(): the browser has to leave the page and go to Google. */}
-      <a href="/api/auth/google" className="btn btn--lg btn--block">
-        <GoogleMark /> Continue with Google
-      </a>
+        {/* A plain link, not fetch(): the browser has to leave the page and go to Google. */}
+        <a href="/api/auth/google" className="btn btn--lg btn--block">
+          <GoogleMark /> Continue with Google
+        </a>
 
-      <p className={styles.footer}>{footer}</p>
+        <p className={styles.footer}>{footer}</p>
+      </section>
     </div>
   )
 }

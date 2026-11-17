@@ -1,0 +1,26 @@
+/* Centered on the screen (the app's frame, or a kept tab's page, which fills it), not just the
+   space under the header, so it sits where the launch splash's propeller did. */
+.box {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none; /* the header and tab bar stay usable */
+  color: var(--ink-3);
+  /* Only shows if loading takes a moment, so a quick load doesn't flash it. */
+  animation: appear 240ms ease-out 180ms both;
+}
+
+/* The same cycle as the launch splash (index.html): two turns that wind up from a slow start
+   and slow smoothly to a stop, then a short rest. */
+.prop { animation: spin 2.8s infinite; }
+
+@keyframes spin {
+  0% { rotate: 0deg; animation-timing-function: cubic-bezier(0.45, 0, 0.25, 1); }
+  84%, 100% { rotate: 720deg; }
+}
+@keyframes appear { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .prop { animation: none; }
+}

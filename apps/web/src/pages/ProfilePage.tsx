@@ -31,7 +31,7 @@ export default function ProfilePage() {
       <div className="page">
 
         <div className={styles.identity}>
-          <Avatar firstName={user.firstName} lastName={user.lastName} size={88} className={styles.avatar} />
+          <Avatar person={user} size={88} className={styles.avatar} />
           <h2>
             {user.firstName} {user.lastName}
           </h2>

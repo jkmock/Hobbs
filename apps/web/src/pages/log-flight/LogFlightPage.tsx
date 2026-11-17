@@ -20,6 +20,7 @@ import RoutePreview from './RoutePreview'
 import TimesStep from './TimesStep'
 import LandingsStep from './LandingsStep'
 import styles from './LogFlight.module.css'
+import PageLoading from '../../components/PageLoading'
 
 // /flights/new and /flights/:id/edit. Editing waits for the flight to load,
 // then starts the wizard with it, so the wizard never has to "sync" from props.
@@ -28,7 +29,7 @@ export default function LogFlightPage() {
   const flight = useFlight(id)
 
   if (!id) return <FlightWizard key="new" initial={emptyDraft()} />
-  if (flight.isPending) return <p className="page muted">Loading flight…</p>
+  if (flight.isPending) return <PageLoading />
   if (flight.isError) return <p className="page error-text">{flight.error.message}</p>
   return <FlightWizard key={id} id={id} initial={draftFromFlight(flight.data)} />
 }
@@ -114,7 +115,7 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
   //   (which also closes a phone's keyboard); it never changes the step or saves the flight.
   // - Backspace in an empty field goes back to the previous field, cursor at the end, so
   //   holding or repeating it keeps deleting back through the fields.
-  // Fields that handle Enter themselves (a form, the notes box, the new-instructor field)
+  // Fields that handle Enter themselves (a form, the notes box)
   // are left alone.
   function keyboardNav(e: KeyboardEvent<HTMLDivElement>) {
     if (e.defaultPrevented || e.nativeEvent.isComposing) return

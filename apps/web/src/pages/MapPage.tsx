@@ -7,13 +7,14 @@ import { Segmented } from '../components/controls'
 import { useAllFlights } from '../hooks/useFlights'
 import { useMyAircraft } from '../hooks/useLookups'
 import { todayIso } from '../lib/format'
-import { MAP_TAB_FIT_PADDING, MAP_TAB_SLOT } from '../lib/mapTab'
+import { MAP_TAB_FIT_PADDING, MAP_TAB_PATTERN_MIN_ZOOM, MAP_TAB_SLOT } from '../lib/mapTab'
 import { CHART_COLORS } from '../lib/mapStyle'
 import { useStatusBarColor } from '../lib/statusBar'
 import { useTabActive } from '../lib/tabActive'
 import type { Aircraft, Flight } from '../lib/types'
 import listStyles from '../components/FlightList.module.css'
 import styles from './MapPage.module.css'
+import PageLoading from '../components/PageLoading'
 
 
 
@@ -94,7 +95,7 @@ export default function MapPage() {
         <PageHeader title="Map" className={listStyles.topHeader} />
         <div className="page">
           {isPending ? (
-            <p className="muted">Loading…</p>
+            <PageLoading />
           ) : (
             <div className="empty">
               <p>Your routes will be drawn here.</p>
@@ -117,6 +118,7 @@ export default function MapPage() {
           interactive
           className={styles.map}
           fitPadding={MAP_TAB_FIT_PADDING}
+          patternMinZoom={MAP_TAB_PATTERN_MIN_ZOOM}
           keepViewWhenEmpty
           keepAs={MAP_TAB_SLOT}
         />

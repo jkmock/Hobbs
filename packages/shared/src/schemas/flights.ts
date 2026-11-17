@@ -19,8 +19,11 @@ const LegSchema = z.object({
   stops: z.array(z.object({ airport: AirportIdent, touchAndGoes: z.int().min(1).max(99) })).max(20).optional(),
 });
 
+export const FlightVisibility = z.enum(["public", "private"]);
+export type FlightVisibility = z.infer<typeof FlightVisibility>;
+
 const FlightBase = z.object({
-  instructorId: z.uuid().optional(),
+  instructorName: z.string().trim().min(1).max(100).optional(), // free text, e.g. "Jane Smith"
   flightDate: z.iso.date(),
   legs: z.array(LegSchema).min(1).max(20),
   aircraftId: z.uuid(),
@@ -40,7 +43,10 @@ const FlightBase = z.object({
   nightLandingsFs: z.int().min(0).max(99).optional(),
   nightLandingsTg: z.int().min(0).max(99).optional(),
   instrumentApproaches: z.int().min(0).max(99).optional(),
-  notes: z.string().trim().min(1).max(500).optional()
+  notes: z.string().trim().min(1).max(500).optional(),
+  // Public flights show in friends' feeds; private ones only to the pilot. Public if left out
+  // when logging; left as it was if left out when editing.
+  visibility: FlightVisibility.optional(),
 });
 
 // POST /flights

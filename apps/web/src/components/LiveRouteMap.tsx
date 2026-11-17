@@ -3,6 +3,7 @@ import { LazyFlightMap as FlightMap } from './LazyFlightMap'
 import type { LoneAirport, RouteLeg } from './FlightMap'
 import { CHART_COLORS } from '../lib/mapStyle'
 import { hasReadyMap, keepReady, routeKey } from '../lib/mapPool'
+import { useSplashHoldInView } from '../lib/splash'
 import styles from './LiveRouteMap.module.css'
 
 
@@ -35,6 +36,8 @@ export default function LiveRouteMap({ legs, airports, height = 150, keepAs }: P
   // moves in already drawn, so the card never shows without it.
   const [onScreen, setOnScreen] = useState(() => hasReadyMap(key))
   const [loaded, setLoaded] = useState(false)
+  // On screen at launch: the splash waits for it to draw.
+  useSplashHoldInView(box, !loaded)
 
   useEffect(() => {
     const el = box.current

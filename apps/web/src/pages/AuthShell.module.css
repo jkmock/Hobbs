@@ -1,8 +1,16 @@
 .shell {
   display: flex;
   flex-direction: column;
-  gap: 16px;
   padding-top: 56px;
+}
+
+/* Everything but the brand, in one card like the rest of the app's. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 16px;
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.18), 0 1px 3px rgb(0 0 0 / 0.12);
 }
 
 .brand {
@@ -62,7 +70,8 @@
 }
 
 .footer {
-  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
   text-align: center;
   font-size: 14px;
   color: var(--ink-2);

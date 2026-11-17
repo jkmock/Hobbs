@@ -1,7 +1,7 @@
 import { Link, useMatch } from 'react-router'
 import { ArrowLeft, UserPlus, Users } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
-import FlightCard, { FlightReactions } from '../components/FlightCard'
+import FlightCard, { CheckrideCard, FlightReactions } from '../components/FlightCard'
 import { CommentsPanel } from '../components/FlightSocial'
 import { useCardExpand } from '../hooks/useCardExpand'
 import { useFeedFlight, useFeedPages, useFriends, useToggleProps } from '../hooks/useSocial'
@@ -10,6 +10,9 @@ import FlightDetails from './FlightDetails'
 import { keptSlot } from '../hooks/useKeptMaps'
 import { useMorphWidth } from '../lib/morphWidth'
 import listStyles from '../components/FlightList.module.css'
+import { useSplashHold } from '../lib/splash'
+import PageLoading from '../components/PageLoading'
+import { mergeByDate } from '../lib/posts'
 
 // The feed: your flights and your friends', newest first. A feed flight's page (/feed/:id) is
 // the same screen, the same way as My flights (see useCardExpand): the card you tap opens into
@@ -20,6 +23,8 @@ export default function HomePage() {
   const { shownId, leaving, page, cardRef, detailsDelay, swapClass, otherClass, panel, togglePanel } = expand
 
   const { data, isPending, isError, error, hasNextPage, fetchNextPage, isFetchingNextPage } = useFeedPages()
+  // The launch splash stays up until the first page is in.
+  useSplashHold(isPending)
   const feed = data?.pages.flatMap((p) => p.items) ?? []
   const { data: friends } = useFriends()
   const hasFriends = (friends?.friends.length ?? 0) > 0
@@ -31,6 +36,9 @@ export default function HomePage() {
   const showingFlight = shownId !== null
   // A flight that was opened by link and isn't in the loaded feed still gets its card.
   const items = shown && !feed.some((f) => f.id === shown.id) ? [shown, ...feed] : feed
+  // Checkrides passed (yours and friends' public ones) go in among the flights by date.
+  const checkrides = data?.pages.flatMap((p) => p.checkrides ?? []) ?? []
+  const entries = mergeByDate(items, checkrides)
 
   // Give Props / Gave Props gives (or takes back) props right away, with no count shown here;
   // Comments opens under the card's footer, in the feed or on the flight's page.
@@ -69,9 +77,9 @@ export default function HomePage() {
       <div className="page" ref={page}>
         {!showingFlight && (
           <>
-            {isPending && <p className="muted">Loading the feed…</p>}
+            {isPending && <PageLoading />}
             {isError && <p className="error-text">{error.message}</p>}
-            {!isPending && !isError && feed.length === 0 && (
+            {!isPending && !isError && feed.length === 0 && checkrides.length === 0 && (
               <div className="empty">
                 <p>
                   {hasFriends
@@ -87,13 +95,37 @@ export default function HomePage() {
         )}
 
         <div className={`stack ${listStyles.list}`}>
-          {items.map((flight, i) => {
+          {entries.map((entry) => {
+            if (entry.kind === 'checkride') {
+              const c = entry.checkride
+              return (
+                <CheckrideCard
+                  key={`checkride-${c.id}`}
+                  checkride={c}
+                  pilot={c.pilot}
+                  className={otherClass(`checkride-${c.id}`)}
+                  footer={
+                    <FlightReactions
+                      giveProps
+                      propped={c.proppedByMe}
+                      commentsCount={c.commentsCount}
+                      commentsOpen={expand.isOpen(c.id, 'comments')}
+                      onProps={() => toggleProps.mutate({ flightId: c.id, give: !c.proppedByMe })}
+                      onComments={() => togglePanel(c.id, 'comments')}
+                    />
+                  }
+                  below={expand.hasPanel(c.id) && panel?.id === c.id && panelBelow}
+                  belowOpen={expand.panelOpenFor(c.id)}
+                />
+              )
+            }
+            const flight = entry.flight
             const isShown = flight.id === shownId
             return (
               <FlightCard
                 key={flight.id}
                 // The top maps stay ready (hooks/useKeptMaps), so this tab never shows them loading.
-                keepMapAs={keptSlot('feed', i)}
+                keepMapAs={keptSlot('feed', items.indexOf(flight))}
                 flight={flight}
                 pilot={flight.pilot}
                 cardRef={cardRef(flight.id)}
@@ -135,3 +167,4 @@ export default function HomePage() {
     </>
   )
 }
+

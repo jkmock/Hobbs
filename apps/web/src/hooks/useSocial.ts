@@ -7,7 +7,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import type { Comment, FeedFlight, Flight, Friends, Page, PersonStatus, PersonWithStatus, PropGiver, Social } from '../lib/types'
+import type { Checkride, Comment, FeedCheckride, FeedFlight, Flight, Friends, Page, PersonStatus, PersonWithStatus, PropGiver, Social } from '../lib/types'
 
 // Friends, the feed, props and comments.
 //
@@ -52,7 +52,8 @@ function feedUrl(cursor: string | null) {
 export function useFeedPages() {
   return useInfiniteQuery({
     queryKey: ['feed', 'pages'],
-    queryFn: ({ pageParam }) => api<Page<FeedFlight>>(feedUrl(pageParam)),
+    // Each page's checkrides are the ones dated among its flights (the API works that out).
+    queryFn: ({ pageParam }) => api<Page<FeedFlight> & { checkrides: FeedCheckride[] }>(feedUrl(pageParam)),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   })
@@ -136,8 +137,16 @@ function patchFlight(queryClient: QueryClient, flightId: string, update: <F exte
     if (!data || typeof data !== 'object') return data
     if (Array.isArray(data)) return data.map((f: Flight) => (f.id === flightId ? update(f) : f))
     if ('pages' in data) {
-      const pages = data as InfiniteData<Page<Flight>>
-      return { ...pages, pages: pages.pages.map((p) => ({ ...p, items: p.items.map((f) => (f.id === flightId ? update(f) : f)) })) }
+      // Pages of flights, with the checkrides among them (posts too, with their own counts).
+      const pages = data as InfiniteData<Page<Flight> & { checkrides?: Checkride[] }>
+      return {
+        ...pages,
+        pages: pages.pages.map((p) => ({
+          ...p,
+          items: p.items.map((f) => (f.id === flightId ? update(f) : f)),
+          checkrides: p.checkrides?.map((c) => (c.id === flightId ? update(c as unknown as Flight) as unknown as Checkride : c)),
+        })),
+      }
     }
     const flight = data as Flight
     return flight.id === flightId ? update(flight) : data

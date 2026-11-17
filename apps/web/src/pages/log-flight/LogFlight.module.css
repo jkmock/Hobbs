@@ -167,6 +167,8 @@
 .stepLabelText { font-size: 18px; font-weight: 550; color: var(--ink); }
 /* A card's own heading (Landings, Optional), in the same text as the progress bar labels. */
 .cardTitle { font-size: 18px; font-weight: 550; color: var(--ink); }
+/* Under the Public/Private switch: what the choice means. */
+.visibilityNote { font-size: 14px; }
 /* The Date label above My Aircraft looks like the card headings (and the progress bar labels). */
 .dateLabel { font-size: 18px; font-weight: 550; color: var(--ink); }
 /* The Flight Date button: the same size as My Aircraft's Add aircraft (.headButton in

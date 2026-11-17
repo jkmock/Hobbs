@@ -63,6 +63,9 @@ type Props = {
   // When the route empties (a filter that matches no flights), stay where the map is instead
   // of going back to the whole US. The Map page's; the log-flight preview goes back.
   keepViewWhenEmpty?: boolean
+  // Only show the dashed rings of local flights (no track, no other airport) zoomed in at least
+  // this far, so a zoomed-out map isn't covered in them. The Map page's.
+  patternMinZoom?: number
 }
 
 export type Padding = { top: number; bottom: number; left: number; right: number }
@@ -79,6 +82,7 @@ export default function FlightMap({
   holdView = false,
   fitPadding,
   keepViewWhenEmpty = false,
+  patternMinZoom,
 }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const liveRef = useRef<LiveMap | null>(null)
@@ -140,6 +144,19 @@ export default function FlightMap({
       }
     }
   }, [interactive, pooled, keepAs])
+
+  // Local flights' rings: hidden while zoomed out past patternMinZoom (they fade, in CSS).
+  useEffect(() => {
+    const live = liveRef.current
+    if (!live || patternMinZoom == null) return
+    const update = () => live.el.toggleAttribute('data-patterns-hidden', live.map.getZoom() < patternMinZoom)
+    update()
+    live.map.on('zoom', update)
+    return () => {
+      live.map.off('zoom', update)
+      live.el.removeAttribute('data-patterns-hidden')
+    }
+  }, [interactive, pooled, keepAs, patternMinZoom])
 
   // The route, airports and view: updated in place when the legs change.
   useEffect(() => {
@@ -214,9 +231,11 @@ export default function FlightMap({
   )
 }
 
-// Airport labels sit to the right of their dots, so leave more room on the right.
+// Airport labels sit to the right of their dots, so leave more room on the right. Full screen
+// (interactive, with no padding of its own: the viewer opened from a mini map), the route runs
+// close to the sides of the screen, so it fills the width.
 const fitOptions = (interactive: boolean, padding?: Padding) => ({
-  padding: padding && interactive ? padding : interactive ? { top: 80, bottom: 80, left: 80, right: 110 } : { top: 30, bottom: 22, left: 24, right: 56 },
+  padding: padding && interactive ? padding : interactive ? { top: 80, bottom: 80, left: 48, right: 66 } : { top: 30, bottom: 22, left: 24, right: 56 },
   maxZoom: 10,
 })
 

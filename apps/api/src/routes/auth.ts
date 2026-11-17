@@ -5,6 +5,7 @@ import { SignupSchema, LoginSchema }from "@hobbs/shared";
 import { hashPassword, verifyPassword } from "../passwords.js";
 import { createSession, deleteSession, validateSession } from "../sessions.js"
 import { SESSION_COOKIE, cookieOptions } from "../auth.js";
+import { ME_COLUMNS } from "../users.js";
 
 export default async function authRoutes(app: FastifyInstance) {
   app.post("/auth/signup", async (request, reply) => {
@@ -23,7 +24,7 @@ export default async function authRoutes(app: FastifyInstance) {
       const result = await pool.query(
         `INSERT INTO users (first_name, last_name, email, password_hash)
          VALUES ($1, $2, $3, $4)
-         RETURNING user_id AS id, email, first_name AS "firstName", last_name AS "lastName"`,
+         RETURNING ${ME_COLUMNS}`,
         [body.firstName, body.lastName, body.email, passwordHash],
       );
       user = result.rows[0];
@@ -52,7 +53,7 @@ export default async function authRoutes(app: FastifyInstance) {
     const { email, password } = parsed.data;
 
     const result = await pool.query(
-      `SELECT user_id AS id, email, first_name AS "firstName", last_name AS "lastName",
+      `SELECT ${ME_COLUMNS},
               password_hash AS "passwordHash"
       FROM users
       WHERE email = $1`,
@@ -93,7 +94,7 @@ export default async function authRoutes(app: FastifyInstance) {
     }
 
     const result = await pool.query(
-      `SELECT user_id AS id, email, first_name AS "firstName", last_name AS "lastName"
+      `SELECT ${ME_COLUMNS}
       FROM users
       WHERE user_id = $1`,
       [request.userId],

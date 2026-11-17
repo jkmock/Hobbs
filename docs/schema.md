@@ -5,14 +5,14 @@ Design notes for the Hobbs schema (Phase 1). The ERD is in `docs/schema-erd.png`
 ## Scope
 
 - A flight is one entry in **one student's** logbook. Instructors keep their own logbooks; Hobbs only records who the instructor was.
-- **CFI accounts are out of scope.** Instructors don't log in or sign off flights. Each student keeps their own list of instructors to pick from when logging a flight.
+- **CFI accounts are out of scope.** Instructors don't log in or sign off flights. A flight just records the instructor's name, typed in by the student.
 
 ## Conventions
 
 - Table and column names are lowercase `snake_case`; table names are plural.
 - Primary keys are `uuid DEFAULT gen_random_uuid()` (v4, not guessable in URLs). Postgres 17 has no built-in UUIDv7; revisit if we move to Postgres 18 (`uuidv7()`).
 - Columns are `NOT NULL` unless marked **nullable** below.
-- Every table has `created_at timestamptz NOT NULL DEFAULT now()`. Tables users edit (`users`, `instructors`, `aircraft`, `flights`) also have `updated_at`, kept current by one shared `set_updated_at()` trigger.
+- Every table has `created_at timestamptz NOT NULL DEFAULT now()`. Tables users edit (`users`, `aircraft`, `flights`) also have `updated_at`, kept current by one shared `set_updated_at()` trigger.
 - Flight time is stored as `numeric(4,1)` hours: exact, and matches how pilots log tenths. Never `real` or `double precision`.
 - Time and count columns default to `0`, not `NULL`. In a logbook, "none" means zero, and `SUM()` works without `COALESCE`.
 - Identifiers people type in different cases (`tail_number`, `airport_ident`) are stored **uppercase** as `text` with `CHECK (col = upper(col))`. The API converts input to uppercase. Then there's one form for display and for exact matches against FAA and ADS-B data. Email stays `citext`, so users see it as they typed it.
@@ -28,20 +28,6 @@ Design notes for the Hobbs schema (Phase 1). The ERD is in `docs/schema-erd.png`
 | last_name | text | |
 | email | citext | Unique |
 | password_hash | text | Never the plain password |
-
-### instructors
-A student's own list of instructors they've flown with.
-
-| Column | Type | Notes |
-|---|---|---|
-| instructor_id | uuid | PK |
-| student_id | uuid | FK → users, `ON DELETE CASCADE` |
-| first_name | text | |
-| last_name | text | |
-
-- Unique on `(student_id, first_name, last_name)`. This also serves as the index for `student_id`.
-- The database doesn't check that a flight's instructor belongs to the same student. The API enforces this instead. (A composite FK could enforce it in the database; deferred because the case is rare.)
-- No CFI certificate number for now; easy to add later as a nullable column.
 
 ### aircraft
 Shared: one row per real airplane (e.g. N12345), used by every student who flies it.
@@ -79,7 +65,7 @@ Whether an airport has a tower may come from OurAirports' `airport-frequencies.c
 |---|---|---|
 | flight_id | uuid | PK |
 | user_id | uuid | FK → users, `ON DELETE CASCADE` (account deletion removes the logbook) |
-| instructor_id | uuid | **Nullable** (null when there's no instructor). FK → instructors, `ON DELETE NO ACTION` |
+| instructor_name | text | **Nullable** (null when there's no instructor). Free text, 1–100 characters |
 | aircraft_id | uuid | FK → aircraft, `ON DELETE NO ACTION` |
 | flight_date | date | The flight's local date, as written in the logbook |
 | departure_time | timestamptz | **Nullable** |
@@ -96,12 +82,12 @@ Whether an airport has a tower may come from OurAirports' `airport-frequencies.c
 - Landing and approach counts are `>= 0`.
 - `arrival_time > departure_time` when both are set.
 
-**Indexes:** `(user_id, flight_date DESC)` for "my flights, newest first" (also covers lookups by `user_id`), `aircraft_id`, and `instructor_id`. Postgres doesn't index foreign keys automatically.
+**Indexes:** `(user_id, flight_date DESC)` for "my flights, newest first" (also covers lookups by `user_id`), and `aircraft_id`. Postgres doesn't index foreign keys automatically.
 
 **Notes**
 - Cross-country time is stored as the pilot logged it. The app checks it against the 14 CFR 61.1 definition rather than calculating it.
 - Takeoffs aren't tracked separately yet (night currency counts takeoffs too).
-- `NO ACTION` rather than `RESTRICT`: an aircraft or instructor still referenced by flights can't be deleted, and the API should explain that to the user. `NO ACTION` waits until the end of the statement to check, so deleting a user (which cascades to both their flights and their instructors) still works. `RESTRICT` checks immediately and could block it, depending on which cascade runs first.
+- `NO ACTION` rather than `RESTRICT`: an aircraft still referenced by flights can't be deleted, and the API should explain that to the user. `NO ACTION` waits until the end of the statement to check, so deleting a user (which cascades to their flights) still works. `RESTRICT` checks immediately and could block it, depending on which cascade runs first.
 
 ### flight_legs
 One row per takeoff-to-landing segment. A local flight is one leg with the same origin and destination.

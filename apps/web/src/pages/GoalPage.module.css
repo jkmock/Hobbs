@@ -19,8 +19,42 @@
   padding-top: 12px;
 }
 
-.footnote {
-  margin-top: 20px;
-  font-size: 12px;
-  color: var(--ink-3);
+
+/* The editor's cards: a goal picker or a column of number rows. */
+.editCard { gap: 8px; }
+.hint { font-size: 13px; color: var(--ink-2); }
+
+/* Checkride, at the bottom: the plan's name on the left, the button on the right. */
+.checkride { gap: 12px; }
+.checkrideRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* Not passed yet: the plan's name as large as Log Flight's labels, beside Log checkride. */
+.planName { font-size: 16px; color: var(--ink); }
+/* Passed: the date where a requirement's numbers go, in the same size, as a button. */
+.passedRow { padding-top: 4px; }
+.passedButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 15px;
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
 }
+/* The button the size of Log Flight's Add aircraft. */
+:global(.btn).checkrideButton { min-width: 122px; height: 35px; padding-inline: 10px; font-size: 14px; }
+
+/* Log checkride: the card grown in place. A big ribbon, then the congratulations, centered. */
+.checkrideDetails { display: flex; flex-direction: column; gap: 16px; padding-top: 4px; }
+.ribbon { align-self: center; color: var(--accent); margin-top: 4px; }
+.congrats {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--ink);
+}
+.visibility { display: flex; flex-direction: column; gap: 8px; font-size: 16px; color: var(--ink); }
+.checkrideActions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

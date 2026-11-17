@@ -8,6 +8,7 @@ import { getCurrentUserId, requireAuth } from "../auth.js";
 import { cachedFlightTrack } from "../flightaware.js";
 import { DISPLAY_CODE, resolveAirports } from "../airports.js";
 import type { PoolClient } from "pg";
+import { CHECKRIDE_COLUMNS } from "./goal.js";
 
 // A cursor is the sort key of the last flight on a page: date, exact created_at, and id.
 // It's encoded as an opaque base64url string so clients treat it as a token, not data.
@@ -35,7 +36,7 @@ export function decodeCursor(value: string): Cursor | null {
 export const FLIGHT_COLUMNS = `
   flight_id                 AS id,
   aircraft_id               AS "aircraftId",
-  instructor_id             AS "instructorId",
+  instructor_name           AS "instructorName",
   flight_date               AS "flightDate",
   departure_time            AS "departureTime",
   arrival_time              AS "arrivalTime",
@@ -54,9 +55,8 @@ export const FLIGHT_COLUMNS = `
   night_landings_tg         AS "nightLandingsTg",
   instrument_approaches     AS "instrumentApproaches",
   notes,
+  visibility,
   (SELECT tail_number FROM aircraft a WHERE a.aircraft_id = flights.aircraft_id) AS "tailNumber",
-  (SELECT first_name || ' ' || last_name FROM instructors i
-    WHERE i.instructor_id = flights.instructor_id)                              AS "instructorName",
   created_at                AS "createdAt",
   updated_at                AS "updatedAt"
 `;
@@ -131,12 +131,13 @@ export async function loadLegs(flightIds: string[]): Promise<Map<string, Leg[]>>
 // Props and comments on these flights, as seen by `viewerId`: how many of each, and whether
 // the viewer gave props. One query for any number of flights.
 export type Social = { propsCount: number; commentsCount: number; proppedByMe: boolean };
+// Props and comments for posts: flights, or checkrides (ids are never shared between them).
 export async function loadSocial(flightIds: string[], viewerId: string): Promise<Map<string, Social>> {
   const result = await pool.query(
     `SELECT f.id,
-            (SELECT count(*) FROM flight_props p WHERE p.flight_id = f.id)::int    AS "propsCount",
-            (SELECT count(*) FROM flight_comments c WHERE c.flight_id = f.id)::int AS "commentsCount",
-            EXISTS (SELECT 1 FROM flight_props p WHERE p.flight_id = f.id AND p.user_id = $2) AS "proppedByMe"
+            (SELECT count(*) FROM flight_props p WHERE f.id IN (p.flight_id, p.checkride_id))::int    AS "propsCount",
+            (SELECT count(*) FROM flight_comments c WHERE f.id IN (c.flight_id, c.checkride_id))::int AS "commentsCount",
+            EXISTS (SELECT 1 FROM flight_props p WHERE f.id IN (p.flight_id, p.checkride_id) AND p.user_id = $2) AS "proppedByMe"
      FROM unnest($1::uuid[]) AS f(id)`,
     [flightIds, viewerId],
   );
@@ -252,11 +253,23 @@ export default async function flightRoutes(app: FastifyInstance) {
     const nextCursor =
       hasMore && last ? encodeCursor({ d: last.flightDate, c: last.cursorCreatedAt, id: last.id }) : null;
 
+    // Your checkrides that fall among this page's flights (as the feed does it: after the last
+    // page's last flight and, unless this is the last page, not before this page's last).
+    const checkrides = await pool.query(
+      `SELECT ${CHECKRIDE_COLUMNS} FROM checkrides
+       WHERE user_id = $1
+         AND ($2::date IS NULL OR (passed_on, created_at) < ($2::date, $3::timestamptz))
+         AND ($4::date IS NULL OR (passed_on, created_at) >= ($4::date, $5::timestamptz))
+       ORDER BY passed_on DESC, created_at DESC`,
+      [getCurrentUserId(request), cursor?.d ?? null, cursor?.c ?? null, hasMore ? last?.flightDate : null, hasMore ? last?.cursorCreatedAt : null],
+    );
+
     const ids = page.map((f) => f.id);
-    const [legs, social] = await Promise.all([loadLegs(ids), loadSocial(ids, getCurrentUserId(request))]);
+    const checkrideIds = checkrides.rows.map((c) => c.id);
+    const [legs, social] = await Promise.all([loadLegs(ids), loadSocial([...ids, ...checkrideIds], getCurrentUserId(request))]);
     const items = page.map(({ cursorCreatedAt: _, ...f }) => ({ ...f, ...social.get(f.id), legs: legs.get(f.id) ?? [] }));
 
-    return { items, nextCursor };
+    return { items, checkrides: checkrides.rows.map((c) => ({ ...c, ...social.get(c.id) })), nextCursor };
   });
 
   app.post("/flights", async (request, reply) => {
@@ -277,37 +290,26 @@ export default async function flightRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: `Unknown airport(s): ${unknown.join(", ")}` });
     }
 
-    // 3. The instructor (if any) must be in this user's list
-    if (body.instructorId) {
-      const instructor = await pool.query(
-        `SELECT 1 FROM instructors WHERE instructor_id = $1 AND student_id = $2`,
-        [body.instructorId, userId],
-      );
-      if (instructor.rowCount === 0) {
-        return reply.code(400).send({ error: "Instructor not found" });
-      }
-    }
-
-    // 4. FlightAware tracks, fetched before the transaction so it isn't held open on the network
+    // 3. FlightAware tracks, fetched before the transaction so it isn't held open on the network
     const tracks = await tracksFor(body.legs, request.log);
 
-    // 5. Insert the flight and its legs in one transaction
+    // 4. Insert the flight and its legs in one transaction
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
       const flightResult = await client.query(
         `INSERT INTO flights (
-          user_id, instructor_id, aircraft_id, flight_date, departure_time, arrival_time,
+          user_id, instructor_name, aircraft_id, flight_date, departure_time, arrival_time,
           total_time, dual_received_time, solo_time, pic_time, cross_country_time, night_time,
           actual_instrument_time, simulated_instrument_time,
           day_landings_fs, day_landings_tg, night_landings_fs, night_landings_tg,
-          instrument_approaches, notes, sic_time)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+          instrument_approaches, notes, sic_time, visibility)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
         RETURNING ${FLIGHT_COLUMNS}`,
         [
           userId,
-          body.instructorId ?? null,
+          body.instructorName ?? null,
           body.aircraftId,
           body.flightDate,
           body.departureTime ?? null,
@@ -327,6 +329,7 @@ export default async function flightRoutes(app: FastifyInstance) {
           body.instrumentApproaches ?? 0,
           body.notes ?? null,
           body.sicTime ?? 0,
+          body.visibility ?? "public",
         ],
       );
       const flight = flightResult.rows[0];
@@ -377,28 +380,17 @@ export default async function flightRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: `Unknown airport(s): ${unknown.join(", ")}` });
     }
 
-    // 3. The instructor (if any) must be in this user's list
-    if (body.instructorId) {
-      const instructor = await pool.query(
-        `SELECT 1 FROM instructors WHERE instructor_id = $1 AND student_id = $2`,
-        [body.instructorId, userId],
-      );
-      if (instructor.rowCount === 0) {
-        return reply.code(400).send({ error: "Instructor not found" });
-      }
-    }
-
-    // 4. FlightAware tracks, fetched before the transaction so it isn't held open on the network
+    // 3. FlightAware tracks, fetched before the transaction so it isn't held open on the network
     const tracks = await tracksFor(body.legs, request.log);
 
-    // 5. Insert the flight and its legs in one transaction
+    // 4. Insert the flight and its legs in one transaction
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
 
       const flightResult = await client.query(
         `UPDATE flights
-        SET instructor_id             = $3,
+        SET instructor_name           = $3,
             aircraft_id               = $4,
             flight_date               = $5,
             departure_time            = $6,
@@ -417,13 +409,14 @@ export default async function flightRoutes(app: FastifyInstance) {
             night_landings_tg         = $19,
             instrument_approaches     = $20,
             notes                     = $21,
-            sic_time                  = $22
+            sic_time                  = $22,
+            visibility                = COALESCE($23, visibility)
         WHERE flight_id = $1 AND user_id = $2
         RETURNING ${FLIGHT_COLUMNS}`,
         [
           params.id,
           userId,
-          body.instructorId ?? null,
+          body.instructorName ?? null,
           body.aircraftId,
           body.flightDate,
           body.departureTime ?? null,
@@ -443,6 +436,7 @@ export default async function flightRoutes(app: FastifyInstance) {
           body.instrumentApproaches ?? 0,
           body.notes ?? null,
           body.sicTime ?? 0,
+          body.visibility ?? null,
         ],
       );
 

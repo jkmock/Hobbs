@@ -134,16 +134,34 @@ CREATE TABLE public.airports (
 
 
 --
+-- Name: checkrides; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.checkrides (
+    checkride_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    goal text NOT NULL,
+    passed_on date NOT NULL,
+    visibility text DEFAULT 'public'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT checkrides_goal_check CHECK ((goal = ANY (ARRAY['sport'::text, 'private'::text, 'instrument'::text, 'commercial'::text, 'multi'::text]))),
+    CONSTRAINT checkrides_visibility_check CHECK ((visibility = ANY (ARRAY['public'::text, 'private'::text])))
+);
+
+
+--
 -- Name: flight_comments; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.flight_comments (
     comment_id uuid DEFAULT gen_random_uuid() NOT NULL,
-    flight_id uuid NOT NULL,
+    flight_id uuid,
     user_id uuid NOT NULL,
     body text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT flight_comments_body_check CHECK (((char_length(body) >= 1) AND (char_length(body) <= 1000)))
+    checkride_id uuid,
+    CONSTRAINT flight_comments_body_check CHECK (((char_length(body) >= 1) AND (char_length(body) <= 1000))),
+    CONSTRAINT flight_comments_one_post CHECK ((num_nonnulls(flight_id, checkride_id) = 1))
 );
 
 
@@ -186,9 +204,11 @@ CREATE TABLE public.flight_legs (
 --
 
 CREATE TABLE public.flight_props (
-    flight_id uuid NOT NULL,
+    flight_id uuid,
     user_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    checkride_id uuid,
+    CONSTRAINT flight_props_one_post CHECK ((num_nonnulls(flight_id, checkride_id) = 1))
 );
 
 
@@ -224,7 +244,6 @@ CREATE TABLE public.flightaware_usage (
 CREATE TABLE public.flights (
     flight_id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
-    instructor_id uuid,
     flight_date date NOT NULL,
     aircraft_id uuid NOT NULL,
     total_time numeric(4,1) NOT NULL,
@@ -246,6 +265,8 @@ CREATE TABLE public.flights (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     sic_time numeric(4,1) DEFAULT 0 NOT NULL,
+    instructor_name text,
+    visibility text DEFAULT 'public'::text NOT NULL,
     CONSTRAINT arrival_after_departure CHECK ((arrival_time > departure_time)),
     CONSTRAINT dual_and_solo_time_sum CHECK (((dual_received_time + solo_time) <= total_time)),
     CONSTRAINT flights_check CHECK (((dual_received_time >= (0)::numeric) AND (dual_received_time <= total_time))),
@@ -258,10 +279,12 @@ CREATE TABLE public.flights (
     CONSTRAINT flights_check7 CHECK (((sic_time >= (0)::numeric) AND (sic_time <= total_time))),
     CONSTRAINT flights_day_landings_fs_check CHECK ((day_landings_fs >= 0)),
     CONSTRAINT flights_day_landings_tg_check CHECK ((day_landings_tg >= 0)),
+    CONSTRAINT flights_instructor_name_check CHECK (((char_length(instructor_name) >= 1) AND (char_length(instructor_name) <= 100))),
     CONSTRAINT flights_instrument_approaches_check CHECK ((instrument_approaches >= 0)),
     CONSTRAINT flights_night_landings_fs_check CHECK ((night_landings_fs >= 0)),
     CONSTRAINT flights_night_landings_tg_check CHECK ((night_landings_tg >= 0)),
-    CONSTRAINT flights_total_time_check CHECK ((total_time > (0)::numeric))
+    CONSTRAINT flights_total_time_check CHECK ((total_time > (0)::numeric)),
+    CONSTRAINT flights_visibility_check CHECK ((visibility = ANY (ARRAY['public'::text, 'private'::text])))
 );
 
 
@@ -275,20 +298,6 @@ CREATE TABLE public.friendships (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     accepted_at timestamp with time zone,
     CONSTRAINT friendships_check CHECK ((requester_id <> addressee_id))
-);
-
-
---
--- Name: instructors; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.instructors (
-    instructor_id uuid DEFAULT gen_random_uuid() NOT NULL,
-    student_id uuid NOT NULL,
-    first_name text NOT NULL,
-    last_name text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -350,7 +359,17 @@ CREATE TABLE public.users (
     email public.citext NOT NULL,
     password_hash text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    avatar bytea,
+    avatar_type text,
+    avatar_updated_at timestamp with time zone,
+    goal text DEFAULT 'private'::text NOT NULL,
+    goal_adjustments jsonb DEFAULT '{}'::jsonb NOT NULL,
+    CONSTRAINT users_avatar_check CHECK ((octet_length(avatar) <= 300000)),
+    CONSTRAINT users_avatar_complete CHECK (((avatar IS NULL) = (avatar_type IS NULL))),
+    CONSTRAINT users_avatar_type_check CHECK ((avatar_type = ANY (ARRAY['image/jpeg'::text, 'image/png'::text, 'image/webp'::text]))),
+    CONSTRAINT users_goal_adjustments_check CHECK ((jsonb_typeof(goal_adjustments) = 'object'::text)),
+    CONSTRAINT users_goal_check CHECK ((goal = ANY (ARRAY['sport'::text, 'private'::text, 'instrument'::text, 'commercial'::text, 'multi'::text])))
 );
 
 
@@ -384,6 +403,22 @@ ALTER TABLE ONLY public.airports
 
 ALTER TABLE ONLY public.airports
     ADD CONSTRAINT airports_pkey PRIMARY KEY (airport_id);
+
+
+--
+-- Name: checkrides checkrides_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.checkrides
+    ADD CONSTRAINT checkrides_pkey PRIMARY KEY (checkride_id);
+
+
+--
+-- Name: checkrides checkrides_user_id_goal_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.checkrides
+    ADD CONSTRAINT checkrides_user_id_goal_key UNIQUE (user_id, goal);
 
 
 --
@@ -427,14 +462,6 @@ ALTER TABLE ONLY public.flight_legs
 
 
 --
--- Name: flight_props flight_props_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.flight_props
-    ADD CONSTRAINT flight_props_pkey PRIMARY KEY (flight_id, user_id);
-
-
---
 -- Name: flightaware_tracks flightaware_tracks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -472,22 +499,6 @@ ALTER TABLE ONLY public.friendships
 
 ALTER TABLE ONLY public.user_identities
     ADD CONSTRAINT identity_unique UNIQUE (provider, provider_user_id);
-
-
---
--- Name: instructors instructors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.instructors
-    ADD CONSTRAINT instructors_pkey PRIMARY KEY (instructor_id);
-
-
---
--- Name: instructors instructors_student_id_first_name_last_name_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.instructors
-    ADD CONSTRAINT instructors_student_id_first_name_last_name_key UNIQUE (student_id, first_name, last_name);
 
 
 --
@@ -561,6 +572,20 @@ CREATE INDEX airports_location_idx ON public.airports USING gist (airport_locati
 
 
 --
+-- Name: checkrides_feed_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX checkrides_feed_idx ON public.checkrides USING btree (user_id, passed_on DESC, created_at DESC);
+
+
+--
+-- Name: flight_comments_checkride_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX flight_comments_checkride_idx ON public.flight_comments USING btree (checkride_id, created_at) WHERE (checkride_id IS NOT NULL);
+
+
+--
 -- Name: flight_comments_flight_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -582,6 +607,20 @@ CREATE INDEX flight_legs_origin_idx ON public.flight_legs USING btree (origin_id
 
 
 --
+-- Name: flight_props_checkride_user_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX flight_props_checkride_user_key ON public.flight_props USING btree (checkride_id, user_id) WHERE (checkride_id IS NOT NULL);
+
+
+--
+-- Name: flight_props_flight_user_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX flight_props_flight_user_key ON public.flight_props USING btree (flight_id, user_id) WHERE (flight_id IS NOT NULL);
+
+
+--
 -- Name: flightaware_usage_created_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -593,13 +632,6 @@ CREATE INDEX flightaware_usage_created_idx ON public.flightaware_usage USING btr
 --
 
 CREATE INDEX flights_aircraft_idx ON public.flights USING btree (aircraft_id);
-
-
---
--- Name: flights_instructor_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX flights_instructor_idx ON public.flights USING btree (instructor_id);
 
 
 --
@@ -659,17 +691,26 @@ CREATE TRIGGER flights_set_updated_at BEFORE UPDATE ON public.flights FOR EACH R
 
 
 --
--- Name: instructors instructors_set_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER instructors_set_updated_at BEFORE UPDATE ON public.instructors FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-
-
---
 -- Name: users users_set_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER users_set_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+
+--
+-- Name: checkrides checkrides_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.checkrides
+    ADD CONSTRAINT checkrides_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
+-- Name: flight_comments flight_comments_checkride_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flight_comments
+    ADD CONSTRAINT flight_comments_checkride_id_fkey FOREIGN KEY (checkride_id) REFERENCES public.checkrides(checkride_id) ON DELETE CASCADE;
 
 
 --
@@ -729,6 +770,14 @@ ALTER TABLE ONLY public.flight_legs
 
 
 --
+-- Name: flight_props flight_props_checkride_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.flight_props
+    ADD CONSTRAINT flight_props_checkride_id_fkey FOREIGN KEY (checkride_id) REFERENCES public.checkrides(checkride_id) ON DELETE CASCADE;
+
+
+--
 -- Name: flight_props flight_props_flight_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -753,14 +802,6 @@ ALTER TABLE ONLY public.flights
 
 
 --
--- Name: flights flights_instructor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.flights
-    ADD CONSTRAINT flights_instructor_id_fkey FOREIGN KEY (instructor_id) REFERENCES public.instructors(instructor_id);
-
-
---
 -- Name: flights flights_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -782,14 +823,6 @@ ALTER TABLE ONLY public.friendships
 
 ALTER TABLE ONLY public.friendships
     ADD CONSTRAINT friendships_requester_id_fkey FOREIGN KEY (requester_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
-
-
---
--- Name: instructors instructors_student_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.instructors
-    ADD CONSTRAINT instructors_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
 
 
 --
@@ -848,4 +881,9 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261112130000'),
     ('20261112140000'),
     ('20261112150000'),
-    ('20261113100000');
+    ('20261113100000'),
+    ('20261116120000'),
+    ('20261116130000'),
+    ('20261116140000'),
+    ('20261116150000'),
+    ('20261116160000');

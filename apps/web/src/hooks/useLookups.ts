@@ -1,7 +1,7 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { CreateAircraft, UpdateAircraft } from '@hobbs/shared'
 import { api } from '../lib/api'
-import type { Aircraft, Airport, DetectedTouchAndGoes, Instructor, RecentFlight } from '../lib/types'
+import type { Aircraft, Airport, DetectedTouchAndGoes, RecentFlight } from '../lib/types'
 
 const TAIL_SEARCH = /^[A-Z0-9-]{1,10}$/
 
@@ -54,30 +54,6 @@ export function useCreateAircraft() {
   return useMutation({
     mutationFn: (body: CreateAircraft) => api<Aircraft>('/aircraft', { method: 'POST', body }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['aircraft'] }),
-  })
-}
-
-export function useInstructors() {
-  return useQuery({
-    queryKey: ['instructors'],
-    queryFn: () => api<Instructor[]>('/instructors'),
-  })
-}
-
-export function useCreateInstructor() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (body: { firstName: string; lastName: string }) =>
-      api<Instructor>('/instructors', { method: 'POST', body }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['instructors'] }),
-  })
-}
-
-export function useDeleteInstructor() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) => api<void>(`/instructors/${id}`, { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['instructors'] }),
   })
 }
 

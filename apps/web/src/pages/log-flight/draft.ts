@@ -55,7 +55,7 @@ export type Draft = {
   // The date before the first FlightAware flight was picked (picking sets the date), to put
   // back when the last one is unpicked. null: none picked, or the date was since set by hand.
   dateBeforeImport: string | null
-  instructorId: string // '' = no instructor
+  instructorName: string // '' = no instructor
   legs: DraftLeg[]
   times: Record<TimeField, string>
   totalFromLegs: boolean // total time follows the sum of the leg times until the pilot changes it
@@ -71,7 +71,10 @@ export type Draft = {
   // changes them.
   fullStopsFromLegs: boolean
   notes: string
+  visibility: Visibility
 }
+
+export type Visibility = 'public' | 'private'
 
 export type StepProps = {
   draft: Draft
@@ -85,7 +88,7 @@ export const STEPS = [
   { title: 'Aircraft', fields: ['aircraftId', 'flightDate'] },
   { title: 'Route', fields: ['legs'] },
   { title: 'Times', fields: TIME_FIELDS.map(([key]) => key) },
-  { title: 'Landings', fields: [...LANDING_FIELDS.map(([key]) => key), 'instructorId', 'notes'] },
+  { title: 'Landings', fields: [...LANDING_FIELDS.map(([key]) => key), 'instructorName', 'notes'] },
 ] as const
 
 const mapFields = <K extends string>(fields: readonly (readonly [K, string])[], value: (key: K) => string) =>
@@ -186,7 +189,7 @@ export function emptyDraft(): Draft {
     tailNumber: '',
     flightDate: todayIso(),
     dateBeforeImport: null,
-    instructorId: '',
+    instructorName: '',
     legs: [emptyLeg()],
     times: mapFields(TIME_FIELDS, () => '0.0'),
     totalFromLegs: true,
@@ -195,6 +198,7 @@ export function emptyDraft(): Draft {
     landings: mapFields(LANDING_FIELDS, () => '0'),
     fullStopsFromLegs: true,
     notes: '',
+    visibility: 'public',
   }
 }
 
@@ -205,7 +209,7 @@ export function draftFromFlight(f: Flight): Draft {
     tailNumber: f.tailNumber,
     flightDate: f.flightDate,
     dateBeforeImport: null,
-    instructorId: f.instructorId ?? '',
+    instructorName: f.instructorName ?? '',
     legs: f.legs.map(({ origin, destination, faFlightId, time, stops }) => ({
       origin,
       destination,
@@ -222,6 +226,7 @@ export function draftFromFlight(f: Flight): Draft {
     // Keep following the legs only if the saved count still matches them.
     fullStopsFromLegs: f.dayLandingsFs === f.legs.length,
     notes: f.notes ?? '',
+    visibility: f.visibility,
   }
 }
 
@@ -231,7 +236,7 @@ export function toInput(d: Draft): unknown {
   return {
     aircraftId: d.aircraftId,
     flightDate: d.flightDate,
-    instructorId: d.instructorId || undefined,
+    instructorName: d.instructorName.trim() || undefined,
     legs: d.legs.map((leg) => ({
       origin: leg.origin,
       destination: leg.destination,
@@ -245,6 +250,7 @@ export function toInput(d: Draft): unknown {
     ...Object.fromEntries(TIME_FIELDS.map(([key]) => [key, number(d.times[key])])),
     ...Object.fromEntries(LANDING_FIELDS.map(([key]) => [key, number(d.landings[key])])),
     notes: d.notes.trim() || undefined,
+    visibility: d.visibility ?? 'public', // ?? 'public': a draft saved before visibility existed
   }
 }
 

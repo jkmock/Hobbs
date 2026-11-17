@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type PointerEvent, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router'
-import { Gauge, GraduationCap, MessageCircle, Moon, Plane, Route, User, type LucideIcon } from 'lucide-react'
-import type { Flight } from '../lib/types'
+import { Award, Gauge, GraduationCap, MessageCircle, Moon, Plane, Route, User, type LucideIcon } from 'lucide-react'
+import type { Checkride, Flight, Person } from '../lib/types'
 import { formatDate, formatHours } from '../lib/format'
 import { pressIn, release } from '../lib/press'
 import { spin, squeeze, unsqueeze } from '../lib/propSpin'
@@ -11,6 +11,7 @@ import PropellerIcon from './PropellerIcon'
 import { touchAndGoAirports } from '../lib/geo'
 import { Avatar } from './controls'
 import styles from './FlightCard.module.css'
+import { goalById } from '../lib/progress'
 
 // The chart library is large, so it loads only when someone opens a chart.
 const ChartViewer = lazy(() => import('./ChartViewer'))
@@ -36,7 +37,7 @@ export type FlightSummary = Pick<
 
 type Props = {
   flight: FlightSummary
-  pilot?: { firstName: string; lastName: string } // whose flight, in the social feed
+  pilot?: Person // whose flight, in the social feed
   to?: string // makes the card a link
   footer?: ReactNode
   below?: ReactNode // inside the card, under the footer (e.g. the comments)
@@ -60,6 +61,7 @@ export default function FlightCard({ flight, pilot, to, footer, below, belowOpen
     <article
       ref={cardRef}
       className={`card ${styles.card} ${navy ? 'card--navy' : ''} ${className}`}
+      data-own-press // a link, or presses itself (pressable); the app-wide card press leaves it be
       {...(pressable && !to ? pressHandlers : {})}
     >
       {/* The link covers the whole card; the map button and footer sit above it. */}
@@ -67,7 +69,7 @@ export default function FlightCard({ flight, pilot, to, footer, below, belowOpen
       <div className={styles.body}>
       {pilot && (
         <p className={styles.pilot}>
-          <Avatar firstName={pilot.firstName} lastName={pilot.lastName} size={32} className={styles.pilotAvatar} />
+          <Avatar person={pilot} size={32} className={styles.pilotAvatar} />
           {pilot.firstName} {pilot.lastName}
         </p>
       )}
@@ -292,7 +294,7 @@ export function FlightReactions({ propsCount = 0, commentsCount = 0, propped = f
   // holds its width, so turning bold doesn't nudge the icon over.
   const commentsLabel = (
     <>
-      <span className="mono">{commentsCount}</span> Comments
+      <span className="mono">{commentsCount}</span> {commentsCount === 1 ? 'Comment' : 'Comments'}
     </>
   )
   const comments = (
@@ -387,4 +389,59 @@ function tagsFor(f: FlightSummary): { icon: LucideIcon; label: string }[] {
   else if (f.nightTime > 0) tags.push({ icon: Moon, label: 'Night' })
   if (f.actualInstrumentTime + f.simulatedInstrumentTime > 0) tags.push({ icon: Gauge, label: 'Instrument' })
   return tags
+}
+
+// A checkride passed, as a post (the feed, My flights): who passed it (in the feed), a big
+// ribbon and what it earned, then Props and Comments like a flight's. With onSelect the
+// card is a button (My flights: tapping it opens its visibility under it).
+export function CheckrideCard({
+  checkride,
+  pilot,
+  footer,
+  below,
+  belowOpen = true,
+  onSelect,
+  selectLabel,
+  className = '',
+}: {
+  checkride: Pick<Checkride, 'goal'>
+  pilot?: Person
+  footer?: ReactNode
+  below?: ReactNode
+  belowOpen?: boolean
+  onSelect?: () => void
+  selectLabel?: string
+  className?: string
+}) {
+  const goal = goalById(checkride.goal)
+  const pressHandlers = usePress()
+  return (
+    <article className={`card ${styles.card} ${className}`} {...(onSelect ? pressHandlers : {})}>
+      {onSelect && <button type="button" className={styles.cardButton} onClick={onSelect} aria-label={selectLabel} data-no-press />}
+      <div className={styles.body}>
+        {pilot && (
+          <p className={styles.pilot}>
+            <Avatar person={pilot} size={32} className={styles.pilotAvatar} />
+            {pilot.firstName} {pilot.lastName}
+          </p>
+        )}
+        <div className={styles.checkride}>
+          <Award size={64} strokeWidth={1.5} aria-hidden />
+          <p>Passed my checkride and earned my {goal.title.replace(/ Rating$/, '')} rating!</p>
+        </div>
+      </div>
+      {footer && (
+        <div className={styles.footer} onPointerDown={stopPress}>
+          {footer}
+        </div>
+      )}
+      {below && (
+        <div className={styles.belowSlide} data-open={belowOpen} inert={!belowOpen} onPointerDown={stopPress}>
+          <div className={styles.belowClip}>
+            <div className={styles.below}>{below}</div>
+          </div>
+        </div>
+      )}
+    </article>
+  )
 }

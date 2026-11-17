@@ -6,12 +6,13 @@ import cookie from "@fastify/cookie";
 
 import aircraftRoutes from "./routes/aircraft.js";
 import airportRoutes from "./routes/airports.js";
-import instructorRoutes from "./routes/instructors.js";
 import flightRoutes from "./routes/flights.js";
 import flightAwareRoutes from "./routes/flightaware.js";
 import authRoutes from "./routes/auth.js";
 import googleRoutes from "./routes/google.js";
 import socialRoutes from "./routes/social.js";
+import profileRoutes from "./routes/profile.js";
+import goalRoutes from "./routes/goal.js";
 import { registerAuth } from "./auth.js";
 
 // Three ways this runs:
@@ -75,12 +76,13 @@ app.register(
   async (api) => {
     api.register(airportRoutes);
     api.register(aircraftRoutes);
-    api.register(instructorRoutes);
     api.register(flightRoutes);
     api.register(flightAwareRoutes);
     api.register(authRoutes);
     api.register(googleRoutes);
     api.register(socialRoutes);
+    api.register(profileRoutes);
+    api.register(goalRoutes);
   },
   { prefix: servesWeb ? "/api" : "" },
 );

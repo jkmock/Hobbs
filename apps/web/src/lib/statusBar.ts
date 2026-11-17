@@ -44,6 +44,16 @@ export function installStatusBar() {
   phone.addEventListener('change', update)
 }
 
+// Colors the bar `color` until the returned function is called (for things outside React).
+export function claimStatusBarColor(color: string) {
+  claims.push(color)
+  if (meta) update()
+  return () => {
+    claims.splice(claims.lastIndexOf(color), 1)
+    update()
+  }
+}
+
 // Colors the bar `color` while this component is showing and `color` is set.
 export function useStatusBarColor(color: string | null) {
   useEffect(() => {

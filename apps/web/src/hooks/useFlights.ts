@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query'
 import type { CreateFlight } from '@hobbs/shared'
 import { api } from '../lib/api'
-import type { Flight, Page } from '../lib/types'
+import type { Checkride, Flight, Page } from '../lib/types'
 
 // Every flight query key starts with 'flights', so invalidating ['flights'] refreshes them all.
 
@@ -13,7 +13,8 @@ function pageUrl(limit: number, cursor: string | null) {
 export function useFlightPages() {
   return useInfiniteQuery({
     queryKey: ['flights', 'pages'],
-    queryFn: ({ pageParam }) => api<Page<Flight>>(pageUrl(20, pageParam)),
+    // Each page's checkrides are yours dated among its flights (the API works that out).
+    queryFn: ({ pageParam }) => api<Page<Flight> & { checkrides: Checkride[] }>(pageUrl(20, pageParam)),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   })
@@ -68,6 +69,8 @@ export function useSaveFlight(id: string | undefined) {
       // list down.
       const list = queryClient.invalidateQueries({ queryKey: ['flights', 'pages'], refetchType: 'all' })
       queryClient.invalidateQueries({ queryKey: ['flights'] })
+      // The feed too: a new or edited flight joins it, or leaves it when made private.
+      queryClient.invalidateQueries({ queryKey: ['feed'] })
       await list
     },
   })

@@ -31,13 +31,15 @@ export function Stepper({
 }: StepperProps) {
   const decimals = step < 1 ? 1 : 0
   const zero = (0).toFixed(decimals)
-  // Focusing the box empties it so you can type straight away (Enter from the field before
-  // lands here too). Until something is typed the real value is untouched, and leaving
-  // without typing keeps it. Erasing what you typed leaves it empty while you're in it;
-  // leaving it empty makes it 0. An empty value you're not in (a new leg's time) shows as 0.
+  // Focusing a box that's 0 (or empty) empties it so you can type straight away (Enter from
+  // the field before lands here too); a box with another value keeps it, to edit or erase.
+  // Until something is typed the real value is untouched, and leaving without typing keeps it.
+  // Erasing what you typed leaves it empty while you're in it; leaving it empty makes it 0.
+  // An empty value you're not in (a new leg's time) shows as 0.
   const [blank, setBlank] = useState(false)
   const [focused, setFocused] = useState(false)
   const shown = blank ? '' : !focused && value.trim() === '' ? zero : value
+  const justFocused = useRef(false) // the box was just focused with its value kept (see onFocus)
   const bump = (direction: 1 | -1) => {
     const current = Number(value) || 0
     const next = Math.min(max, Math.max(0, current + direction * step))
@@ -71,12 +73,23 @@ export function Stepper({
             setBlank(false)
             onChange(e.target.value)
           }}
-          onFocus={() => {
+          onFocus={(e) => {
             setFocused(true)
-            setBlank(true)
+            if (!Number(value)) return setBlank(true) // 0, 0.0, or empty
+            // Kept: the cursor goes to the end, so Backspace erases from the last digit. Now
+            // (focus from the keyboard), and again when the tap that focused the box ends,
+            // since a tap puts the cursor where it landed.
+            cursorToEnd(e.currentTarget)
+            justFocused.current = true
+          }}
+          onClick={(e) => {
+            if (!justFocused.current) return // later taps place the cursor as usual
+            justFocused.current = false
+            cursorToEnd(e.currentTarget)
           }}
           onBlur={() => {
             setFocused(false)
+            justFocused.current = false
             if (blank) return setBlank(false) // nothing typed: keep the value
             if (value.trim() === '') return onChange(zero) // typed and then erased: 0
             // Tidy what was typed into the usual form: 0 -> 0.0, 1 -> 1.0, 1. -> 1.0.
@@ -93,6 +106,8 @@ export function Stepper({
     </div>
   )
 }
+
+const cursorToEnd = (input: HTMLInputElement) => input.setSelectionRange(input.value.length, input.value.length)
 
 type SegmentedProps<T extends string> = {
   label: string
@@ -120,12 +135,28 @@ export function Segmented<T extends string>({ label, options, value, onChange, o
   )
 }
 
-export function Avatar({ firstName, lastName, size = 40, className = '' }: { firstName: string; lastName: string; size?: number; className?: string }) {
+// Someone's profile picture, or their initials when they have none (or it fails to load).
+type AvatarPerson = { id: string; firstName: string; lastName: string; avatarVersion?: string | null }
+
+export function Avatar({ person, size = 40, className = '' }: { person: AvatarPerson; size?: number; className?: string }) {
+  const url = avatarUrl(person)
+  const [failed, setFailed] = useState<string | null>(null) // the URL that failed, if any
+  const showImage = url !== null && failed !== url
   return (
     <span className={`${styles.avatar} ${className}`} style={{ width: size, height: size, fontSize: size * 0.38 }} aria-hidden>
-      {initials(firstName, lastName)}
+      {showImage ? (
+        <img src={url} alt="" className={styles.avatarImage} draggable={false} onError={() => setFailed(url)} />
+      ) : (
+        initials(person.firstName, person.lastName)
+      )}
     </span>
   )
+}
+
+// A profile picture's URL. The version changes with each new picture, so the browser can keep
+// each one for good (the API caches it that way) and fetches a new one as soon as it changes.
+export function avatarUrl(person: AvatarPerson): string | null {
+  return person.avatarVersion ? `/api/users/${person.id}/avatar?v=${person.avatarVersion}` : null
 }
 
 // A date in the same row layout as Stepper: label on the left, the date on the right. Tapping
@@ -269,7 +300,7 @@ function useDismiss(open: boolean, ref: RefObject<HTMLElement | null>, close: ()
 
 // A dropdown styled like the rest of the app, in place of the browser's own <select>. The list
 // opens under the button, or above it when there isn't room below. An optional action (like
-// "Add instructor") sits at the bottom of the list, set apart from the options.
+// "Add new") sits at the bottom of the list, set apart from the options.
 type SelectOption = { value: string; label: string; leading?: ReactNode }
 type SelectProps = {
   label: ReactNode
@@ -279,12 +310,17 @@ type SelectProps = {
   action?: { label: string; onSelect: () => void }
 }
 
+// How long a picked option's press-and-pop shows before the list goes.
+const PICK_HOLD_MS = 140
+
 export function Select({ label, value, options, onChange, action }: SelectProps) {
   const [open, setOpen] = useState(false)
   const [above, setAbove] = useState(false)
   const [active, setActive] = useState(0) // highlighted row, for the keyboard
   const ref = useRef<HTMLDivElement>(null)
   const id = useId()
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(leaveTimer.current), [])
   const close = () => setOpen(false)
   useDismiss(open, ref, close)
 
@@ -296,12 +332,16 @@ export function Select({ label, value, options, onChange, action }: SelectProps)
     const box = ref.current?.getBoundingClientRect()
     setAbove(!!box && window.innerHeight - box.bottom < 300 && box.top > window.innerHeight - box.bottom)
     setActive(Math.max(0, options.findIndex((o) => o.value === value)))
+    clearTimeout(leaveTimer.current)
     setOpen(true)
   }
+  // The picked option turns selected at once and presses and pops (lib/buttonPress); the list
+  // goes once the pop has shown.
   const pick = (row: number) => {
     if (row === options.length) action?.onSelect()
     else onChange(options[row]!.value)
-    close()
+    clearTimeout(leaveTimer.current)
+    leaveTimer.current = setTimeout(close, PICK_HOLD_MS)
   }
   const onKeyDown = (e: KeyboardEvent) => {
     if (!open) {

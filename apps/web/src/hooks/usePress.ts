@@ -32,6 +32,8 @@ export function usePress() {
   }
 
   return {
+    // Tells the app-wide card press (lib/cardPress) this element presses itself.
+    'data-own-press': true,
     onPointerDown(e: PointerEvent<HTMLElement>) {
       if (e.button !== 0) return
       clearTimeout(touch.current?.timer)

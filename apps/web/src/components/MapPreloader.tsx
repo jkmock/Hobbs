@@ -4,7 +4,7 @@ import { LazyFlightMap as FlightMap } from './LazyFlightMap'
 import { useKeptRoutes, type KeptTab } from '../hooks/useKeptMaps'
 import { useAllFlights } from '../hooks/useFlights'
 import { hasKeptMap, hasParkedMap, keepReady, routeKey } from '../lib/mapPool'
-import { MAP_TAB_FIT_PADDING, MAP_TAB_SLOT } from '../lib/mapTab'
+import { MAP_TAB_FIT_PADDING, MAP_TAB_PATTERN_MIN_ZOOM, MAP_TAB_SLOT } from '../lib/mapTab'
 import styles from './LiveRouteMap.module.css'
 
 const START_AFTER_MS = 1200 // let the page being looked at load its own maps first
@@ -93,6 +93,7 @@ export default function MapPreloader({ open }: { open: string[] }) {
             interactive
             className={styles.fill}
             fitPadding={MAP_TAB_FIT_PADDING}
+            patternMinZoom={MAP_TAB_PATTERN_MIN_ZOOM}
             keepViewWhenEmpty
             keepAs={MAP_TAB_SLOT}
             onLoad={() => finish(nextKey)}

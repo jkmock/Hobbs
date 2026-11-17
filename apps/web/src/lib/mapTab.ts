@@ -2,6 +2,9 @@
 
 // Room around the routes when the map frames them, clear of the panels floating over it.
 // Routes are framed clear of the title card (top) and the floating tab bar (bottom).
+// Local flights' dashed rings show only zoomed in this far (about a city's width across).
+export const MAP_TAB_PATTERN_MIN_ZOOM = 8
+
 export const MAP_TAB_FIT_PADDING = { top: 166, bottom: 140, left: 40, right: 72 }
 
 // The slot the map is kept alive in between visits (lib/mapPool).

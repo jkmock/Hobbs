@@ -9,13 +9,19 @@ import '@fontsource/azeret-mono/500.css'
 import './index.css'
 import { router } from './router'
 import { installButtonPress } from './lib/buttonPress'
+import { installCardPress } from './lib/cardPress'
 import { installNoZoom } from './lib/noZoom'
 import { installStatusBar } from './lib/statusBar'
+import { installSplash } from './lib/splash'
 
 // Every button presses in on touch and springs back out on release.
 installButtonPress()
+// And every card (except the ones that press themselves, like flight cards).
+installCardPress()
 // No pinch or keyboard zoom: the app stays at its own size, like a native one.
 installNoZoom()
+// The navy launch splash stays until the first screen is ready (first, so the status bar starts navy).
+installSplash()
 // The status bar's color follows the theme, live (and turns the map's color on map screens).
 installStatusBar()
 

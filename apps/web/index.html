@@ -16,8 +16,83 @@
         if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme
       } catch {}
     </script>
+    <meta name="theme-color" content="#0f1f40" />
+    <!-- The launch splash (src/lib/splash.ts takes it away once the first screen is ready).
+         Styled here, not in index.css, so it shows before any script or stylesheet loads. -->
+    <style>
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: grid;
+        place-items: center;
+        background: #0f1f40;
+        color: #fff;
+        transition: opacity 520ms cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 520ms;
+      }
+      html:has(#splash:not(.splash--leaving)), body:has(#splash:not(.splash--leaving)) { background: #0f1f40; }
+      #splash svg {
+        width: 72px;
+        height: 72px;
+        transform-origin: 50% 55.3%; /* the hub */
+        animation: splash-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both, splash-spin 2.8s infinite;
+        transition: scale 520ms cubic-bezier(0.4, 0, 0.2, 1), opacity 360ms ease-out;
+      }
+      #splash.splash--leaving { opacity: 0; visibility: hidden; pointer-events: none; }
+      #splash.splash--leaving svg { scale: 0.82; opacity: 0; }
+      @keyframes splash-in { from { opacity: 0; scale: 0.88; } }
+      /* Like giving Props (src/lib/propSpin.ts), only slower: two turns that wind up from a
+         slow start and slow down smoothly to a stop (no swing back), then a short rest before
+         the next. 720deg looks the same as 0deg, so each cycle runs straight into the next. */
+      @keyframes splash-spin {
+        0% { rotate: 0deg; animation-timing-function: cubic-bezier(0.45, 0, 0.25, 1); }
+        84%, 100% { rotate: 720deg; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash, #splash svg { transition: none; animation: none; }
+      }
+
+      /* Portrait only on phones. Safari won't let a website lock the screen's orientation, so a
+         phone turned sideways gets this cover instead, asking to turn it back upright. Phones
+         only (a touch screen this short when sideways); tablets and computers are left alone. */
+      #rotate-notice { display: none; }
+      @media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+        #rotate-notice {
+          position: fixed;
+          inset: 0;
+          z-index: 2000;
+          display: grid;
+          place-content: center;
+          justify-items: center;
+          gap: 14px;
+          background: #0f1f40;
+          color: #fff;
+          font-family: 'Archivo Variable', system-ui, sans-serif;
+          font-size: 17px;
+          font-weight: 550;
+          text-align: center;
+        }
+        #rotate-notice svg { width: 44px; height: 44px; }
+        #rotate-notice p { margin: 0; }
+        html, body { overflow: hidden; background: #0f1f40; }
+      }
+    </style>
   </head>
   <body>
+    <div id="splash" aria-hidden="true">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(12 13.27) scale(1.08)" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M3.0 0A3.0 3.0 0 1 0 -3.0 0A3.0 3.0 0 1 0 3.0 0ZM-1.450 -2.626L-1.450 -9.400A1.45 1.45 0 0 1 1.450 -9.400L1.450 -2.626M2.999 0.057L8.866 3.444A1.45 1.45 0 0 1 7.416 5.956L1.549 2.569M-1.549 2.569L-7.416 5.956A1.45 1.45 0 0 1 -8.866 3.444L-2.999 0.057" />
+        </g>
+      </svg>
+    </div>
+    <div id="rotate-notice" role="alert">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="6" y="2" width="12" height="20" rx="2.5" />
+        <path d="M11 18h2" />
+      </svg>
+      <p>Turn your phone upright to use Hobbs</p>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

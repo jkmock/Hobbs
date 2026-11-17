@@ -70,7 +70,7 @@ export default function FriendsPage() {
 
   const row = (p: PersonWithStatus) => (
     <li key={p.id}>
-      <Avatar firstName={p.firstName} lastName={p.lastName} />
+      <Avatar person={p} />
       <div className={styles.name}>
         <span>
           {p.firstName} {p.lastName}

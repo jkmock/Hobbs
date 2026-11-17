@@ -14,7 +14,7 @@ const GLIDE_MS = 340
 const GLIDE_EASING = 'cubic-bezier(0.25, 0.1, 0.15, 1)' // gets going quickly, settles gently
 const DETAILS_AFTER = 0.4 // the details start this far into the pop
 
-export type PanelKind = 'props' | 'comments'
+export type PanelKind = 'props' | 'comments' | 'visibility' // visibility: a checkride's, in My flights
 
 // A list of flight cards that is also each flight's page (My flights, and the social feed):
 // the flight's page is the list showing just that flight's card, with its details under it,

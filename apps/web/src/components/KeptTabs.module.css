@@ -13,4 +13,10 @@
 .hidden {
   visibility: hidden;
   pointer-events: none;
+  /* iOS Safari still hit-tests a hidden page's scrolling layer, so a hidden page stacked
+     above the one showing (later in the DOM, or over a Goal/Profile page) could take its
+     scroll gestures and scrolling would stop working. Hidden pages go under everything,
+     and their scroller stops being one (overflow: hidden keeps its scroll position). */
+  z-index: -1;
 }
+.hidden :global(.page) { overflow: hidden; }

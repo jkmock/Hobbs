@@ -47,4 +47,8 @@
   border-radius: 50%;
   border: 2px dashed #ffffff;
   pointer-events: none;
+  transition: opacity 200ms ease;
 }
+/* Zoomed out too far on a map that asks for it (FlightMap's patternMinZoom). */
+/* !important: MapLibre sets each marker's opacity inline. */
+:global([data-patterns-hidden]) .pattern { opacity: 0 !important; }

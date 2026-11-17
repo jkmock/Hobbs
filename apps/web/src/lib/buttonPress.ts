@@ -8,7 +8,8 @@
 // transform (one centered with translateY(-50%), say) instead of replacing it. Each press and
 // release starts from wherever the button is drawn now, so quick taps never jump.
 
-const BUTTONS = 'button, .btn, .icon-btn, [role="button"], summary'
+// Options in a list (Select's dropdown) press too.
+const BUTTONS = 'button, .btn, .icon-btn, [role="button"], [role="option"], summary'
 const ID = 'button-press'
 
 // How far it goes in: about 6px across, so small buttons visibly press and wide ones don't

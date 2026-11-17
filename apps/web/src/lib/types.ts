@@ -1,3 +1,5 @@
+import type { GoalId } from '@hobbs/shared'
+
 // Shapes of the JSON the API sends back. Request bodies use the Zod types
 // from @hobbs/shared instead (e.g. CreateFlight).
 
@@ -6,6 +8,7 @@ export type User = {
   email: string
   firstName: string
   lastName: string
+  avatarVersion: string | null // null: no profile picture (see avatarUrl)
 }
 
 export type Point = { lat: number; lon: number }
@@ -45,7 +48,6 @@ export type Flight = {
   id: string
   aircraftId: string
   tailNumber: string
-  instructorId: string | null
   instructorName: string | null
   flightDate: string // YYYY-MM-DD
   departureTime: string | null
@@ -65,6 +67,7 @@ export type Flight = {
   nightLandingsTg: number
   instrumentApproaches: number
   notes: string | null
+  visibility: 'public' | 'private' // private: only the pilot sees it, not their friends
   legs: Leg[]
   createdAt: string
   updatedAt: string
@@ -78,12 +81,17 @@ export type Flight = {
 
 // How you and someone are connected: friends, you asked them, they asked you, or neither.
 export type PersonStatus = 'friend' | 'requested' | 'incoming' | 'none'
-export type Person = { id: string; firstName: string; lastName: string }
+export type Person = { id: string; firstName: string; lastName: string; avatarVersion?: string | null }
 export type PersonWithStatus = Person & { status: PersonStatus }
 export type Friends = { friends: PersonWithStatus[]; incoming: PersonWithStatus[]; outgoing: PersonWithStatus[] }
 
 // A flight in the feed: yours or a friend's, with who flew it.
 export type FeedFlight = Flight & { pilotId: string; pilot: Person }
+
+// A checkride passed: yours (Goal tab) or, in the feed, a friend's public one.
+// Lists include its props and comments counts, as for flights.
+export type Checkride = { id: string; goal: GoalId; passedOn: string; visibility: 'public' | 'private'; createdAt: string } & Partial<Social>
+export type FeedCheckride = Checkride & { pilot: Person }
 
 export type Social = { propsCount: number; commentsCount: number; proppedByMe: boolean }
 export type PropGiver = Person & { createdAt: string }
@@ -101,11 +109,6 @@ export type Aircraft = {
   isHighPerf: boolean
 }
 
-export type Instructor = {
-  id: string
-  firstName: string
-  lastName: string
-}
 
 export type Airport = {
   ident: string

@@ -52,3 +52,51 @@ export function useLogout() {
     },
   })
 }
+
+// Your name or picture changed: show it everywhere at once. The cached user is replaced, and
+// lists that show you beside your flights and comments are fetched again.
+function useProfileSaved() {
+  const queryClient = useQueryClient()
+  return (user: User) => {
+    queryClient.setQueryData(ME_KEY, user)
+    for (const key of ['feed', 'friends', 'people', 'social']) queryClient.invalidateQueries({ queryKey: [key] })
+  }
+}
+
+export function useUpdateName() {
+  const saved = useProfileSaved()
+  return useMutation({
+    mutationFn: (body: { firstName: string; lastName: string }) => api<User>('/profile', { method: 'PATCH', body }),
+    onSuccess: saved,
+  })
+}
+
+// `image` is a data URL, already shrunk (lib/avatarImage).
+export function useSetAvatar() {
+  const saved = useProfileSaved()
+  return useMutation({
+    mutationFn: (image: string) => api<User>('/profile/avatar', { method: 'PUT', body: { image } }),
+    onSuccess: saved,
+  })
+}
+
+export function useRemoveAvatar() {
+  const saved = useProfileSaved()
+  return useMutation({
+    mutationFn: () => api<User>('/profile/avatar', { method: 'DELETE' }),
+    onSuccess: saved,
+  })
+}
+
+// Deletes the account and everything in it (flights, friends, props, comments), then forgets
+// every cached query, as logging out does.
+export function useDeleteAccount() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => api<void>('/auth/me', { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.clear()
+      queryClient.setQueryData(ME_KEY, null)
+    },
+  })
+}
