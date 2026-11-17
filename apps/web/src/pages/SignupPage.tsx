@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
-import { SignupSchema } from '@hobbs/shared'
+import { OBJECTIONABLE_MESSAGE, SignupSchema } from '@hobbs/shared'
 import { useMe, useSignup } from '../hooks/useAuth'
 import AuthShell from './AuthShell'
 
@@ -23,7 +23,10 @@ export default function SignupPage() {
       const found: Record<string, string> = {}
       for (const issue of parsed.error.issues) {
         const key = String(issue.path[0])
-        found[key] ??= key === 'password' ? 'At least 12 characters' : key === 'email' ? 'Enter a valid email' : 'Required'
+        found[key] ??=
+          issue.message === OBJECTIONABLE_MESSAGE
+            ? issue.message
+            : key === 'password' ? 'At least 12 characters' : key === 'email' ? 'Enter a valid email' : 'Required'
       }
       return setErrors(found)
     }

@@ -14,7 +14,18 @@ export function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
+// Thrown when a suspended account tries to sign in (any way: password, Google or Apple). The
+// error handler sends its message with the 403.
+export class SuspendedError extends Error {
+  statusCode = 403;
+  constructor() {
+    super("This account has been suspended for breaking the Hobbs Terms of Use.");
+  }
+}
+
 export async function createSession(userId: string): Promise<{ token: string; expiresAt: Date }> {
+  const banned = await pool.query(`SELECT 1 FROM users WHERE user_id = $1 AND banned_at IS NOT NULL`, [userId]);
+  if (banned.rowCount) throw new SuspendedError();
   const token = generateToken();
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
   await pool.query(
@@ -24,10 +35,11 @@ export async function createSession(userId: string): Promise<{ token: string; ex
   return { token, expiresAt };
 }
 
-// Returns the user id for a valid, unexpired session, or null.
+// Returns the user id for a valid, unexpired session of an account that isn't suspended, or null.
 export async function validateSession(token: string): Promise<string | null> {
   const result = await pool.query(
-    `SELECT user_id FROM sessions WHERE token_hash = $1 AND expires_at > now()`,
+    `SELECT s.user_id FROM sessions s JOIN users u USING (user_id)
+     WHERE s.token_hash = $1 AND s.expires_at > now() AND u.banned_at IS NULL`,
     [hashToken(token)],
   );
   return result.rows[0]?.user_id ?? null;

@@ -94,3 +94,7 @@
   border-color: light-dark(#000000, #ffffff);
   color: light-dark(#ffffff, #000000);
 }
+
+/* "By continuing, you agree to the Terms of Use": small, under the sign-in buttons. */
+.terms { margin: 0; font-size: 13px; text-align: center; color: var(--ink-3); }
+.terms a { color: inherit; text-decoration: underline; }

@@ -19,7 +19,7 @@ export default async function profileRoutes(app: FastifyInstance) {
   // Change your name.
   app.patch("/profile", async (request, reply) => {
     const body = UpdateProfileSchema.safeParse(request.body);
-    if (!body.success) return reply.code(400).send({ error: "Invalid request", issues: body.error.issues });
+    if (!body.success) return reply.code(400).send({ error: body.error.issues[0]?.message ?? "Invalid request", issues: body.error.issues });
     const result = await pool.query(
       `UPDATE users SET first_name = $2, last_name = $3 WHERE user_id = $1 RETURNING ${ME_COLUMNS}`,
       [getCurrentUserId(request), body.data.firstName, body.data.lastName],

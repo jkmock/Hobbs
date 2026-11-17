@@ -34,3 +34,24 @@
 .nameFields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
 .accountButtons { display: flex; flex-direction: column; gap: 10px; }
+
+/* Blocked people: a picture, the name, and Unblock. */
+.people { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.people li { display: flex; align-items: center; gap: 12px; }
+.personName { flex: 1; min-width: 0; font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Help: rows of links, each an icon, its words, and a chevron (or the address) at the end. */
+.links { display: flex; flex-direction: column; }
+.links a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  color: var(--ink);
+  font-weight: 550;
+  text-decoration: none;
+  border-bottom: 1px solid var(--line);
+}
+.links a:last-child { border-bottom: 0; }
+.links a > :last-child { margin-left: auto; color: var(--ink-3); font-weight: 400; font-size: 14px; }
+.links a > svg:first-child { color: var(--ink-2); }

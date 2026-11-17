@@ -9,6 +9,7 @@ import {
 } from "@hobbs/shared";
 import { getCurrentUserId, requireAuth } from "../auth.js";
 import { avatarVersion } from "../users.js";
+import { hiddenPeople, reportedBy } from "../moderation.js";
 import { CHECKRIDE_COLUMNS } from "./goal.js";
 import { decodeCursor, encodeCursor, FLIGHT_COLUMNS, loadLegs, loadSocial, type Cursor } from "./flights.js";
 
@@ -16,6 +17,11 @@ import { decodeCursor, encodeCursor, FLIGHT_COLUMNS, loadLegs, loadSocial, type 
 //
 // Friendship is mutual: one person asks, the other accepts. A flight can be seen (in the feed,
 // and to give props or comment on) by its pilot and the pilot's friends.
+//
+// Blocking (POST /blocks/:userId) ends a friendship and keeps two people apart: no requests
+// either way, and neither sees the other's posts, comments, props or name. Suspended accounts
+// are hidden from everyone, and whatever someone reports leaves their sight at once (see
+// ../moderation.ts and routes/moderation.ts).
 
 // How the viewer ($1) and the person in `u` are connected.
 const STATUS = `
@@ -34,19 +40,25 @@ const JOIN_FRIENDSHIP = `
     ON (f.requester_id = $1 AND f.addressee_id = u.user_id)
     OR (f.addressee_id = $1 AND f.requester_id = u.user_id)`;
 
-// Everyone whose flights the viewer ($1) sees: themselves and their friends.
+// Everyone whose flights the viewer ($1) sees: themselves and their friends (not suspended).
 const VISIBLE_PILOTS = `
   SELECT $1::uuid
   UNION
   SELECT CASE WHEN requester_id = $1 THEN addressee_id ELSE requester_id END
   FROM friendships
-  WHERE accepted_at IS NOT NULL AND (requester_id = $1 OR addressee_id = $1)`;
+  WHERE accepted_at IS NOT NULL AND (requester_id = $1 OR addressee_id = $1)
+  EXCEPT
+  SELECT * FROM ${hiddenPeople("$1")} hidden`;
 
-// The flights the viewer ($1) sees: all their own, and their friends' public ones.
-const VISIBLE_FLIGHT = `(user_id = $1 OR (visibility = 'public' AND user_id IN (${VISIBLE_PILOTS})))`;
-// The posts (flights and checkrides) the feed lists for the viewer ($1): public ones only,
-// theirs and their friends'. Their private ones stay out of the feed (they're in My flights).
-const IN_FEED = `(visibility = 'public' AND user_id IN (${VISIBLE_PILOTS}))`;
+// The posts (flights or checkrides, whose id is in `id`) the viewer ($1) sees: all their own,
+// and their friends' public ones, but not ones they've reported.
+const visibleWhere = (id: string) =>
+  `(user_id = $1 OR (visibility = 'public' AND user_id IN (${VISIBLE_PILOTS}) AND ${id} NOT IN ${reportedBy("$1")}))`;
+const VISIBLE_FLIGHT = visibleWhere("flight_id");
+const VISIBLE_CHECKRIDE = visibleWhere("checkride_id");
+// The posts the feed lists for the viewer ($1): public ones only, theirs and their friends'.
+// Their private ones stay out of the feed (they're in My flights).
+const inFeed = (id: string) => `(visibility = 'public' AND user_id IN (${VISIBLE_PILOTS}) AND ${id} NOT IN ${reportedBy("$1")})`;
 
 // Who a checkride belongs to, as a person.
 const CHECKRIDE_PILOT = `(SELECT ${PERSON_JSON} FROM users u WHERE u.user_id = checkrides.user_id)`;
@@ -65,7 +77,7 @@ async function visiblePost(postId: string, viewerId: string): Promise<Post | nul
   const result = await pool.query<{ owner: string; col: Post["column"] }>(
     `SELECT user_id AS owner, 'flight_id' AS col FROM flights WHERE flight_id = $2 AND ${VISIBLE_FLIGHT}
      UNION ALL
-     SELECT user_id, 'checkride_id' FROM checkrides WHERE checkride_id = $2 AND ${VISIBLE_FLIGHT}`,
+     SELECT user_id, 'checkride_id' FROM checkrides WHERE checkride_id = $2 AND ${VISIBLE_CHECKRIDE}`,
     [viewerId, postId],
   );
   const row = result.rows[0];
@@ -91,6 +103,7 @@ export default async function socialRoutes(app: FastifyInstance) {
       `SELECT ${PERSON_COLUMNS}, ${STATUS} AS status
        FROM users u ${JOIN_FRIENDSHIP}
        WHERE u.user_id <> $1
+         AND u.user_id NOT IN ${hiddenPeople("$1")}
          AND ((u.first_name || ' ' || u.last_name) ILIKE $2 OR u.email = $3)
        ORDER BY u.first_name, u.last_name
        LIMIT 20`,
@@ -105,7 +118,8 @@ export default async function socialRoutes(app: FastifyInstance) {
       `SELECT ${PERSON_COLUMNS}, ${STATUS} AS status
        FROM friendships f
        JOIN users u ON u.user_id = CASE WHEN f.requester_id = $1 THEN f.addressee_id ELSE f.requester_id END
-       WHERE f.requester_id = $1 OR f.addressee_id = $1
+       WHERE (f.requester_id = $1 OR f.addressee_id = $1)
+         AND u.user_id NOT IN ${hiddenPeople("$1")}
        ORDER BY u.first_name, u.last_name`,
       [getCurrentUserId(request)],
     );
@@ -121,7 +135,11 @@ export default async function socialRoutes(app: FastifyInstance) {
     const them = params.data.userId;
     if (them === me) return reply.code(400).send({ error: "You can't add yourself" });
 
-    const exists = await pool.query(`SELECT 1 FROM users WHERE user_id = $1`, [them]);
+    // Not someone blocked (either way) or suspended: to them, it's as if they don't exist.
+    const exists = await pool.query(
+      `SELECT 1 FROM users WHERE user_id = $2 AND user_id NOT IN ${hiddenPeople("$1")}`,
+      [me, them],
+    );
     if (exists.rowCount === 0) return reply.code(404).send({ error: "Person not found" });
 
     // They asked first: this accepts.
@@ -155,6 +173,65 @@ export default async function socialRoutes(app: FastifyInstance) {
     return reply.code(204).send();
   });
 
+  // --- Blocking ---
+
+  // The people you've blocked (Settings lists them, to unblock).
+  app.get("/blocks", async (request) => {
+    const result = await pool.query(
+      `SELECT ${PERSON_COLUMNS}
+       FROM blocks b JOIN users u ON u.user_id = b.blocked_id
+       WHERE b.blocker_id = $1
+       ORDER BY u.first_name, u.last_name`,
+      [getCurrentUserId(request)],
+    );
+    return result.rows;
+  });
+
+  // Block someone: ends any friendship or request between you, and keeps you apart from then on.
+  app.post("/blocks/:userId", async (request, reply) => {
+    const params = UserIdParamsSchema.safeParse(request.params);
+    if (!params.success) return invalid(reply, params.error.issues);
+    const me = getCurrentUserId(request);
+    const them = params.data.userId;
+    if (them === me) return reply.code(400).send({ error: "You can't block yourself" });
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const exists = await client.query(`SELECT 1 FROM users WHERE user_id = $1`, [them]);
+      if (!exists.rowCount) {
+        await client.query("ROLLBACK");
+        return reply.code(404).send({ error: "Person not found" });
+      }
+      await client.query(
+        `INSERT INTO blocks (blocker_id, blocked_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [me, them],
+      );
+      await client.query(
+        `DELETE FROM friendships
+         WHERE (requester_id = $1 AND addressee_id = $2) OR (requester_id = $2 AND addressee_id = $1)`,
+        [me, them],
+      );
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+    return reply.code(204).send();
+  });
+
+  // Unblock. (The friendship doesn't come back: either can ask again.)
+  app.delete("/blocks/:userId", async (request, reply) => {
+    const params = UserIdParamsSchema.safeParse(request.params);
+    if (!params.success) return invalid(reply, params.error.issues);
+    await pool.query(`DELETE FROM blocks WHERE blocker_id = $1 AND blocked_id = $2`, [
+      getCurrentUserId(request),
+      params.data.userId,
+    ]);
+    return reply.code(204).send();
+  });
+
   // --- The feed ---
 
   // Your public flights and your friends', newest first, a page at a time (like GET /flights).
@@ -172,7 +249,7 @@ export default async function socialRoutes(app: FastifyInstance) {
     const result = await pool.query(
       `SELECT ${FEED_COLUMNS}, created_at::text AS "cursorCreatedAt"
        FROM flights
-       WHERE ${IN_FEED}
+       WHERE ${inFeed("flight_id")}
          AND ($2::date IS NULL
               OR (flight_date, created_at, flight_id) < ($2::date, $3::timestamptz, $4::uuid))
        ORDER BY flight_date DESC, created_at DESC, flight_id DESC
@@ -192,7 +269,7 @@ export default async function socialRoutes(app: FastifyInstance) {
     const checkrides = await pool.query(
       `SELECT ${CHECKRIDE_COLUMNS}, ${CHECKRIDE_PILOT} AS pilot
        FROM checkrides
-       WHERE ${IN_FEED}
+       WHERE ${inFeed("checkride_id")}
          AND ($2::date IS NULL OR (passed_on, created_at) < ($2::date, $3::timestamptz))
          AND ($4::date IS NULL OR (passed_on, created_at) >= ($4::date, $5::timestamptz))
        ORDER BY passed_on DESC, created_at DESC`,
@@ -233,9 +310,9 @@ export default async function socialRoutes(app: FastifyInstance) {
     const result = await pool.query(
       `SELECT ${PERSON_COLUMNS}, p.created_at AS "createdAt"
        FROM flight_props p JOIN users u ON u.user_id = p.user_id
-       WHERE p.${post.column} = $1
+       WHERE p.${post.column} = $1 AND p.user_id NOT IN ${hiddenPeople("$2")}
        ORDER BY p.created_at DESC`,
-      [params.data.id],
+      [params.data.id, me],
     );
     return result.rows;
   });
@@ -280,6 +357,8 @@ export default async function socialRoutes(app: FastifyInstance) {
               (c.user_id = $2 OR $3::uuid = $2) AS "canDelete"
        FROM flight_comments c JOIN users u ON u.user_id = c.user_id
        WHERE c.${post.column} = $1
+         AND c.user_id NOT IN ${hiddenPeople("$2")}
+         AND c.comment_id NOT IN ${reportedBy("$2")}
        ORDER BY c.created_at`,
       [params.data.id, me, post.owner],
     );
@@ -290,7 +369,8 @@ export default async function socialRoutes(app: FastifyInstance) {
     const params = IdParamsSchema.safeParse(request.params);
     if (!params.success) return invalid(reply, params.error.issues);
     const body = CreateCommentSchema.safeParse(request.body);
-    if (!body.success) return invalid(reply, body.error.issues);
+    // The problem's own message ("Write something first", or the content filter's), to show.
+    if (!body.success) return reply.code(400).send({ error: body.error.issues[0]?.message ?? "Invalid request" });
     const me = getCurrentUserId(request);
     const post = await visiblePost(params.data.id, me);
     if (!post) return notFound(reply);

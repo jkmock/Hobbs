@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import FlightMap, { type LoneAirport, type RouteLeg } from './FlightMap'
 import { CHART_COLORS } from '../lib/mapStyle'
 import { useStatusBarColor } from '../lib/statusBar'
+import { useHideNativeTabBar } from '../lib/nativeTabBar'
 import styles from './ChartViewer.module.css'
 
 type Props = {
@@ -43,6 +44,9 @@ export default function ChartViewer({ legs, airports, title, onClose, from }: Pr
   const ready = !origin || mapLoaded || slow
   // The status bar is the map's color while the map fills the screen.
   useStatusBarColor(phase === 'open' && ready ? CHART_COLORS.land : null)
+  // The iOS app's native tab bar sits above the page, so it's hidden while the map is open
+  // (on the web the map simply covers the web bar). It slides back as the map closes.
+  useHideNativeTabBar(phase !== 'closing')
   useEffect(() => {
     const timer = window.setTimeout(() => setSlow(true), 1500)
     return () => clearTimeout(timer)

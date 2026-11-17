@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { Google, generateState, generateCodeVerifier, decodeIdToken } from "arctic";
 import { z } from "zod";
 import { signInWithIdentity } from "../identities.js";
-import { createSession } from "../sessions.js";
+import { createSession, SuspendedError } from "../sessions.js";
 import { SESSION_COOKIE, cookieOptions } from "../auth.js";
 
 // Fail at startup, not on the first login attempt, if the config is missing.
@@ -117,7 +117,14 @@ export default async function googleRoutes(app: FastifyInstance) {
     if ("error" in result) return fail(result.status, result.error);
 
     // From here on it's identical to password login.
-    const { token, expiresAt } = await createSession(result.userId);
+    let session: Awaited<ReturnType<typeof createSession>>;
+    try {
+      session = await createSession(result.userId);
+    } catch (err) {
+      if (err instanceof SuspendedError) return fail(err.statusCode, err.message);
+      throw err;
+    }
+    const { token, expiresAt } = session;
 
     // Back into the iOS app, which keeps the session (as the session cookie) itself.
     if (fromApp) {

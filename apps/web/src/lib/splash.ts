@@ -9,7 +9,7 @@ import { claimStatusBarColor } from './statusBar'
 // what loads next, like the maps of cards that just appeared, can claim it first), it goes.
 // It goes after MAX_MS whatever is still loading (offline, a map that never draws).
 
-const NAVY = '#0f1f40' // --accent-light-mode
+const NAVY = '#082b47' // --accent-light-mode
 const SETTLE_MS = 150 // nothing holding it for this long: the screen is ready
 const MAX_MS = 8000
 const FADE_MS = 520

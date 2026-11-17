@@ -1,6 +1,7 @@
 import { Segmented, Stepper } from '../../components/controls'
 import { LANDING_FIELDS, type StepProps, type Visibility } from './draft'
 import styles from './LogFlight.module.css'
+import { REMOVED_NOTE } from '../../lib/support'
 
 export default function LandingsStep({ draft, update, errors }: StepProps) {
   return (
@@ -22,20 +23,26 @@ export default function LandingsStep({ draft, update, errors }: StepProps) {
 
       <section className={`card ${styles.panel}`}>
         <h2 className={styles.cardTitle}>Visibility</h2>
-        <Segmented<Visibility>
-          label="Visibility"
-          value={draft.visibility ?? 'public'}
-          onChange={(visibility) => update({ visibility })}
-          options={[
-            { value: 'public', label: 'Public' },
-            { value: 'private', label: 'Private' },
-          ]}
-        />
-        <p className={`muted ${styles.visibilityNote}`}>
-          {(draft.visibility ?? 'public') === 'public'
-            ? 'Your friends can see this flight in their feed.'
-            : 'Only you can see this flight.'}
-        </p>
+        {draft.removed ? (
+          <p className={`muted ${styles.visibilityNote}`}>{REMOVED_NOTE}</p>
+        ) : (
+          <>
+            <Segmented<Visibility>
+              label="Visibility"
+              value={draft.visibility ?? 'public'}
+              onChange={(visibility) => update({ visibility })}
+              options={[
+                { value: 'public', label: 'Public' },
+                { value: 'private', label: 'Private' },
+              ]}
+            />
+            <p className={`muted ${styles.visibilityNote}`}>
+              {(draft.visibility ?? 'public') === 'public'
+                ? 'Your friends can see this flight in their feed.'
+                : 'Only you can see this flight.'}
+            </p>
+          </>
+        )}
       </section>
 
       <section className={`card ${styles.panel}`}>

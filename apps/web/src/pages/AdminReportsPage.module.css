@@ -1,0 +1,45 @@
+.card { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+.meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin: 0; font-size: 14px; }
+.kind { font-weight: 650; color: var(--ink); }
+.reason { font-weight: 550; color: var(--danger); }
+.outcome { font-weight: 600; color: var(--ink-2); }
+/* What was reported, as it was: kept as typed (line breaks and all). */
+.content {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--line);
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.details { margin: 0; font-size: 14.5px; }
+.people { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 14px; }
+.people dt { color: var(--ink-3); }
+.people dd { margin: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+/* No reports: the dashed box a little taller than the usual empty one. */
+.empty { padding-top: 40px; padding-bottom: 40px; }
+
+/* The reported post, nested in the report: a flat card, set off by its outline. */
+.post { box-shadow: none; border: 1px solid var(--line-strong); }
+.note { margin: 0; font-size: 14px; color: var(--ink-3); }
+.person { display: flex; align-items: center; gap: 12px; font-size: 17px; font-weight: 600; color: var(--ink); }
+.comment {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--line);
+}
+.comment p { margin: 0; }
+.commentAuthor { font-size: 14px; font-weight: 600; color: var(--ink); }
+.commentBody { font-size: 15px; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+/* A reported flight's notes and instructor, under its card's footer. */
+.postText { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; font-size: 15px; color: var(--ink); }
+.postText p { margin: 0; }
+.postLabel { font-weight: 600; color: var(--ink-2); margin-right: 4px; }
+.postNotes { white-space: pre-wrap; overflow-wrap: anywhere; }

@@ -1,13 +1,16 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { LogOut, Trash2 } from 'lucide-react'
+import { ChevronRight, FileText, Heart, LogOut, Mail, ShieldAlert, Trash2 } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { Avatar, Segmented } from '../components/controls'
 import { useTheme, type Theme } from '../lib/theme'
 import { avatarImage } from '../lib/avatarImage'
+import { useBlock, useBlocks } from '../hooks/useModeration'
+import { SUPPORT_EMAIL } from '../lib/support'
 import { useDeleteAccount, useLogout, useMe, useRemoveAvatar, useSetAvatar, useUpdateName } from '../hooks/useAuth'
 import type { User } from '../lib/types'
+import { isObjectionable, OBJECTIONABLE_MESSAGE } from '@hobbs/shared'
 import listStyles from '../components/FlightList.module.css'
 import styles from './SettingsPage.module.css'
 
@@ -48,9 +51,68 @@ export default function SettingsPage() {
           />
         </section>
 
+        <BlockedCard />
+        <HelpCard isAdmin={!!user?.isAdmin} />
         <AccountCard />
       </div>
     </>
+  )
+}
+
+// The people you've blocked, each with Unblock. (Blocking is from the ⋯ on someone's post,
+// comment or name.)
+function BlockedCard() {
+  const blocks = useBlocks()
+  const block = useBlock()
+  if (!blocks.data?.length) return null
+  return (
+    <section className={`card ${styles.card}`}>
+      <h2 className={styles.cardTitle}>Blocked</h2>
+      <ul className={styles.people}>
+        {blocks.data.map((p) => (
+          <li key={p.id}>
+            <Avatar person={p} size={36} />
+            <span className={styles.personName}>
+              {p.firstName} {p.lastName}
+            </span>
+            <button
+              type="button"
+              className="btn btn--sm"
+              disabled={block.isPending && block.variables?.userId === p.id}
+              onClick={() => block.mutate({ userId: p.id, unblock: true })}
+            >
+              Unblock
+            </button>
+          </li>
+        ))}
+      </ul>
+      {block.error && <p className="error-text">{block.error.message}</p>}
+    </section>
+  )
+}
+
+// Getting in touch, the Terms of Use, and (for admins) the reports waiting to be reviewed.
+function HelpCard({ isAdmin }: { isAdmin: boolean }) {
+  return (
+    <section className={`card ${styles.card}`}>
+      <h2 className={styles.cardTitle}>Help</h2>
+      <nav className={styles.links}>
+        <a href={`mailto:${SUPPORT_EMAIL}`}>
+          <Mail size={18} /> Email support <span className="muted">{SUPPORT_EMAIL}</span>
+        </a>
+        <Link to="/support">
+          <Heart size={18} /> Support and safety <ChevronRight size={18} />
+        </Link>
+        <Link to="/terms">
+          <FileText size={18} /> Terms of Use <ChevronRight size={18} />
+        </Link>
+        {isAdmin && (
+          <Link to="/admin/reports">
+            <ShieldAlert size={18} /> Reports <ChevronRight size={18} />
+          </Link>
+        )}
+      </nav>
+    </section>
   )
 }
 
@@ -153,7 +215,8 @@ function NameField({ user }: { user: User }) {
   const [firstName, setFirstName] = useState(user.firstName)
   const [lastName, setLastName] = useState(user.lastName)
   const changed = firstName.trim() !== user.firstName || lastName.trim() !== user.lastName
-  const valid = firstName.trim() !== '' && lastName.trim() !== ''
+  const objectionable = isObjectionable(firstName) || isObjectionable(lastName)
+  const valid = firstName.trim() !== '' && lastName.trim() !== '' && !objectionable
 
   const save = (e: FormEvent) => {
     e.preventDefault()
@@ -172,6 +235,7 @@ function NameField({ user }: { user: User }) {
           <input className="input" autoComplete="family-name" maxLength={50} value={lastName} onChange={(e) => setLastName(e.target.value)} />
         </label>
       </div>
+      {objectionable && <p className="error-text">{OBJECTIONABLE_MESSAGE}</p>}
       {updateName.error && <p className="error-text">{updateName.error.message}</p>}
       {changed && (
         <button className="btn btn--primary btn--block" disabled={!valid || updateName.isPending}>

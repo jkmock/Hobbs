@@ -5,11 +5,14 @@ import { getCurrentUserId, requireAuth } from "../auth.js";
 
 // A passed checkride, as the API returns it.
 export const CHECKRIDE_COLUMNS = `
-  checkride_id AS id, goal, passed_on::text AS "passedOn", visibility, created_at AS "createdAt"`;
+  checkride_id AS id, goal, passed_on::text AS "passedOn", visibility, created_at AS "createdAt",
+  (removed_at IS NOT NULL) AS removed`; // removed by an admin (a report): stays private
 
 // The Goal tab's settings: which certificate or rating you're working toward, your
 // adjustments to its stats (time logged before Hobbs), and the checkrides you've passed. The
 // progress itself is worked out in the app from your flights.
+export const REMOVED_MESSAGE = "This was removed for breaking the Hobbs Terms of Use, so it stays private.";
+
 export default async function goalRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
 
@@ -68,11 +71,19 @@ export default async function goalRoutes(app: FastifyInstance) {
     const body = UpdateCheckrideSchema.safeParse(request.body);
     if (!params.success) return reply.code(400).send({ error: "Invalid request", issues: params.error.issues });
     if (!body.success) return reply.code(400).send({ error: "Invalid request", issues: body.error.issues });
+    const userId = getCurrentUserId(request);
+    // One an admin removed stays private.
     const result = await pool.query(
-      `UPDATE checkrides SET visibility = $3 WHERE checkride_id = $1 AND user_id = $2 RETURNING ${CHECKRIDE_COLUMNS}`,
-      [params.data.id, getCurrentUserId(request), body.data.visibility],
+      `UPDATE checkrides SET visibility = $3
+       WHERE checkride_id = $1 AND user_id = $2 AND (removed_at IS NULL OR $3 = 'private')
+       RETURNING ${CHECKRIDE_COLUMNS}`,
+      [params.data.id, userId, body.data.visibility],
     );
-    if (result.rowCount === 0) return reply.code(404).send({ error: "Checkride not found" });
+    if (result.rowCount === 0) {
+      const exists = await pool.query(`SELECT 1 FROM checkrides WHERE checkride_id = $1 AND user_id = $2`, [params.data.id, userId]);
+      if (!exists.rowCount) return reply.code(404).send({ error: "Checkride not found" });
+      return reply.code(403).send({ error: REMOVED_MESSAGE });
+    }
     return result.rows[0];
   });
 }

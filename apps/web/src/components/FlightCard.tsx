@@ -38,6 +38,7 @@ export type FlightSummary = Pick<
 type Props = {
   flight: FlightSummary
   pilot?: Person // whose flight, in the social feed
+  pilotAction?: ReactNode // at the end of the pilot's row (the ⋯ menu on someone else's post)
   to?: string // makes the card a link
   footer?: ReactNode
   below?: ReactNode // inside the card, under the footer (e.g. the comments)
@@ -49,7 +50,7 @@ type Props = {
   keepMapAs?: string // keep its map ready after it leaves, in this slot (LiveRouteMap's keepAs)
 }
 
-export default function FlightCard({ flight, pilot, to, footer, below, belowOpen = true, navy, className = '', cardRef, pressable = false, keepMapAs }: Props) {
+export default function FlightCard({ flight, pilot, pilotAction, to, footer, below, belowOpen = true, navy, className = '', cardRef, pressable = false, keepMapAs }: Props) {
   const pressHandlers = usePress()
   const tags = tagsFor(flight)
   const [chartFrom, setChartFrom] = useState<HTMLElement | null>(null) // the map tapped, while open
@@ -68,10 +69,13 @@ export default function FlightCard({ flight, pilot, to, footer, below, belowOpen
       {to && <CoverLink to={to} label={`${routeName}, ${formatDate(flight.flightDate)}`} />}
       <div className={styles.body}>
       {pilot && (
-        <p className={styles.pilot}>
+        <div className={styles.pilot}>
           <Avatar person={pilot} size={32} className={styles.pilotAvatar} />
-          {pilot.firstName} {pilot.lastName}
-        </p>
+          <span className={styles.pilotName}>
+            {pilot.firstName} {pilot.lastName}
+          </span>
+          {pilotAction}
+        </div>
       )}
       <p className={styles.meta}>
         <span className={styles.date}>{formatDate(flight.flightDate)}</span>
@@ -397,6 +401,7 @@ function tagsFor(f: FlightSummary): { icon: LucideIcon; label: string }[] {
 export function CheckrideCard({
   checkride,
   pilot,
+  pilotAction,
   footer,
   below,
   belowOpen = true,
@@ -406,6 +411,7 @@ export function CheckrideCard({
 }: {
   checkride: Pick<Checkride, 'goal'>
   pilot?: Person
+  pilotAction?: ReactNode
   footer?: ReactNode
   below?: ReactNode
   belowOpen?: boolean
@@ -420,10 +426,13 @@ export function CheckrideCard({
       {onSelect && <button type="button" className={styles.cardButton} onClick={onSelect} aria-label={selectLabel} data-no-press />}
       <div className={styles.body}>
         {pilot && (
-          <p className={styles.pilot}>
+          <div className={styles.pilot}>
             <Avatar person={pilot} size={32} className={styles.pilotAvatar} />
-            {pilot.firstName} {pilot.lastName}
-          </p>
+            <span className={styles.pilotName}>
+              {pilot.firstName} {pilot.lastName}
+            </span>
+            {pilotAction}
+          </div>
         )}
         <div className={styles.checkride}>
           <Award size={64} strokeWidth={1.5} aria-hidden />

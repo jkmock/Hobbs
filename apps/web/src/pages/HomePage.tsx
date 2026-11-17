@@ -3,6 +3,8 @@ import { ArrowLeft, UserPlus, Users } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import FlightCard, { CheckrideCard, FlightReactions } from '../components/FlightCard'
 import { CommentsPanel } from '../components/FlightSocial'
+import ModerationMenu from '../components/ModerationMenu'
+import { useMe } from '../hooks/useAuth'
 import { useCardExpand } from '../hooks/useCardExpand'
 import { useFeedFlight, useFeedPages, useFriends, useToggleProps } from '../hooks/useSocial'
 import type { FeedFlight } from '../lib/types'
@@ -27,6 +29,7 @@ export default function HomePage() {
   useSplashHold(isPending)
   const feed = data?.pages.flatMap((p) => p.items) ?? []
   const { data: friends } = useFriends()
+  const { data: me } = useMe()
   const hasFriends = (friends?.friends.length ?? 0) > 0
   const requests = friends?.incoming.length ?? 0
 
@@ -103,6 +106,7 @@ export default function HomePage() {
                   key={`checkride-${c.id}`}
                   checkride={c}
                   pilot={c.pilot}
+                  pilotAction={c.pilot.id !== me?.id && <ModerationMenu type="checkride" id={c.id} person={c.pilot} />}
                   className={otherClass(`checkride-${c.id}`)}
                   footer={
                     <FlightReactions
@@ -128,6 +132,7 @@ export default function HomePage() {
                 keepMapAs={keptSlot('feed', items.indexOf(flight))}
                 flight={flight}
                 pilot={flight.pilot}
+                pilotAction={flight.pilot.id !== me?.id && <ModerationMenu type="flight" id={flight.id} person={flight.pilot} />}
                 cardRef={cardRef(flight.id)}
                 className={otherClass(flight.id)}
                 to={showingFlight ? undefined : `/feed/${flight.id}`}

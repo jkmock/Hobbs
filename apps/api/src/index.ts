@@ -14,6 +14,7 @@ import appleRoutes from "./routes/apple.js";
 import socialRoutes from "./routes/social.js";
 import profileRoutes from "./routes/profile.js";
 import goalRoutes from "./routes/goal.js";
+import moderationRoutes from "./routes/moderation.js";
 import { registerAuth } from "./auth.js";
 
 // Three ways this runs:
@@ -85,6 +86,7 @@ app.register(
     api.register(socialRoutes);
     api.register(profileRoutes);
     api.register(goalRoutes);
+    api.register(moderationRoutes);
   },
   { prefix: servesWeb ? "/api" : "" },
 );

@@ -136,7 +136,7 @@ To change the schema:
 Two Vercel projects from this repo, so the browser only ever talks to the website's domain:
 
 - **API:** root directory `apps/api`. Vercel detects Fastify and runs `src/index.ts` as a function, with plain Node, so its `build` script first compiles `@hobbs/shared` to JavaScript (locally, `tsx` loads that package's TypeScript source through its `source` export). All the environment variables below go here; use Neon's *pooled* connection string for `DATABASE_URL`.
-- **Website:** root directory `apps/web` (Vite). [`apps/web/vercel.json`](apps/web/vercel.json) forwards `/api/*` to the API project's domain with the prefix removed, and every other path to `index.html`. Its `destination` is the API project's domain (`hobbs-nu.vercel.app`); change it there if that changes.
+- **Website:** root directory `apps/web` (Vite). [`apps/web/vercel.json`](apps/web/vercel.json) forwards `/api/*` to the API project's domain with the prefix removed, and every other path to `index.html`. Its `destination` is the API project's domain (`api.hobbsflight.com`; the site itself is `hobbsflight.com`); change it there if that changes, and `apiBase` in [`apps/web/src/lib/native.ts`](apps/web/src/lib/native.ts) with it.
 
 ### Any Node host
 

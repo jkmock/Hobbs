@@ -18,6 +18,7 @@ import { POP_SCALE } from '../lib/press'
 import styles from '../components/FlightList.module.css'
 import { useSplashHold } from '../lib/splash'
 import PageLoading from '../components/PageLoading'
+import { REMOVED_NOTE } from '../lib/support'
 
 // A newly logged flight's card pops into the list, a moment after the list shows.
 const ARRIVE_MS = 450
@@ -258,6 +259,14 @@ export default function FlightsPage() {
 function CheckrideVisibility({ checkride }: { checkride: Checkride }) {
   const update = useUpdateCheckride()
   const visibility = update.isPending && update.variables ? update.variables.visibility : checkride.visibility
+  if (checkride.removed) {
+    return (
+      <div className={styles.checkrideVisibility}>
+        <span>Visibility</span>
+        <p className={styles.checkrideVisibilityHint}>{REMOVED_NOTE}</p>
+      </div>
+    )
+  }
   return (
     <div className={styles.checkrideVisibility}>
       <span>Visibility</span>

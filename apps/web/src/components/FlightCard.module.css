@@ -76,6 +76,11 @@
   color: var(--ink); /* the pilot's name, the same color as Back, Edit and Delete */
 }
 
+/* The name takes the room, pushing the ⋯ menu (someone else's post) to the row's end, where it
+   sits in the row's padding so the row is no taller for it. */
+.pilotName { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pilot > :global(.icon-btn) { margin: -4px -8px -4px 0; }
+
 /* The pilot's picture: the accent fill instead of the default ink one. */
 .pilotAvatar {
   background: var(--accent);

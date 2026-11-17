@@ -1,0 +1,53 @@
+/* The ⋯ button: a quiet icon that stays clickable above a card's cover link. */
+.trigger {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  flex-shrink: 0;
+  color: var(--ink-3);
+}
+
+/* The card holding a list of choices or the report form: text starts at the left. */
+.card { text-align: left; }
+.card h2, .card > p { text-align: center; }
+
+.choices { display: flex; flex-direction: column; gap: 8px; }
+.choice {
+  height: 48px;
+  justify-content: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: var(--radius);
+}
+.danger { color: var(--danger); }
+
+.reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 0 0;
+  padding: 0;
+  border: 0;
+}
+.reason {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  font-size: 15.5px;
+  cursor: pointer;
+}
+.reason input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+
+.details {
+  height: auto;
+  min-height: 72px;
+  padding-top: 10px;
+  resize: vertical;
+  font: inherit;
+  font-size: 15px;
+}
+
+/* Taps always reach the sheet, whatever it sits in. */
+.sheet { pointer-events: auto; }

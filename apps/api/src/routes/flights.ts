@@ -9,6 +9,7 @@ import { cachedFlightTrack } from "../flightaware.js";
 import { DISPLAY_CODE, resolveAirports } from "../airports.js";
 import type { PoolClient } from "pg";
 import { CHECKRIDE_COLUMNS } from "./goal.js";
+import { hiddenPeople, reportedBy } from "../moderation.js";
 
 // A cursor is the sort key of the last flight on a page: date, exact created_at, and id.
 // It's encoded as an opaque base64url string so clients treat it as a token, not data.
@@ -56,6 +57,7 @@ export const FLIGHT_COLUMNS = `
   instrument_approaches     AS "instrumentApproaches",
   notes,
   visibility,
+  (removed_at IS NOT NULL)  AS removed, -- removed by an admin (a report): stays private
   (SELECT tail_number FROM aircraft a WHERE a.aircraft_id = flights.aircraft_id) AS "tailNumber",
   created_at                AS "createdAt",
   updated_at                AS "updatedAt"
@@ -135,8 +137,10 @@ export type Social = { propsCount: number; commentsCount: number; proppedByMe: b
 export async function loadSocial(flightIds: string[], viewerId: string): Promise<Map<string, Social>> {
   const result = await pool.query(
     `SELECT f.id,
-            (SELECT count(*) FROM flight_props p WHERE f.id IN (p.flight_id, p.checkride_id))::int    AS "propsCount",
-            (SELECT count(*) FROM flight_comments c WHERE f.id IN (c.flight_id, c.checkride_id))::int AS "commentsCount",
+            (SELECT count(*) FROM flight_props p WHERE f.id IN (p.flight_id, p.checkride_id)
+               AND p.user_id NOT IN ${hiddenPeople("$2")})::int AS "propsCount",
+            (SELECT count(*) FROM flight_comments c WHERE f.id IN (c.flight_id, c.checkride_id)
+               AND c.user_id NOT IN ${hiddenPeople("$2")} AND c.comment_id NOT IN ${reportedBy("$2")})::int AS "commentsCount",
             EXISTS (SELECT 1 FROM flight_props p WHERE f.id IN (p.flight_id, p.checkride_id) AND p.user_id = $2) AS "proppedByMe"
      FROM unnest($1::uuid[]) AS f(id)`,
     [flightIds, viewerId],
@@ -410,7 +414,8 @@ export default async function flightRoutes(app: FastifyInstance) {
             instrument_approaches     = $20,
             notes                     = $21,
             sic_time                  = $22,
-            visibility                = COALESCE($23, visibility)
+            -- A flight an admin removed stays private, whatever the edit says.
+            visibility                = CASE WHEN removed_at IS NOT NULL THEN 'private' ELSE COALESCE($23, visibility) END
         WHERE flight_id = $1 AND user_id = $2
         RETURNING ${FLIGHT_COLUMNS}`,
         [

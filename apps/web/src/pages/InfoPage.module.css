@@ -1,0 +1,18 @@
+/* A page of reading (Terms of Use, Support): a card of comfortable prose. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  line-height: 1.55;
+  font-size: 15.5px;
+  color: var(--ink-2);
+}
+.card h2 { margin: 12px 0 0; font-size: 18px; font-weight: 620; color: var(--ink); }
+.card h2:first-child { margin-top: 0; }
+.card p, .card ul { margin: 0; }
+.card ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.card a { color: var(--accent); font-weight: 550; }
+.updated { font-size: 14px; color: var(--ink-3); }
+/* The page's title, at the top of the card (titleInCard). */
+.title { margin: 0 0 4px; font-size: 26px; font-weight: 680; letter-spacing: -0.01em; line-height: 1.2; color: var(--ink); }

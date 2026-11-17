@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { Check, Search, UserCheck, UserPlus, X } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { Avatar, Segmented } from '../components/controls'
+import ModerationMenu from '../components/ModerationMenu'
 import { useFriends, useFriendship, usePeople } from '../hooks/useSocial'
 import { usePress } from '../hooks/usePress'
 import { useMorphWidth } from '../lib/morphWidth'
@@ -13,7 +14,7 @@ import styles from './FriendsPage.module.css'
 type Tab = 'friends' | 'find'
 
 // Your friends, requests to and from you, and finding people to add. Friendship is mutual:
-// you ask, they accept (or the other way round).
+// you ask, they accept (or the other way round). Each person's ⋯ reports or blocks them.
 export default function FriendsPage() {
   const [tab, setTab] = useState<Tab>('friends')
   const [query, setQuery] = useState('')
@@ -78,6 +79,8 @@ export default function FriendsPage() {
         {p.status === 'incoming' && <span className="muted">Wants to be friends</span>}
       </div>
       {actionsFor(p)}
+      {/* Report or block them (a request from a stranger, say). */}
+      <ModerationMenu type="user" id={p.id} person={p} iconSize={18} />
     </li>
   )
 

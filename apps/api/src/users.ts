@@ -6,13 +6,15 @@ export const avatarVersion = (table: string) =>
   `(extract(epoch from ${table}.avatar_updated_at) * 1000)::bigint::text`;
 
 // The logged-in user, as /auth/me, login and signup return them. hasPassword is false for an
-// account made with Google or Apple until its owner sets one (POST /auth/password).
+// account made with Google or Apple until its owner sets one (POST /auth/password). isAdmin: can
+// see and act on reports (routes/moderation.ts).
 // needsPassword: the app asks for one before anything else. Google accounts do; Apple ones don't
 // (Sign in with Apple works everywhere the app does, and Apple's review frowns on extra steps).
 export const ME_COLUMNS = `
   user_id AS id, email, first_name AS "firstName", last_name AS "lastName",
   ${avatarVersion("users")} AS "avatarVersion",
   (password_hash IS NOT NULL) AS "hasPassword",
+  is_admin AS "isAdmin",
   (password_hash IS NULL AND NOT EXISTS (
     SELECT 1 FROM user_identities WHERE user_identities.user_id = users.user_id AND provider = 'apple'
   )) AS "needsPassword"`;

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { useAppleSignIn, useGoogleSignIn } from '../hooks/useAuth'
 import { isNative } from '../lib/native'
 import { wasCanceled } from '../lib/nativeAuth'
@@ -48,6 +48,13 @@ export default function AuthShell({
               <GoogleMark /> Continue with Google
             </a>
           </>
+        )}
+
+        {/* Signing up or in, by any route, is agreeing to the Terms (no tolerance for abuse). */}
+        {google && (
+          <p className={styles.terms}>
+            By continuing, you agree to the <Link to="/terms">Terms of Use</Link>.
+          </p>
         )}
 
         <p className={styles.footer}>{footer}</p>

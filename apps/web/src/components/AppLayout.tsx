@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent } from 'react'
 import { NavLink, Outlet, useLocation, useMatch, useNavigate } from 'react-router'
 import KeptTabs from './KeptTabs'
 import { keptTabOf, useKeptLocations } from '../hooks/useKeptLocations'
@@ -6,7 +6,13 @@ import { ChartBar, CircleUser, Earth, Plane, Users } from 'lucide-react'
 import { useBackdropTone } from '../hooks/useBackdropTone'
 import MapPreloader from './MapPreloader'
 import { isNative } from '../lib/native'
-import { NativeTabBar, nativeTabBarAvailable, tabBarColors } from '../lib/nativeTabBar'
+import {
+  NativeTabBar,
+  nativeTabBarAvailable,
+  subscribeTabBarHidden,
+  tabBarColors,
+  tabBarHidden,
+} from '../lib/nativeTabBar'
 import { onSplashGone, splashShowing } from '../lib/splash'
 import styles from './AppLayout.module.css'
 
@@ -79,10 +85,16 @@ export function TabLayout() {
   // The native bar sits above the page, so it waits for the launch splash to start leaving.
   const [splashGone, setSplashGone] = useState(() => !splashShowing())
   useEffect(() => onSplashGone(() => setSplashGone(true)), [])
+  // A full-screen map covering the app hides it too (useHideNativeTabBar).
+  const coveredUp = useSyncExternalStore(subscribeTabBarHidden, tabBarHidden)
   useEffect(() => {
     if (!nativeBar) return
-    void NativeTabBar.setState({ visible: splashGone && !onFlight, selected: selectedTab, ...tabBarColors() })
-  }, [nativeBar, splashGone, onFlight, selectedTab, themeTick])
+    void NativeTabBar.setState({
+      visible: splashGone && !onFlight && !coveredUp,
+      selected: selectedTab,
+      ...tabBarColors(),
+    })
+  }, [nativeBar, splashGone, onFlight, coveredUp, selectedTab, themeTick])
   // Taps on the native bar open tabs here; leaving the tab pages (BareLayout) hides it.
   useEffect(() => {
     if (!nativeBar) return

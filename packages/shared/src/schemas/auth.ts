@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { clean } from "./moderation.js";
 
 const Email = z.string().trim().toLowerCase().pipe(z.email());
 
@@ -7,8 +8,8 @@ const NewPassword = z.string().min(12).max(128);
 export const SignupSchema = z.object({
   email: Email,
   password: NewPassword,
-  firstName: z.string().trim().min(1).max(50),
-  lastName: z.string().trim().min(1).max(50)
+  firstName: clean(z.string().trim().min(1).max(50)),
+  lastName: clean(z.string().trim().min(1).max(50)),
 });
 export type Signup = z.infer<typeof SignupSchema>;
 
@@ -35,8 +36,8 @@ export const AppleSignInSchema = z.object({
 export type AppleSignIn = z.infer<typeof AppleSignInSchema>;
 // PATCH /profile
 export const UpdateProfileSchema = z.object({
-  firstName: z.string().trim().min(1).max(50),
-  lastName: z.string().trim().min(1).max(50),
+  firstName: clean(z.string().trim().min(1).max(50)),
+  lastName: clean(z.string().trim().min(1).max(50)),
 });
 export type UpdateProfile = z.infer<typeof UpdateProfileSchema>;
 

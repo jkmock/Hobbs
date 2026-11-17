@@ -11,6 +11,7 @@ export type User = {
   avatarVersion: string | null // null: no profile picture (see avatarUrl)
   hasPassword: boolean // false: made with Google or Apple, and no password set yet
   needsPassword: boolean // true: a Google account with no password, asked for one first (SetPasswordPage)
+  isAdmin: boolean // sees and acts on reports (AdminReportsPage)
 }
 
 export type Point = { lat: number; lon: number }
@@ -70,6 +71,7 @@ export type Flight = {
   instrumentApproaches: number
   notes: string | null
   visibility: 'public' | 'private' // private: only the pilot sees it, not their friends
+  removed?: boolean // removed by an admin after a report: private for good
   legs: Leg[]
   createdAt: string
   updatedAt: string
@@ -92,7 +94,14 @@ export type FeedFlight = Flight & { pilotId: string; pilot: Person }
 
 // A checkride passed: yours (Goal tab) or, in the feed, a friend's public one.
 // Lists include its props and comments counts, as for flights.
-export type Checkride = { id: string; goal: GoalId; passedOn: string; visibility: 'public' | 'private'; createdAt: string } & Partial<Social>
+export type Checkride = {
+  id: string
+  goal: GoalId
+  passedOn: string
+  visibility: 'public' | 'private'
+  removed?: boolean // removed by an admin after a report: private for good
+  createdAt: string
+} & Partial<Social>
 export type FeedCheckride = Checkride & { pilot: Person }
 
 export type Social = { propsCount: number; commentsCount: number; proppedByMe: boolean }
@@ -124,3 +133,26 @@ export type Page<T> = {
   items: T[]
   nextCursor: string | null
 }
+
+// A report, as admins see it on the Reports page (GET /admin/reports).
+export type AdminReport = {
+  id: string
+  targetType: 'flight' | 'checkride' | 'comment' | 'user'
+  targetId: string
+  reason: 'spam' | 'harassment' | 'inappropriate' | 'other'
+  details: string | null
+  content: string | null // a copy of what was reported, as it was then
+  status: 'open' | 'removed' | 'banned' | 'dismissed'
+  createdAt: string
+  resolvedAt: string | null
+  reporter: { id: string; name: string; email: string } | null
+  targetUser: { id: string; name: string; email: string; banned: boolean } | null
+  reportsAgainstUser: number
+}
+
+// What a report is about, as it is now (GET /admin/reports/:id/target); null once deleted.
+export type ReportedPost = { kind: 'flight'; flight: FeedFlight } | { kind: 'checkride'; checkride: FeedCheckride }
+export type ReportedTarget =
+  | ReportedPost
+  | { kind: 'comment'; comment: Omit<Comment, 'canDelete'>; post: ReportedPost | null }
+  | { kind: 'user'; person: Person }

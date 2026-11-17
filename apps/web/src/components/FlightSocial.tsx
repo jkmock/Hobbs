@@ -1,5 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Send, Trash2 } from 'lucide-react'
+import { isObjectionable, OBJECTIONABLE_MESSAGE } from '@hobbs/shared'
+import ModerationMenu from './ModerationMenu'
+import { useMe } from '../hooks/useAuth'
 import { Avatar } from './controls'
 import ConfirmDialog from './ConfirmDialog'
 import { useAddComment, useComments, useDeleteComment, usePropGivers } from '../hooks/useSocial'
@@ -37,12 +40,15 @@ export function PropsPanel({ flightId }: { flightId: string }) {
 }
 
 // The conversation, oldest first, with a box to add to it. Your own comments, and any on your
-// own flight, can be deleted.
+// own flight, can be deleted. Anyone else's has a ⋯ menu to report it or block its author
+// (with Delete in it too, on your own flight).
 export function CommentsPanel({ flightId }: { flightId: string }) {
   const comments = useComments(flightId)
   const add = useAddComment(flightId)
   const remove = useDeleteComment(flightId)
+  const { data: me } = useMe()
   const [draft, setDraft] = useState('')
+  const objectionable = isObjectionable(draft)
   // The comment Delete was tapped on, asked about before it's deleted.
   const [deleting, setDeleting] = useState<string | null>(null)
   const closeDelete = () => {
@@ -53,7 +59,7 @@ export function CommentsPanel({ flightId }: { flightId: string }) {
   const submit = (e: FormEvent) => {
     e.preventDefault()
     const body = draft.trim()
-    if (!body || add.isPending) return
+    if (!body || add.isPending || objectionable) return
     add.mutate(body, { onSuccess: () => setDraft('') })
   }
 
@@ -79,8 +85,17 @@ export function CommentsPanel({ flightId }: { flightId: string }) {
                 </p>
                 <p className={styles.body}>{c.body}</p>
               </div>
-              {c.canDelete && (
-                <button
+              {c.author.id !== me?.id ? (
+                <ModerationMenu
+                  type="comment"
+                  id={c.id}
+                  person={c.author}
+                  iconSize={18}
+                  className={styles.delete}
+                  items={c.canDelete ? [{ label: 'Delete comment', icon: Trash2, danger: true, onSelect: () => setDeleting(c.id) }] : []}
+                />
+              ) : (
+                c.canDelete && <button
                   type="button"
                   className={`icon-btn ${styles.delete}`}
                   aria-label="Delete comment"
@@ -104,11 +119,15 @@ export function CommentsPanel({ flightId }: { flightId: string }) {
           maxLength={1000}
           aria-label="Add a comment"
         />
-        <button type="submit" className="btn btn--primary" disabled={!draft.trim() || add.isPending} aria-label="Post comment">
+        <button type="submit" className="btn btn--primary" disabled={!draft.trim() || add.isPending || objectionable} aria-label="Post comment">
           <Send size={16} />
         </button>
       </form>
-      {add.error && <p className="error-text">{add.error.message}</p>}
+      {objectionable ? (
+        <p className="error-text">{OBJECTIONABLE_MESSAGE}</p>
+      ) : (
+        add.error && <p className="error-text">{add.error.message}</p>
+      )}
 
       <ConfirmDialog
         open={deleting !== null}

@@ -72,6 +72,7 @@ export type Draft = {
   fullStopsFromLegs: boolean
   notes: string
   visibility: Visibility
+  removed?: boolean // an admin removed it after a report: it stays private (no choice shown)
 }
 
 export type Visibility = 'public' | 'private'
@@ -88,7 +89,7 @@ export const STEPS = [
   { title: 'Aircraft', fields: ['aircraftId', 'flightDate'] },
   { title: 'Route', fields: ['legs'] },
   { title: 'Times', fields: TIME_FIELDS.map(([key]) => key) },
-  { title: 'Landings', fields: [...LANDING_FIELDS.map(([key]) => key), 'instructorName', 'notes'] },
+  { title: 'Other', fields: [...LANDING_FIELDS.map(([key]) => key), 'instructorName', 'notes'] },
 ] as const
 
 const mapFields = <K extends string>(fields: readonly (readonly [K, string])[], value: (key: K) => string) =>
@@ -138,7 +139,7 @@ export function applyPatch(d: Draft, patch: Partial<Draft>): Draft {
   }
 
   // Touch-and-goes included in (or taken out of) the legs add to (or come off) the day
-  // touch-and-go landings, which stay editable on the Landings step.
+  // touch-and-go landings, which stay editable on the Other step.
   if (patch.legs) {
     const added = stopTouchAndGoes(next.legs) - stopTouchAndGoes(d.legs)
     if (added !== 0) {
@@ -227,6 +228,7 @@ export function draftFromFlight(f: Flight): Draft {
     fullStopsFromLegs: f.dayLandingsFs === f.legs.length,
     notes: f.notes ?? '',
     visibility: f.visibility,
+    removed: f.removed,
   }
 }
 

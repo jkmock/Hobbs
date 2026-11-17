@@ -14,6 +14,9 @@ import SettingsPage from './pages/SettingsPage'
 import LogFlightPage from './pages/log-flight/LogFlightPage'
 import NotFoundPage from './pages/NotFoundPage'
 import ErrorPage from './pages/ErrorPage'
+import TermsPage from './pages/TermsPage'
+import SupportPage from './pages/SupportPage'
+import AdminReportsPage from './pages/AdminReportsPage'
 
 // A crash inside a layout shows the error in place of the page, keeping the layout around it.
 const nestedError = <ErrorPage nested />
@@ -26,6 +29,9 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/signup', element: <SignupPage /> },
+      // Open signed in or not: linked from sign-up, and the App Store's support link.
+      { path: '/terms', element: <TermsPage /> },
+      { path: '/support', element: <SupportPage /> },
     ],
   },
 
@@ -66,6 +72,7 @@ export const router = createBrowserRouter([
               { path: '/friends', element: <FriendsPage /> },
               { path: '/settings', element: <SettingsPage /> },
               { path: '/set-password', element: <SetPasswordPage /> },
+              { path: '/admin/reports', element: <AdminReportsPage /> },
             ],
           },
         ],

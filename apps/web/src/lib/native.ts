@@ -8,5 +8,5 @@ export const isNative = Capacitor.isNativePlatform()
 // which has no /api, so it calls the API's own domain directly (with no /api prefix, as the
 // rewrite does). VITE_API_URL overrides it, e.g. to try the app against a local API.
 export const apiBase = isNative
-  ? (import.meta.env.VITE_API_URL ?? 'https://hobbs-nu.vercel.app').replace(/\/$/, '')
+  ? (import.meta.env.VITE_API_URL ?? 'https://api.hobbsflight.com').replace(/\/$/, '')
   : '/api'

@@ -10,7 +10,7 @@ const config: CapacitorConfig = {
     // The page already keeps clear of the status bar and home indicator itself (--safe-top in
     // index.css, viewport-fit=cover), so the web view runs edge to edge like Safari.
     contentInset: 'never',
-    backgroundColor: '#0f1f40', // the splash's navy, shown before the page paints
+    backgroundColor: '#082b47', // the splash's navy, shown before the page paints
   },
   plugins: {
     // The app's pages load from capacitor://localhost, but the API is on its own domain, so in

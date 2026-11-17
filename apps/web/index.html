@@ -16,7 +16,7 @@
         if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme
       } catch {}
     </script>
-    <meta name="theme-color" content="#0f1f40" />
+    <meta name="theme-color" content="#082b47" />
     <!-- The launch splash (src/lib/splash.ts takes it away once the first screen is ready).
          Styled here, not in index.css, so it shows before any script or stylesheet loads. -->
     <style>
@@ -26,11 +26,11 @@
         z-index: 1000;
         display: grid;
         place-items: center;
-        background: #0f1f40;
+        background: #082b47;
         color: #fff;
         transition: opacity 520ms cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 520ms;
       }
-      html:has(#splash:not(.splash--leaving)), body:has(#splash:not(.splash--leaving)) { background: #0f1f40; }
+      html:has(#splash:not(.splash--leaving)), body:has(#splash:not(.splash--leaving)) { background: #082b47; }
       #splash svg {
         width: 72px;
         height: 72px;

@@ -134,6 +134,18 @@ CREATE TABLE public.airports (
 
 
 --
+-- Name: blocks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.blocks (
+    blocker_id uuid NOT NULL,
+    blocked_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT blocks_check CHECK ((blocker_id <> blocked_id))
+);
+
+
+--
 -- Name: checkrides; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -144,7 +156,9 @@ CREATE TABLE public.checkrides (
     passed_on date NOT NULL,
     visibility text DEFAULT 'public'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    removed_at timestamp with time zone,
     CONSTRAINT checkrides_goal_check CHECK ((goal = ANY (ARRAY['sport'::text, 'private'::text, 'instrument'::text, 'commercial'::text, 'multi'::text]))),
+    CONSTRAINT checkrides_removed_private CHECK (((removed_at IS NULL) OR (visibility = 'private'::text))),
     CONSTRAINT checkrides_visibility_check CHECK ((visibility = ANY (ARRAY['public'::text, 'private'::text])))
 );
 
@@ -267,6 +281,7 @@ CREATE TABLE public.flights (
     sic_time numeric(4,1) DEFAULT 0 NOT NULL,
     instructor_name text,
     visibility text DEFAULT 'public'::text NOT NULL,
+    removed_at timestamp with time zone,
     CONSTRAINT arrival_after_departure CHECK ((arrival_time > departure_time)),
     CONSTRAINT dual_and_solo_time_sum CHECK (((dual_received_time + solo_time) <= total_time)),
     CONSTRAINT flights_check CHECK (((dual_received_time >= (0)::numeric) AND (dual_received_time <= total_time))),
@@ -283,6 +298,7 @@ CREATE TABLE public.flights (
     CONSTRAINT flights_instrument_approaches_check CHECK ((instrument_approaches >= 0)),
     CONSTRAINT flights_night_landings_fs_check CHECK ((night_landings_fs >= 0)),
     CONSTRAINT flights_night_landings_tg_check CHECK ((night_landings_tg >= 0)),
+    CONSTRAINT flights_removed_private CHECK (((removed_at IS NULL) OR (visibility = 'private'::text))),
     CONSTRAINT flights_total_time_check CHECK ((total_time > (0)::numeric)),
     CONSTRAINT flights_visibility_check CHECK ((visibility = ANY (ARRAY['public'::text, 'private'::text])))
 );
@@ -298,6 +314,30 @@ CREATE TABLE public.friendships (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     accepted_at timestamp with time zone,
     CONSTRAINT friendships_check CHECK ((requester_id <> addressee_id))
+);
+
+
+--
+-- Name: reports; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reports (
+    report_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    reporter_id uuid,
+    target_type text NOT NULL,
+    target_id uuid NOT NULL,
+    target_user_id uuid,
+    reason text NOT NULL,
+    details text,
+    content text,
+    status text DEFAULT 'open'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    resolved_at timestamp with time zone,
+    resolved_by uuid,
+    CONSTRAINT reports_details_check CHECK ((char_length(details) <= 1000)),
+    CONSTRAINT reports_reason_check CHECK ((reason = ANY (ARRAY['spam'::text, 'harassment'::text, 'inappropriate'::text, 'other'::text]))),
+    CONSTRAINT reports_status_check CHECK ((status = ANY (ARRAY['open'::text, 'removed'::text, 'banned'::text, 'dismissed'::text]))),
+    CONSTRAINT reports_target_type_check CHECK ((target_type = ANY (ARRAY['flight'::text, 'checkride'::text, 'comment'::text, 'user'::text])))
 );
 
 
@@ -365,6 +405,8 @@ CREATE TABLE public.users (
     avatar_updated_at timestamp with time zone,
     goal text DEFAULT 'private'::text NOT NULL,
     goal_adjustments jsonb DEFAULT '{}'::jsonb NOT NULL,
+    banned_at timestamp with time zone,
+    is_admin boolean DEFAULT false NOT NULL,
     CONSTRAINT users_avatar_check CHECK ((octet_length(avatar) <= 300000)),
     CONSTRAINT users_avatar_complete CHECK (((avatar IS NULL) = (avatar_type IS NULL))),
     CONSTRAINT users_avatar_type_check CHECK ((avatar_type = ANY (ARRAY['image/jpeg'::text, 'image/png'::text, 'image/webp'::text]))),
@@ -403,6 +445,14 @@ ALTER TABLE ONLY public.airports
 
 ALTER TABLE ONLY public.airports
     ADD CONSTRAINT airports_pkey PRIMARY KEY (airport_id);
+
+
+--
+-- Name: blocks blocks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blocks
+    ADD CONSTRAINT blocks_pkey PRIMARY KEY (blocker_id, blocked_id);
 
 
 --
@@ -510,6 +560,14 @@ ALTER TABLE ONLY public.user_identities
 
 
 --
+-- Name: reports reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reports
+    ADD CONSTRAINT reports_pkey PRIMARY KEY (report_id);
+
+
+--
 -- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -569,6 +627,13 @@ CREATE INDEX airports_faa_code_idx ON public.airports USING btree (faa_code);
 --
 
 CREATE INDEX airports_location_idx ON public.airports USING gist (airport_location);
+
+
+--
+-- Name: blocks_blocked_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX blocks_blocked_idx ON public.blocks USING btree (blocked_id);
 
 
 --
@@ -656,6 +721,20 @@ CREATE UNIQUE INDEX friendships_pair_key ON public.friendships USING btree (LEAS
 
 
 --
+-- Name: reports_open_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX reports_open_idx ON public.reports USING btree (created_at) WHERE (status = 'open'::text);
+
+
+--
+-- Name: reports_reporter_target_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX reports_reporter_target_idx ON public.reports USING btree (reporter_id, target_id);
+
+
+--
 -- Name: sessions_expires_at_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -695,6 +774,22 @@ CREATE TRIGGER flights_set_updated_at BEFORE UPDATE ON public.flights FOR EACH R
 --
 
 CREATE TRIGGER users_set_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+
+--
+-- Name: blocks blocks_blocked_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blocks
+    ADD CONSTRAINT blocks_blocked_id_fkey FOREIGN KEY (blocked_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
+-- Name: blocks blocks_blocker_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.blocks
+    ADD CONSTRAINT blocks_blocker_id_fkey FOREIGN KEY (blocker_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
 
 
 --
@@ -826,6 +921,30 @@ ALTER TABLE ONLY public.friendships
 
 
 --
+-- Name: reports reports_reporter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reports
+    ADD CONSTRAINT reports_reporter_id_fkey FOREIGN KEY (reporter_id) REFERENCES public.users(user_id) ON DELETE SET NULL;
+
+
+--
+-- Name: reports reports_resolved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reports
+    ADD CONSTRAINT reports_resolved_by_fkey FOREIGN KEY (resolved_by) REFERENCES public.users(user_id) ON DELETE SET NULL;
+
+
+--
+-- Name: reports reports_target_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reports
+    ADD CONSTRAINT reports_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES public.users(user_id) ON DELETE SET NULL;
+
+
+--
 -- Name: sessions sessions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -887,4 +1006,6 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261116140000'),
     ('20261116150000'),
     ('20261116160000'),
-    ('20261117090000');
+    ('20261117090000'),
+    ('20261117130000'),
+    ('20261117180000');

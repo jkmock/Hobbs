@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { registerPlugin, type PluginListenerHandle } from '@capacitor/core'
 import { isNative } from './native'
 
@@ -41,4 +42,27 @@ export function tabBarColors() {
   const dark = read('light-dark(rgb(0, 0, 0), rgb(255, 255, 255))') === 'rgb(255, 255, 255)'
   probe.remove()
   return { accent, ink, dark }
+}
+
+// Screens that cover the whole app (the full-screen map) hide the native bar while they show:
+// on the web they simply cover the web bar, but the native bar sits above the page.
+let hideClaims = 0
+const hideListeners = new Set<() => void>()
+export function subscribeTabBarHidden(listener: () => void) {
+  hideListeners.add(listener)
+  return () => void hideListeners.delete(listener)
+}
+export const tabBarHidden = () => hideClaims > 0
+
+// Hides the native bar while this component is showing and `hide` is set.
+export function useHideNativeTabBar(hide: boolean) {
+  useEffect(() => {
+    if (!hide) return
+    hideClaims++
+    hideListeners.forEach((l) => l())
+    return () => {
+      hideClaims--
+      hideListeners.forEach((l) => l())
+    }
+  }, [hide])
 }
