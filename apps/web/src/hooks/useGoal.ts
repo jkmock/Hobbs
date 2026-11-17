@@ -22,7 +22,8 @@ export function useSaveGoal() {
   })
 }
 
-// A checkride passed today (the phone's date). The feed shows it (to friends too, when public).
+// A checkride passed today (the phone's date). My flights and the feed show it (the feed to
+// friends too, when public).
 export function useLogCheckride() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -30,6 +31,8 @@ export function useLogCheckride() {
       api<GoalSettings>('/checkrides', { method: 'POST', body: { ...body, passedOn: todayIso() } }),
     onSuccess: (saved) => {
       queryClient.setQueryData(GOAL_KEY, saved)
+      // 'all' so My flights reloads even while its tab is in the background.
+      queryClient.invalidateQueries({ queryKey: ['flights', 'pages'], refetchType: 'all' })
       queryClient.invalidateQueries({ queryKey: ['feed'] })
     },
   })
