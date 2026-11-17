@@ -91,8 +91,7 @@
 
 .tab[data-on-dark] { --tab-ink: #ffffff; }
 
-/* The icon on the pill is white in both modes (elsewhere, dark mode's lighter blue accent
-   takes dark text, --on-accent). */
+/* The icon on the pill is white in both modes, like other text on the accent (--on-accent). */
 .tab:global(.active) {
   color: #ffffff;
 }

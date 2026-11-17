@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Minus, Plus } from 'lucide-react'
+import { CapacitorHttp } from '@capacitor/core'
 import { formatDate, initials, todayIso } from '../lib/format'
+import { apiBase, isNative } from '../lib/native'
 import styles from './controls.module.css'
 
 // A number with − and + buttons. The value is a string so typing "1." isn't rewritten mid-edit.
@@ -139,7 +141,7 @@ export function Segmented<T extends string>({ label, options, value, onChange, o
 type AvatarPerson = { id: string; firstName: string; lastName: string; avatarVersion?: string | null }
 
 export function Avatar({ person, size = 40, className = '' }: { person: AvatarPerson; size?: number; className?: string }) {
-  const url = avatarUrl(person)
+  const url = useAvatarSrc(avatarUrl(person))
   const [failed, setFailed] = useState<string | null>(null) // the URL that failed, if any
   const showImage = url !== null && failed !== url
   return (
@@ -156,7 +158,42 @@ export function Avatar({ person, size = 40, className = '' }: { person: AvatarPe
 // A profile picture's URL. The version changes with each new picture, so the browser can keep
 // each one for good (the API caches it that way) and fetches a new one as soon as it changes.
 export function avatarUrl(person: AvatarPerson): string | null {
-  return person.avatarVersion ? `/api/users/${person.id}/avatar?v=${person.avatarVersion}` : null
+  return person.avatarVersion ? `${apiBase}/users/${person.id}/avatar?v=${person.avatarVersion}` : null
+}
+
+// In the iOS app an <img> can't load a picture straight from the API: the image request comes
+// from the web view, which won't send the session cookie to the API's domain. So the app fetches
+// it through native networking (which has the cookie) and shows it as a data URL. Each URL is
+// fetched once and kept, since a URL always means the same picture.
+const nativeAvatars = new Map<string, Promise<string | null>>()
+
+function loadNativeAvatar(url: string): Promise<string | null> {
+  let loading = nativeAvatars.get(url)
+  if (!loading) {
+    loading = CapacitorHttp.get({ url, responseType: 'blob' })
+      .then((response) => {
+        if (response.status !== 200 || typeof response.data !== 'string') return null
+        const type = response.headers['Content-Type'] ?? response.headers['content-type'] ?? 'image/jpeg'
+        return `data:${type};base64,${response.data}`
+      })
+      .catch(() => null)
+    nativeAvatars.set(url, loading)
+  }
+  return loading
+}
+
+function useAvatarSrc(url: string | null): string | null {
+  const [loaded, setLoaded] = useState<{ url: string; src: string | null } | null>(null)
+  useEffect(() => {
+    if (!isNative || !url) return
+    let current = true
+    void loadNativeAvatar(url).then((src) => current && setLoaded({ url, src }))
+    return () => {
+      current = false
+    }
+  }, [url])
+  if (!isNative || !url) return url
+  return loaded?.url === url ? loaded.src : null
 }
 
 // A date in the same row layout as Stepper: label on the left, the date on the right. Tapping

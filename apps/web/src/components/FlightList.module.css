@@ -1,7 +1,7 @@
 /* The header of each tab's page (Feed, My flights, Map, Goal, Profile): extra room above it,
-   and a navy title. */
+   and a black title (white in dark mode). */
 header.topHeader { padding-top: 44px; }
-.topHeader h1 { color: var(--accent); }
+.topHeader h1 { color: light-dark(var(--ink), #ffffff); }
 
 /* A flight's page: Back (with an arrow) in place of a title, and Edit on the right. Both are
    text styled like the page's section labels ("Stats:", .label in FlightDetails.module.css),

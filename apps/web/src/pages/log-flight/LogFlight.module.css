@@ -285,7 +285,7 @@
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: 0.01em;
-  color: var(--accent); /* like the Origin and Dest codes */
+  color: light-dark(var(--accent-light-mode), #ffffff); /* like the Origin and Dest codes: navy, white in dark mode */
 }
 .touchAndGoActions {
   display: grid;
@@ -340,7 +340,7 @@
 /* The code input plus its problem message, which is centered under the letters. */
 .codeBox { position: relative; display: flex; }
 
-.endpointLabel { font-size: 18px; font-weight: 550; color: var(--ink); } /* same as "Leg 1:" */
+.endpointLabel { font-size: 18px; font-weight: 550; color: light-dark(var(--ink), var(--ink-2)); } /* same as "Leg 1:"; grey in dark mode, like a card's Comments */
 
 .endpointInput {
   --underline: transparent;
@@ -360,10 +360,11 @@
   letter-spacing: 0.01em;
   text-transform: uppercase;
   text-align: center;
-  color: var(--accent);
+  --code: light-dark(var(--accent-light-mode), #ffffff); /* navy, white in dark mode */
+  color: var(--code);
   caret-color: var(--accent);
 }
-.endpointInput::placeholder { color: color-mix(in srgb, var(--accent) 30%, transparent); }
+.endpointInput::placeholder { color: color-mix(in srgb, var(--code) 30%, transparent); }
 /* No box, so show focus as an underline instead of the usual ring. */
 .endpointInput:focus-visible { outline: none; --underline: color-mix(in srgb, var(--accent) 70%, transparent); }
 
@@ -394,12 +395,13 @@
 }
 
 .routeLine {
+  --arrow: light-dark(var(--accent-light-mode), #ffffff); /* navy, white in dark mode like the airport codes */
   align-self: stretch;
   position: relative;
   display: block;
   height: 1.5px;
   /* Stops where the arrowhead starts. */
-  background: linear-gradient(var(--accent), var(--accent)) left / calc(100% - 9px) 100% no-repeat;
+  background: linear-gradient(var(--arrow), var(--arrow)) left / calc(100% - 9px) 100% no-repeat;
 }
 /* "57 nm" centered just above the arrow. Positioned out of the layout so it takes no space. */
 .routeDistance {
@@ -410,7 +412,7 @@
   font-size: 13px;
   font-weight: 500;
   line-height: 1;
-  color: var(--accent);
+  color: light-dark(var(--accent-light-mode), var(--ink-2)); /* navy, grey in dark mode */
   white-space: nowrap;
 }
 
@@ -423,7 +425,7 @@
   transform: translateY(-50%);
   border-top: 5px solid transparent;
   border-bottom: 5px solid transparent;
-  border-left: 9px solid var(--accent);
+  border-left: 9px solid var(--arrow);
 }
 
 

@@ -140,7 +140,7 @@ export default function FlightsPage() {
             className={styles.topHeader}
             action={
               <Link to="/flights/new" className="btn btn--primary">
-                <Plus size={16} /> Log flight
+                <Plus size={16} /> Log Flight
               </Link>
             }
           />

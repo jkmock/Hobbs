@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { isNative } from '../lib/native'
 import styles from './AuthShell.module.css'
 
 // Shared frame for login and signup: the logo and wordmark on top, then one card holding
@@ -21,12 +22,18 @@ export default function AuthShell({ title, children, footer }: { title: string; 
         <h1 className={styles.title}>{title}</h1>
         {children}
 
-        <div className={styles.divider}>or</div>
+        {/* Not in the iOS app yet: Google won't sign anyone in from inside an app's web view.
+            It has to open in the system browser and come back to the app, which isn't built. */}
+        {!isNative && (
+          <>
+            <div className={styles.divider}>or</div>
 
-        {/* A plain link, not fetch(): the browser has to leave the page and go to Google. */}
-        <a href="/api/auth/google" className="btn btn--lg btn--block">
-          <GoogleMark /> Continue with Google
-        </a>
+            {/* A plain link, not fetch(): the browser has to leave the page and go to Google. */}
+            <a href="/api/auth/google" className="btn btn--lg btn--block">
+              <GoogleMark /> Continue with Google
+            </a>
+          </>
+        )}
 
         <p className={styles.footer}>{footer}</p>
       </section>

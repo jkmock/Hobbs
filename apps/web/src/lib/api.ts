@@ -1,3 +1,5 @@
+import { apiBase, isNative } from './native'
+
 // Every request to the backend goes through here.
 
 export class ApiError extends Error {
@@ -12,11 +14,13 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(path: string, options: { method?: string; body?: unknown } = {}): Promise<T> {
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${apiBase}${path}`, {
     method: options.method ?? 'GET',
     headers: options.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-    credentials: 'same-origin', // send the session cookie
+    // Send the session cookie. In the iOS app fetch() goes through native networking
+    // (CapacitorHttp in capacitor.config.ts), which keeps and sends the cookie itself.
+    credentials: isNative ? 'include' : 'same-origin',
   })
 
   // 204 No Content (logout, delete) has no body to parse.

@@ -35,7 +35,7 @@
   align-items: baseline;
   gap: 6px;
   font-size: 18px; /* the date and tail number */
-  color: var(--accent); /* the date, blue like the route */
+  color: var(--ink-2); /* the date, grey like Comments */
 }
 
 /* Whose flight, in the social feed: their picture and name above the date, set off by a line
@@ -48,7 +48,7 @@
   gap: 12px;
   padding: 8px 8px 12px;
   text-align: center;
-  color: var(--accent);
+  color: var(--gold); /* the ribbon, gold like a given Props' propeller */
 }
 .checkride p { font-size: 17px; font-weight: 600; line-height: 1.35; color: var(--ink); }
 /* My flights: the whole card is the button that opens its visibility (under the footer, which
@@ -73,7 +73,7 @@
   border-bottom: 1px solid var(--line);
   font-size: 16px;
   font-weight: 650;
-  color: var(--accent); /* the pilot's name, blue like the route */
+  color: var(--ink); /* the pilot's name, the same color as Back, Edit and Delete */
 }
 
 /* The pilot's picture: the accent fill instead of the default ink one. */
@@ -83,7 +83,7 @@
 }
 
 /* Like a finished step's label on the log-flight step indicator (.steps button[data-done]). */
-.date { font-weight: 550; color: var(--accent); } /* blue like the route */
+.date { font-weight: 550; color: var(--ink-2); } /* grey like Comments */
 
 /* Tail number sits at the top right of the card. */
 .tail {
@@ -91,7 +91,7 @@
   align-items: center;
   gap: 5px;
   margin-left: auto;
-  color: var(--accent); /* blue like the route */
+  color: var(--ink-2); /* grey like the date */
 }
 
 .routeBlock { display: flex; flex-direction: column; gap: 2px; }
@@ -110,7 +110,7 @@
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: 0.01em;
-  color: var(--accent);
+  color: light-dark(var(--accent-light-mode), var(--ink)); /* the airports: the accent, off-white like the name in dark mode */
 }
 
 .middle {
@@ -119,14 +119,15 @@
   display: flex;
 }
 
-/* A thin accent line ending in a small filled arrowhead, pointing at the destination. */
+/* A thin grey line ending in a small filled arrowhead, pointing at the destination. */
 .line {
+  --arrow: var(--ink-2); /* grey like the date, time and distance */
   flex: 1;
   position: relative;
   display: block;
   height: 1.5px;
   /* Stops where the arrowhead starts. */
-  background: linear-gradient(var(--accent), var(--accent)) left / calc(100% - 9px) 100% no-repeat;
+  background: linear-gradient(var(--arrow), var(--arrow)) left / calc(100% - 9px) 100% no-repeat;
 }
 .line::after {
   content: '';
@@ -136,7 +137,7 @@
   transform: translateY(-50%);
   border-top: 5px solid transparent;
   border-bottom: 5px solid transparent;
-  border-left: 9px solid var(--accent);
+  border-left: 9px solid var(--arrow);
 }
 
 /* "1.5 h · 235 nm" centered just above the arrow, where the Route step shows the distance.
@@ -149,11 +150,11 @@
   font-size: 15px;
   font-weight: 500;
   line-height: 1;
-  color: var(--accent);
+  color: var(--ink-2); /* grey like Comments */
   white-space: nowrap;
 }
 
-.via { font-size: 18px; color: var(--accent); /* blue like the route */ text-align: center; }
+.via { font-size: 18px; color: var(--ink-2); /* grey like the date, time and distance */ text-align: center; }
 
 .tags {
   display: flex;
@@ -208,7 +209,7 @@
 .propsCountLabel > span[aria-hidden] { visibility: hidden; font-weight: 650; }
 .reactionButton[data-propped] .propsCountLabel { font-weight: 650; }
 /* Props you've given: the label in the accent blue, and the propeller (drawn heavier) in gold. */
-.reactionButton[data-propped] { color: var(--accent); }
+.reactionButton[data-propped] { color: light-dark(var(--accent-light-mode), #ffffff); } /* navy, white in dark mode */
 .reactionButton[data-propped] .propeller { color: var(--gold); }
 /* The propeller can grow while it spins; it draws over the button's edges rather than being cut off. */
 .propeller { flex-shrink: 0; }

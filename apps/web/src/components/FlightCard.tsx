@@ -299,7 +299,7 @@ export function FlightReactions({ propsCount = 0, commentsCount = 0, propped = f
   )
   const comments = (
     <>
-      <MessageCircle size={22} strokeWidth={commentsOpen ? 2.5 : 1.75} aria-hidden />
+      <MessageCircle size={22} strokeWidth={commentsOpen ? 2.5 : 1.9} aria-hidden />
       <span className={styles.commentsLabel}>
         <span>{commentsLabel}</span>
         <span aria-hidden>{commentsLabel}</span>

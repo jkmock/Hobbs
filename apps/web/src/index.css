@@ -22,16 +22,16 @@
   --ink-3: light-dark(#8c9096, #74777c);
   --line: light-dark(#e1ddd2, #2a2d31);
   --line-strong: light-dark(#cbc6b8, #3a3d42);
-  --accent-light-mode: #0f1f40;
-  --accent-dark-mode: #5589e9;
+  --accent-light-mode: #082b47; /*#0c385c #002a54 #0f1f40 */
+  --accent-dark-mode: #185e97; /*#185e97 #5589e9 */
   --accent: light-dark(var(--accent-light-mode), var(--accent-dark-mode));
-  /* Text and icons on an accent fill: white on the navy, dark on the light dark-mode blue. */
-  --on-accent: light-dark(#ffffff, #10141c);
+  /* Text and icons on an accent fill: white on both the navy and the dark-mode blue. */
+  --on-accent: #ffffff;
   --accent-soft: color-mix(in srgb, var(--accent) 14%, var(--surface));
   /* Accent-colored marks that sit on an accent background (a navy card) use this lighter tint. */
   --highlight: var(--accent);
-  --good: light-dark(#2e7a4c, #5bbf83);
-  --danger: light-dark(#b4382c, #e5675a);
+  --good: light-dark(#207643, #278f50); /* originals: #2e7a4c #5bbf83 */
+  --danger: light-dark(#c83326, #c13b2c);
   /* Props given: the propeller in gold. */
   --gold: light-dark(#c8920c, #f0be3f);
 

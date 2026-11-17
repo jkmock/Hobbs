@@ -64,7 +64,7 @@ export default function HomePage() {
             title="Feed"
             className={listStyles.topHeader}
             action={
-              // Like My flights' Log flight button, with the icon after the text.
+              // Like My flights' Log Flight button, with the icon after the text.
               <Link to="/friends" className={`btn btn--primary ${listStyles.morphButton}`} {...friendsMorph}>
                 {hasFriends ? 'My Friends' : 'Add friends'}
                 {requests > 0 && <span className="mono"> ({requests})</span>}
