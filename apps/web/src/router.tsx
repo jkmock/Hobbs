@@ -16,6 +16,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import ErrorPage from './pages/ErrorPage'
 import TermsPage from './pages/TermsPage'
 import SupportPage from './pages/SupportPage'
+import PrivacyPage from './pages/PrivacyPage'
 import AdminReportsPage from './pages/AdminReportsPage'
 
 // A crash inside a layout shows the error in place of the page, keeping the layout around it.
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
       // Open signed in or not: linked from sign-up, and the App Store's support link.
       { path: '/terms', element: <TermsPage /> },
       { path: '/support', element: <SupportPage /> },
+      { path: '/privacy', element: <PrivacyPage /> },
     ],
   },
 

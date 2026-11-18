@@ -91,8 +91,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* Taps shouldn't flash: no mobile tap highlight, and no text selection when a control is
    tapped or clicked quickly. Text fields stay selectable so their contents can be edited. */
 * { -webkit-tap-highlight-color: transparent; }
-button, a, label, summary, [role='button'] { -webkit-user-select: none; user-select: none; }
-input, textarea { -webkit-user-select: text; user-select: text; }
+/* Like a native app, text can't be selected (no selection handles or callout from a long
+   press), except in the fields you type in. */
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 
 /* The app is a single phone-width column, centered on larger screens. */
 .app {

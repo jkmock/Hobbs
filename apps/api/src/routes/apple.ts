@@ -7,6 +7,7 @@ import { SESSION_COOKIE, cookieOptions } from "../auth.js";
 import { signInWithIdentity } from "../identities.js";
 import { ME_COLUMNS } from "../users.js";
 import { pool } from "../db.js";
+import { exchangeAuthorizationCode } from "../appleTokens.js";
 
 // Sign in with Apple, from the iOS app (ios/App/App/AuthPlugin.swift). The app gets an identity
 // token from Apple: a JWT signed by Apple, about the person, for this app. It's checked here
@@ -14,7 +15,7 @@ import { pool } from "../db.js";
 
 const APPLE_ISSUER = "https://appleid.apple.com";
 // The token is made for the iOS app: its bundle ID (capacitor.config.ts, appId).
-const APPLE_AUDIENCE = process.env.APPLE_BUNDLE_ID ?? "com.jkmock.hobbs";
+const APPLE_AUDIENCE = process.env.APPLE_BUNDLE_ID ?? "com.hobbsflight.ios";
 // Apple's keys, fetched when first needed and kept (jose refreshes them when Apple rotates).
 const appleKeys = createRemoteJWKSet(new URL(`${APPLE_ISSUER}/auth/keys`));
 
@@ -60,6 +61,22 @@ export default async function appleRoutes(app: FastifyInstance) {
       lastName: body.data.lastName,
     });
     if ("error" in result) return reply.code(result.status).send({ error: result.error });
+
+    // Swap the one-time code for a refresh token, kept to revoke if the account is deleted.
+    // Signing in doesn't depend on it.
+    if (body.data.authorizationCode) {
+      try {
+        const refreshToken = await exchangeAuthorizationCode(body.data.authorizationCode);
+        if (refreshToken) {
+          await pool.query(
+            `UPDATE user_identities SET apple_refresh_token = $2 WHERE provider = 'apple' AND provider_user_id = $1`,
+            [claims.sub, refreshToken],
+          );
+        }
+      } catch (err) {
+        request.log.warn({ err }, "Apple authorization code exchange failed");
+      }
+    }
 
     const { token, expiresAt } = await createSession(result.userId);
     reply.setCookie(SESSION_COOKIE, token, cookieOptions(expiresAt));

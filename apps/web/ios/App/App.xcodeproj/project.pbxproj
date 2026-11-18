@@ -7,9 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1B2C3D4E5F60718293A4B5F /* AuthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5E /* AuthPlugin.swift */; };
-		A1B2C3D4E5F60718293A4B5D /* NativeTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* NativeTabBar.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		4BB5B97A30AD52910004292B /* HobbsIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 4BB5B97930AD52910004292B /* HobbsIcon.icon */; };
+		4BB5B97C30AD55760004292B /* HobbsIcon 2.icon in Resources */ = {isa = PBXBuildFile; fileRef = 4BB5B97B30AD55760004292B /* HobbsIcon 2.icon */; };
+		4BB5B97E30AD57210004292B /* HobbsIcon3.icon in Resources */ = {isa = PBXBuildFile; fileRef = 4BB5B97D30AD57210004292B /* HobbsIcon3.icon */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -18,13 +19,17 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
+		A1B2C3D4E5F60718293A4B5D /* NativeTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* NativeTabBar.swift */; };
+		A1B2C3D4E5F60718293A4B5F /* AuthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5E /* AuthPlugin.swift */; };
+		A1B2C3D4E5F60718293A4B62 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B61 /* PrivacyInfo.xcprivacy */; };
+		A1B2C3D4E5F60718293A4B64 /* HapticsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B63 /* HapticsPlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A1B2C3D4E5F60718293A4B5E /* AuthPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthPlugin.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4B60 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4B5C /* NativeTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTabBar.swift; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		4BB5B97930AD52910004292B /* HobbsIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = HobbsIcon.icon; sourceTree = "<group>"; };
+		4BB5B97B30AD55760004292B /* HobbsIcon 2.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "HobbsIcon 2.icon"; sourceTree = "<group>"; };
+		4BB5B97D30AD57210004292B /* HobbsIcon3.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = HobbsIcon3.icon; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -35,6 +40,11 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		A1B2C3D4E5F60718293A4B5C /* NativeTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTabBar.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5E /* AuthPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthPlugin.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B60 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B61 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B63 /* HapticsPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticsPlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,13 +84,18 @@
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				A1B2C3D4E5F60718293A4B5C /* NativeTabBar.swift */,
 				A1B2C3D4E5F60718293A4B5E /* AuthPlugin.swift */,
+				A1B2C3D4E5F60718293A4B63 /* HapticsPlugin.swift */,
 				A1B2C3D4E5F60718293A4B60 /* App.entitlements */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
 				504EC3131FED79650016851F /* Info.plist */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
+				A1B2C3D4E5F60718293A4B61 /* PrivacyInfo.xcprivacy */,
 				50B271D01FEDC1A000F3C39B /* public */,
+				4BB5B97930AD52910004292B /* HobbsIcon.icon */,
+				4BB5B97B30AD55760004292B /* HobbsIcon 2.icon */,
+				4BB5B97D30AD57210004292B /* HobbsIcon3.icon */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -151,11 +166,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */,
+				4BB5B97C30AD55760004292B /* HobbsIcon 2.icon in Resources */,
 				50B271D11FEDC1A000F3C39B /* public in Resources */,
 				504EC30F1FED79650016851F /* Assets.xcassets in Resources */,
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
+				4BB5B97A30AD52910004292B /* HobbsIcon.icon in Resources */,
+				4BB5B97E30AD57210004292B /* HobbsIcon3.icon in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+				A1B2C3D4E5F60718293A4B62 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -169,6 +188,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				A1B2C3D4E5F60718293A4B5D /* NativeTabBar.swift in Sources */,
 				A1B2C3D4E5F60718293A4B5F /* AuthPlugin.swift in Sources */,
+				A1B2C3D4E5F60718293A4B64 /* HapticsPlugin.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -308,7 +328,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = HobbsIcon3;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = TZ9L75XZ6N;
@@ -320,8 +341,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
-				PRODUCT_BUNDLE_IDENTIFIER = com.jkmock.hobbs;
-				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hobbsflight.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_VERSION = 5.0;
@@ -332,7 +352,8 @@
 		504EC3181FED79650016851F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = HobbsIcon3;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = TZ9L75XZ6N;
@@ -343,8 +364,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.jkmock.hobbs;
-				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hobbsflight.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				SWIFT_VERSION = 5.0;

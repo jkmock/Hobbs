@@ -175,12 +175,6 @@
    MyAircraft.module.css), between the small button (30px) and the date's original 40px, so
    their edges line up; a longer date (one from another year, "Nov 4, 2025") can still grow wider. */
 .headButton { min-width: 122px; height: 35px; padding-inline: 10px; font-size: 14px; }
-.optionList {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
 /* Route legs: a white card in two parts, split by a line. The top has the route, with the
    codes, arrow and distance in blue; the bottom holds Flight time. */
 .leg {
@@ -200,17 +194,9 @@
 /* Flight time, laid out like the Total time card: the stepper row's own 8px above and below. */
 .legBottom { padding: 8px 16px; }
 
-/* On the Route step the map stays put above the legs, so the body itself doesn't scroll;
-   the legs below the map do. */
-.body:has(> .routePreview) {
-  overflow: hidden;
-  gap: 0;
-  padding: 0;
-}
-.routePreview {
-  flex: none;
-  padding: 12px 16px 10px;
-}
+/* On the Route step the map card is the first thing on the page, and scrolls up and down with
+   the legs under it, like any other step's cards. */
+.routePreview { flex: none; }
 /* The same map on the other steps: invisible and out of the layout, but the same size (and on
    screen) so it keeps loading and needn't resize when the Route step shows it. */
 .routePreviewHidden {
@@ -223,14 +209,9 @@
   pointer-events: none;
 }
 .routeLegs {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 8px 16px calc(var(--footer-space) + 12px);
 }
 .routePreviewCard { padding: 6px; }
 /* The route preview opens full screen when tapped. */
@@ -450,32 +431,6 @@
 .totalSource { margin-top: -4px; font-size: 13px; color: var(--ink-2); }
 
 
-/* FlightAware recent flights: each row is one toggle button. */
-.recentFlight {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 10px 0;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: none;
-  text-align: left;
-  cursor: pointer;
-}
-li:last-child > .recentFlight { border-bottom: 0; }
-
-.checkbox {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  border: 1.5px solid var(--line-strong);
-  border-radius: 6px;
-  color: #fff;
-}
-.checkbox[data-checked] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-
-.recentRoute { display: flex; flex-direction: column; gap: 2px; font-size: 15px; }
+/* FlightAware recent flights: the route and when, beside My aircraft's Select button. */
+.recentRoute { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 15px; } /* pushes Select to the right */
 .recentWhen { font-size: 13px; color: var(--ink-2); }

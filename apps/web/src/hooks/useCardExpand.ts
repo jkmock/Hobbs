@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { POP_MS, POP_SCALE, PRESS_SCALE, pressIn, scaleOf, stopAnimations } from '../lib/press'
+import { haptic } from '../lib/haptics'
 import styles from '../components/FlightList.module.css'
 
 // How long the outgoing parts fade before the swap, and how long the card takes to move
@@ -144,6 +145,10 @@ export function useCardExpand(routeId: string | null) {
       ),
     )
     setDetailsDelay(glide + POP_MS * DETAILS_AFTER)
+    // Felt as it settles into place (at the height of its pop): opening a flight, the second tap
+    // after the press; going back to the list, the only one.
+    const popTimer = window.setTimeout(() => haptic('pop'), glide + POP_MS * 0.45)
+    return () => clearTimeout(popTimer)
   }, [shownId])
 
   function cardRef(id: string) {

@@ -4,6 +4,7 @@ import { Award, Gauge, GraduationCap, MessageCircle, Moon, Plane, Route, User, t
 import type { Checkride, Flight, Person } from '../lib/types'
 import { formatDate, formatHours } from '../lib/format'
 import { pressIn, release } from '../lib/press'
+import { haptic } from '../lib/haptics'
 import { spin, squeeze, unsqueeze } from '../lib/propSpin'
 import { usePress } from '../hooks/usePress'
 import LiveRouteMap from './LiveRouteMap'
@@ -160,6 +161,7 @@ function CoverLink({ to, label }: { to: string; label: string }) {
     t.pressed = true
     const article = card(el)
     if (article) pressIn(article)
+    haptic('press') // pressed in under your finger, on the way to opening it (lib/haptics)
   }
   // Not a tap any more (moved, slid off, or the browser took over): spring back if pressed.
   function cancel(t: Touch, el: Element) {
@@ -202,6 +204,7 @@ function CoverLink({ to, label }: { to: string; label: string }) {
         // A tap: the click that follows opens the flight. The card stays pressed in (pressed
         // now, if the tap was quicker than the delay) for the opening animation to carry on from.
         press(t, e.currentTarget)
+        // (Its second tap comes as it settles into place at the top: hooks/useCardExpand.)
       }}
       onPointerLeave={(e) => {
         if (touch.current) cancel(touch.current, e.currentTarget) // slid off the card
@@ -236,15 +239,28 @@ type ReactionsProps = {
   onProps?: () => void
 }
 
+const FULL_PRESS_MS = 140 // lib/propSpin's squeeze
+
 export function FlightReactions({ propsCount = 0, commentsCount = 0, propped = false, giveProps = false, propsOpen, commentsOpen, onComments, onProps }: ReactionsProps = {}) {
   // Props has its own press: the propeller shrinks under your finger, and giving props (or,
   // on your own flights, opening who gave them) spins it (lib/propSpin). Taking them back,
   // closing, or sliding off just lets it grow back.
   const propeller = useRef<SVGSVGElement>(null)
   const squeezed = useRef(false)
+  // A firm tap once the propeller is fully squeezed under your finger (its squeeze takes about
+  // as long as this), or as you let go if that's sooner (a quick tap).
+  const fullPress = useRef(0)
+  const firmTap = () => {
+    if (!fullPress.current) return
+    clearTimeout(fullPress.current)
+    fullPress.current = 0
+    haptic('medium')
+  }
   const letGo = () => {
     if (squeezed.current && propeller.current) unsqueeze(propeller.current)
     squeezed.current = false
+    clearTimeout(fullPress.current) // slid off: no tap
+    fullPress.current = 0
   }
   // The label still presses in and pops like any button (lib/buttonPress, through its
   // data-press-target); the propeller beside it has its own press.
@@ -253,11 +269,18 @@ export function FlightReactions({ propsCount = 0, commentsCount = 0, propped = f
       if (e.button !== 0 || !propeller.current) return
       squeezed.current = true
       squeeze(propeller.current)
+      clearTimeout(fullPress.current)
+      fullPress.current = window.setTimeout(firmTap, FULL_PRESS_MS)
     },
     onPointerLeave: letGo,
     onPointerCancel: letGo,
   }
   const onPropsClick = () => {
+    firmTap() // a quick tap, let go before it was fully pressed
+    // Felt as it looks: when the propeller spins (giving props, or opening who gave them on your
+    // own post), the spin's own feel; closing that list, a soft tap; taking props back, nothing.
+    if (!propped) haptic('props')
+    else if (!giveProps) haptic('pop')
     if (propeller.current) {
       if (!propped) spin(propeller.current) // giving props, or opening who gave them
       else unsqueeze(propeller.current)
@@ -330,7 +353,10 @@ export function FlightReactions({ propsCount = 0, commentsCount = 0, propped = f
         <button
           type="button"
           className={`btn btn--ghost btn--sm ${styles.reactionButton}`}
-          onClick={onComments}
+          onClick={() => {
+            haptic(commentsOpen ? 'pop' : 'press') // opening the comments, or closing them
+            onComments()
+          }}
           aria-expanded={commentsOpen}
         >
           {comments}
@@ -420,10 +446,31 @@ export function CheckrideCard({
   className?: string
 }) {
   const goal = goalById(checkride.goal)
-  const pressHandlers = usePress()
+  // Selecting it (opening its panel) is felt as it presses in and again as you let go, if you
+  // held it; a quick tap is one tap. Deselecting it (closing the panel) is one, as you let go.
+  const selected = !!below && belowOpen
+  const tapped = useRef(false) // pressed only as it was let go: its press is the one tap
+  const pressHandlers = usePress({
+    onPress: (atRelease) => {
+      tapped.current = atRelease
+      if (!selected) haptic('press')
+    },
+    onPop: () => {
+      if (!(tapped.current && !selected)) haptic('pop')
+      tapped.current = false
+    },
+  })
   return (
     <article className={`card ${styles.card} ${className}`} {...(onSelect ? pressHandlers : {})}>
-      {onSelect && <button type="button" className={styles.cardButton} onClick={onSelect} aria-label={selectLabel} data-no-press />}
+      {onSelect && (
+        <button
+          type="button"
+          className={styles.cardButton}
+          onClick={onSelect}
+          aria-label={selectLabel}
+          data-no-press
+        />
+      )}
       <div className={styles.body}>
         {pilot && (
           <div className={styles.pilot}>

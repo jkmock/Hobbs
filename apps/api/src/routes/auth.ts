@@ -6,6 +6,7 @@ import { hashPassword, verifyPassword } from "../passwords.js";
 import { createSession, deleteSession, validateSession } from "../sessions.js"
 import { SESSION_COOKIE, cookieOptions } from "../auth.js";
 import { ME_COLUMNS } from "../users.js";
+import { revokeRefreshToken } from "../appleTokens.js";
 
 export default async function authRoutes(app: FastifyInstance) {
   app.post("/auth/signup", async (request, reply) => {
@@ -132,6 +133,21 @@ export default async function authRoutes(app: FastifyInstance) {
   app.delete("/auth/me", async (request, reply) => {
     if (!request.userId) {
       return reply.code(401).send({ error: "Not logged in" });
+    }
+
+    // Signed in with Apple: end Hobbs's access to their Apple account first (Apple requires it).
+    // A failure is logged, not shown: the account is deleted either way.
+    const apple = await pool.query<{ token: string }>(
+      `SELECT apple_refresh_token AS token FROM user_identities
+       WHERE user_id = $1 AND provider = 'apple' AND apple_refresh_token IS NOT NULL`,
+      [request.userId],
+    );
+    for (const { token } of apple.rows) {
+      try {
+        await revokeRefreshToken(token);
+      } catch (err) {
+        request.log.warn({ err }, "Apple token revoke failed");
+      }
     }
 
     await pool.query(`DELETE FROM users WHERE user_id = $1`,

@@ -53,7 +53,8 @@ export default function AuthShell({
         {/* Signing up or in, by any route, is agreeing to the Terms (no tolerance for abuse). */}
         {google && (
           <p className={styles.terms}>
-            By continuing, you agree to the <Link to="/terms">Terms of Use</Link>.
+            By continuing, you agree to the <Link to="/terms">Terms of Use</Link> and{' '}
+            <Link to="/privacy">Privacy Policy</Link>.
           </p>
         )}
 

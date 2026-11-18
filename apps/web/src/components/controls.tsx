@@ -355,6 +355,7 @@ export function Select({ label, value, options, onChange, action }: SelectProps)
   const [above, setAbove] = useState(false)
   const [active, setActive] = useState(0) // highlighted row, for the keyboard
   const ref = useRef<HTMLDivElement>(null)
+  const toggledByPointer = useRef(false) // the click after a touch: already opened (or closed) by it
   const id = useId()
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(leaveTimer.current), [])
@@ -407,7 +408,23 @@ export function Select({ label, value, options, onChange, action }: SelectProps)
           aria-expanded={open}
           aria-labelledby={`${id}-label ${id}-value`}
           aria-activedescendant={open ? `${id}-${active}` : undefined}
-          onClick={() => (open ? close() : show())}
+          // Opens (or closes) the moment it's touched, not when the finger lifts.
+          onPointerDown={(e) => {
+            if (e.button !== 0) return
+            e.preventDefault() // no focus ring from the touch, and no click to toggle it back
+            toggledByPointer.current = true
+            if (open) close()
+            else show()
+          }}
+          onClick={() => {
+            // A click that isn't the touch above (the keyboard, or a screen reader).
+            if (toggledByPointer.current) {
+              toggledByPointer.current = false
+              return
+            }
+            if (open) close()
+            else show()
+          }}
           onKeyDown={onKeyDown}
         >
           {selected?.leading}

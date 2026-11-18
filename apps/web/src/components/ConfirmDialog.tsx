@@ -34,8 +34,17 @@ export default function ConfirmDialog({
   useEffect(() => {
     const el = dialog.current
     if (!el) return
-    if (open && !el.open) el.showModal()
-    else if (!open && el.open) el.close()
+    if (open && !el.open) {
+      el.showModal()
+      // Focus starts on the card itself, not a button: otherwise the browser rings Cancel in the
+      // focus color as if it had been tabbed to. Tab still moves to the buttons.
+      el.querySelector<HTMLElement>('[data-initial-focus]')?.focus()
+    } else if (!open && el.open) {
+      el.close()
+      // Closing hands focus back to the button that opened it, which the browser then rings in
+      // the focus color. Nothing needs focus once it's closed.
+      ;(document.activeElement as HTMLElement | null)?.blur()
+    }
   }, [open])
 
   return (
@@ -53,14 +62,14 @@ export default function ConfirmDialog({
         if (e.target === e.currentTarget && !busy) onCancel()
       }}
     >
-      <div className={`card ${styles.card}`}>
+      <div className={`card ${styles.card}`} tabIndex={-1} data-initial-focus>
         <h2 id="confirm-title" className={styles.title}>
           {title}
         </h2>
         {children && <div className={styles.body}>{children}</div>}
         {error && <p className="error-text">{error}</p>}
         <div className={styles.buttons}>
-          <button type="button" className={`btn ${styles.button}`} onClick={onCancel} disabled={busy} autoFocus>
+          <button type="button" className={`btn ${styles.button}`} onClick={onCancel} disabled={busy}>
             Cancel
           </button>
           <button

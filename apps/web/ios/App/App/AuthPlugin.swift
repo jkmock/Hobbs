@@ -62,6 +62,11 @@ public class AuthPlugin: CAPPlugin, CAPBridgedPlugin, ASAuthorizationControllerD
         var result: [String: Any] = ["identityToken": token, "nonce": nonce]
         if let given = credential.fullName?.givenName { result["firstName"] = given }
         if let family = credential.fullName?.familyName { result["lastName"] = family }
+        // A one-time code the API swaps with Apple for a refresh token, kept so deleting the
+        // account can revoke Hobbs's access (Apple requires it).
+        if let codeData = credential.authorizationCode, let code = String(data: codeData, encoding: .utf8) {
+            result["authorizationCode"] = code
+        }
         call.resolve(result)
     }
 

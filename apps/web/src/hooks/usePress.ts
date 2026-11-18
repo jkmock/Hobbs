@@ -12,15 +12,18 @@ const PRESS_DELAY_MS = 90 // a finger rests this long before the press (a mouse 
 
 type Touch = { x: number; y: number; pressed: boolean; timer: number; el: HTMLElement }
 
-export function usePress() {
+// onPress and onPop: called as it presses in and as it pops (a press let go, not one cancelled).
+// onPress is told whether the press came only as it was let go (a tap quicker than the delay).
+export function usePress({ onPress, onPop }: { onPress?: (atRelease: boolean) => void; onPop?: () => void } = {}) {
   const touch = useRef<Touch | null>(null)
   useEffect(() => () => clearTimeout(touch.current?.timer), [])
 
-  function press(t: Touch) {
+  function press(t: Touch, atRelease = false) {
     clearTimeout(t.timer)
     if (t.pressed) return
     t.pressed = true
     pressIn(t.el)
+    onPress?.(atRelease)
   }
   // Not a press any more: spring back (no pop) if it was pressed.
   function cancel() {
@@ -50,8 +53,9 @@ export function usePress() {
       const t = touch.current
       touch.current = null
       if (!t) return
-      press(t) // a quick tap, quicker than the delay, still gets its press
+      press(t, true) // a quick tap, quicker than the delay, still gets its press
       popOut(t.el)
+      onPop?.()
     },
     onPointerLeave: cancel,
     onPointerCancel: cancel, // the browser took over (a scroll)

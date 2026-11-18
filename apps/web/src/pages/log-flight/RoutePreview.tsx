@@ -67,7 +67,7 @@ export default function RoutePreview({ draft, hidden }: { draft: Draft; hidden: 
 
   return (
     <>
-      {/* On the Route step it stays put above the legs, which scroll on their own. Hidden, it
+      {/* On the Route step it's the first card, scrolling with the legs under it. Hidden, it
           can't be seen, tapped or focused, but still loads (it's on screen, just invisible). */}
       <div className={hidden ? styles.routePreviewHidden : styles.routePreview} inert={hidden} aria-hidden={hidden || undefined}>
         <div className={`card ${styles.routePreviewCard}`}>

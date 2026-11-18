@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, X } from 'lucide-react'
 import { CreateFlightSchema } from '@hobbs/shared'
@@ -42,6 +42,11 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
   const save = useSaveFlight(id)
   const [draft, setDraft] = useState(initial)
   const [step, setStep] = useState(0)
+  // Every step opens at its top (the steps share one scrolling body), the Route step's map first.
+  const body = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (body.current) body.current.scrollTop = 0
+  }, [step])
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const update = (patch: Partial<Draft>) => setDraft((d) => applyPatch(d, patch))
@@ -174,7 +179,7 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
         ))}
       </ol>
 
-      <div className={styles.body} onKeyDown={keyboardNav}>
+      <div ref={body} className={styles.body} onKeyDown={keyboardNav}>
         {/* The Route step's map, kept loaded on every step so it's ready when Route opens. */}
         <RoutePreview draft={draft} hidden={step !== ROUTE_STEP} />
         <Step draft={draft} update={update} errors={errors} clearError={clearError} />

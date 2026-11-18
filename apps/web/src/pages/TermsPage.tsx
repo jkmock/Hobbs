@@ -70,7 +70,8 @@ export default function TermsPage() {
       <h2>Changes and contact</h2>
       <p>
         We may update these terms, and will change the date above when we do. Questions? Email{' '}
-        <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> or see <Link to="/support">Support</Link>.
+        <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> or see <Link to="/support">Support</Link>. How Hobbs handles your information is in the{' '}
+        <Link to="/privacy">Privacy Policy</Link>.
       </p>
     </InfoPage>
   )

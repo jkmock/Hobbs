@@ -207,8 +207,16 @@ function Sheet({ open, onClose, label, children }: { open: boolean; onClose: () 
   useEffect(() => {
     const el = dialog.current
     if (!el) return
-    if (open && !el.open) el.showModal()
-    else if (!open && el.open) el.close()
+    if (open && !el.open) {
+      el.showModal()
+      // Focus starts on the card, so no choice is ringed in the focus color (ConfirmDialog too).
+      el.querySelector<HTMLElement>('[data-initial-focus]')?.focus()
+    } else if (!open && el.open) {
+      el.close()
+      // Closing hands focus back to the button that opened it, which the browser then rings in
+      // the focus color. Nothing needs focus once it's closed.
+      ;(document.activeElement as HTMLElement | null)?.blur()
+    }
   }, [open])
   return createPortal(
     <dialog
@@ -225,7 +233,11 @@ function Sheet({ open, onClose, label, children }: { open: boolean; onClose: () 
       }}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      {open && <div className={`card ${dialogStyles.card} ${styles.card}`}>{children}</div>}
+      {open && (
+        <div className={`card ${dialogStyles.card} ${styles.card}`} tabIndex={-1} data-initial-focus>
+          {children}
+        </div>
+      )}
     </dialog>,
     document.body,
   )

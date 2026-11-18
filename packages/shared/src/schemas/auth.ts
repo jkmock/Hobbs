@@ -30,6 +30,9 @@ export type SetPassword = z.infer<typeof SetPasswordSchema>;
 export const AppleSignInSchema = z.object({
   identityToken: z.string().min(1).max(10_000),
   nonce: z.string().min(16).max(200), // the random value whose SHA-256 is in the token
+  // One-time code the API swaps with Apple for a refresh token, to revoke when the account is
+  // deleted (Apple requires it). Valid for five minutes.
+  authorizationCode: z.string().min(1).max(2000).optional(),
   firstName: z.string().trim().max(50).optional(),
   lastName: z.string().trim().max(50).optional(),
 });

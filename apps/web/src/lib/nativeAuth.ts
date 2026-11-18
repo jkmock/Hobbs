@@ -5,7 +5,13 @@ import { apiBase } from './native'
 type NativeAuthPlugin = {
   // Apple's sheet. The token is checked by the API (POST /auth/apple); the name comes only on
   // someone's first Apple sign-in to the app.
-  signInWithApple(): Promise<{ identityToken: string; nonce: string; firstName?: string; lastName?: string }>
+  signInWithApple(): Promise<{
+    identityToken: string
+    nonce: string
+    authorizationCode?: string // swapped by the API for a refresh token, to revoke on account deletion
+    firstName?: string
+    lastName?: string
+  }>
   // Google in Apple's sign-in sheet; on success the session cookie is already stored.
   signInWithGoogle(options: { startUrl: string; apiUrl: string }): Promise<void>
 }

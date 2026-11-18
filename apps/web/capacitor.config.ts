@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 // The iOS app: the built website (dist/) running inside a native shell. `pnpm cap:sync` copies a
 // fresh build into ios/ after every change; open ios/App in Xcode to run it or upload it.
 const config: CapacitorConfig = {
-  appId: 'com.jkmock.hobbs', // the bundle ID: can't change once the app is on the App Store
+  appId: 'com.hobbsflight.ios', // the bundle ID: can't change once the app is on the App Store
   appName: 'Hobbs',
   webDir: 'dist',
   ios: {

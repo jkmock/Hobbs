@@ -54,6 +54,7 @@ class MainViewController: CAPBridgeViewController {
         UIScrollView.hideTopEdgeEffects()
         bridge?.registerPluginInstance(NativeTabBarPlugin()) // NativeTabBar.swift
         bridge?.registerPluginInstance(AuthPlugin()) // AuthPlugin.swift: Apple and Google sign-in
+        bridge?.registerPluginInstance(HapticsPlugin()) // HapticsPlugin.swift: taps on press and pop
     }
 }
 

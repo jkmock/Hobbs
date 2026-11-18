@@ -4,6 +4,8 @@ import { ApiError } from '../../lib/api'
 import type { RecentFlight } from '../../lib/types'
 import { emptyLeg, type DraftLeg, type StepProps } from './draft'
 import styles from './LogFlight.module.css'
+// The rows and Select buttons are My aircraft's, so the two lists look and work alike.
+import aircraftStyles from '../../components/MyAircraft.module.css'
 
 // "N123AB's Recent Flights": flights FlightAware saw for the chosen aircraft.
 // Picking one or more turns them into the route's legs (in the order flown) and sets the date;
@@ -67,27 +69,33 @@ export default function RecentFlights({ draft, update }: Pick<StepProps, 'draft'
 
       {flights.length > 0 && (
         <>
-          <ul className={styles.optionList}>
+          <p className="muted" style={{ fontSize: 14 }}>
+            Select one or more of the recent flights below or press Next to enter flight manually.
+          </p>
+          <ul className={aircraftStyles.optionList}>
             {flights.map((f) => {
               const isSelected = selectedIds.has(f.faFlightId)
+              const route = `${f.originCode ?? '?'} → ${f.destinationCode ?? '?'}`
               return (
-                <li key={f.faFlightId}>
+                <li key={f.faFlightId} className={aircraftStyles.option}>
+                  <span className={styles.recentRoute}>
+                    <span className="mono">{route}</span>
+                    <span className={styles.recentWhen}>{formatWhen(f)}</span>
+                  </span>
                   <button
                     type="button"
-                    className={styles.recentFlight}
+                    className={`btn btn--sm ${aircraftStyles.selectButton} ${isSelected ? aircraftStyles.selected : ''}`}
                     aria-pressed={isSelected}
+                    aria-label={`${isSelected ? 'Selected' : 'Select'}: ${route}, ${formatWhen(f)}`}
                     onClick={() => toggle(f)}
                   >
-                    {/* data-press-target: pressing the row presses in just the checkbox (lib/buttonPress). */}
-                    <span className={styles.checkbox} data-checked={isSelected || undefined} data-press-target aria-hidden>
-                      {isSelected && <Check size={14} strokeWidth={3} />}
-                    </span>
-                    <span className={styles.recentRoute}>
-                      <span className="mono">
-                        {f.originCode ?? '?'} → {f.destinationCode ?? '?'}
-                      </span>
-                      <span className={styles.recentWhen}>{formatWhen(f)}</span>
-                    </span>
+                    {isSelected ? (
+                      <>
+                        <Check size={14} /> Selected
+                      </>
+                    ) : (
+                      'Select'
+                    )}
                   </button>
                 </li>
               )

@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ChevronRight, FileText, Heart, LogOut, Mail, ShieldAlert, Trash2 } from 'lucide-react'
+import { ChevronRight, FileText, Heart, Lock, LogOut, Mail, ShieldAlert, Trash2 } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { Avatar, Segmented } from '../components/controls'
@@ -91,7 +91,7 @@ function BlockedCard() {
   )
 }
 
-// Getting in touch, the Terms of Use, and (for admins) the reports waiting to be reviewed.
+// Getting in touch, the Terms of Use and Privacy Policy, and (for admins) the reports waiting to be reviewed.
 function HelpCard({ isAdmin }: { isAdmin: boolean }) {
   return (
     <section className={`card ${styles.card}`}>
@@ -105,6 +105,9 @@ function HelpCard({ isAdmin }: { isAdmin: boolean }) {
         </Link>
         <Link to="/terms">
           <FileText size={18} /> Terms of Use <ChevronRight size={18} />
+        </Link>
+        <Link to="/privacy">
+          <Lock size={18} /> Privacy Policy <ChevronRight size={18} />
         </Link>
         {isAdmin && (
           <Link to="/admin/reports">
