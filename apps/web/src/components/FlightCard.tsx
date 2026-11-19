@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState, type PointerEvent, type ReactNode, type Ref } from 'react'
 import { Link } from 'react-router'
-import { Award, Gauge, GraduationCap, MessageCircle, Moon, Plane, Route, User, type LucideIcon } from 'lucide-react'
+import { Award, Gauge, GraduationCap, Map as MapIcon, MessageCircle, Moon, Plane, User, type LucideIcon } from 'lucide-react'
 import type { Checkride, Flight, Person } from '../lib/types'
 import { formatDate, formatHours } from '../lib/format'
 import { pressIn, release } from '../lib/press'
@@ -34,6 +34,7 @@ export type FlightSummary = Pick<
   | 'nightLandingsTg'
   | 'actualInstrumentTime'
   | 'simulatedInstrumentTime'
+  | 'notes'
 >
 
 type Props = {
@@ -109,6 +110,7 @@ export default function FlightCard({ flight, pilot, pilotAction, to, footer, bel
           ))}
         </ul>
       )}
+      {flight.notes && <p className={styles.notes}>{flight.notes}</p>}
       </div>
       {/* Props and comments are controls of their own: pressing them doesn't press and pop
           the card around them. */}
@@ -375,7 +377,12 @@ function RouteHeader({ flight }: { flight: FlightSummary }) {
 
   // Every airport between the first origin and the last destination, in order: where each
   // leg after the first started, and where touch-and-goes were flown along the way.
-  const stops = flight.legs.flatMap((leg, i) => [...(i > 0 ? [leg.origin] : []), ...(leg.stops ?? []).map((s) => s.airport)])
+  // Touch-and-goes at a leg's own destination were in its pattern before landing: not a stop on
+  // the way.
+  const stops = flight.legs.flatMap((leg, i) => [
+    ...(i > 0 ? [leg.origin] : []),
+    ...(leg.stops ?? []).map((s) => s.airport).filter((airport) => airport !== leg.destination),
+  ])
   const distance = Math.round(flight.legs.reduce((nm, leg) => nm + leg.distanceNm, 0))
   const isLocal = flight.legs.length === 1 && first.origin === first.destination
 
@@ -413,7 +420,7 @@ function tagsFor(f: FlightSummary): { icon: LucideIcon; label: string }[] {
   if (f.soloTime > 0) tags.push({ icon: User, label: 'Solo' })
   else if (f.picTime > 0) tags.push({ icon: User, label: 'PIC' })
   if (f.sicTime > 0) tags.push({ icon: User, label: 'SIC' })
-  if (f.crossCountryTime > 0) tags.push({ icon: Route, label: 'Cross-country' })
+  if (f.crossCountryTime > 0) tags.push({ icon: MapIcon, label: 'Cross-country' })
   const nightLandings = f.nightLandingsFs + f.nightLandingsTg
   if (nightLandings > 0) tags.push({ icon: Moon, label: nightLandings === 1 ? 'Night landing' : `${nightLandings} night landings` })
   else if (f.nightTime > 0) tags.push({ icon: Moon, label: 'Night' })

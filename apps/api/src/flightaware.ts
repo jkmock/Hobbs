@@ -26,9 +26,10 @@ function monthlyBudget(): number {
   return Number.isFinite(value) && value >= 0 ? value : 4.5;
 }
 
+// No key, or FlightAware turned the key down (wrong, revoked, or for another account).
 export class FlightAwareNotConfigured extends Error {
-  constructor() {
-    super("FlightAware isn't set up. Add FLIGHTAWARE_API_KEY to .env.");
+  constructor(message = "FlightAware isn't set up. Add FLIGHTAWARE_API_KEY to .env.") {
+    super(message);
   }
 }
 
@@ -113,6 +114,9 @@ async function aeroApi<T>(endpoint: string, path: string, cost: number): Promise
       if (retry === undefined) throw err;
     }
     await new Promise((resolve) => setTimeout(resolve, retry));
+  }
+  if (response.status === 401 || response.status === 403) {
+    throw new FlightAwareNotConfigured("FlightAware rejected the API key. Check FLIGHTAWARE_API_KEY.");
   }
   if (!response.ok) {
     const body = await response.text().catch(() => "");

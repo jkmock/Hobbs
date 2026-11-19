@@ -38,8 +38,7 @@
 .comment p { margin: 0; }
 .commentAuthor { font-size: 14px; font-weight: 600; color: var(--ink); }
 .commentBody { font-size: 15px; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
-/* A reported flight's notes and instructor, under its card's footer. */
+/* A reported flight's instructor, under its card's footer. */
 .postText { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; font-size: 15px; color: var(--ink); }
 .postText p { margin: 0; }
 .postLabel { font-weight: 600; color: var(--ink-2); margin-right: 4px; }
-.postNotes { white-space: pre-wrap; overflow-wrap: anywhere; }

@@ -194,16 +194,13 @@ function Post({ post }: { post: ReportedPost }) {
           flight={post.flight}
           pilot={post.flight.pilot}
           className={styles.post}
-          // The pilot's own words, which the card alone doesn't show: often what was reported.
+          // The instructor's name, which the card alone doesn't show (it shows the notes).
           below={
-            (post.flight.notes || post.flight.instructorName) && (
+            post.flight.instructorName && (
               <div className={styles.postText}>
-                {post.flight.instructorName && (
-                  <p>
-                    <span className={styles.postLabel}>Instructor</span> {post.flight.instructorName}
-                  </p>
-                )}
-                {post.flight.notes && <p className={styles.postNotes}>{post.flight.notes}</p>}
+                <p>
+                  <span className={styles.postLabel}>Instructor</span> {post.flight.instructorName}
+                </p>
               </div>
             )
           }

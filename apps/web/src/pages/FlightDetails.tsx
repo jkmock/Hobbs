@@ -11,7 +11,7 @@ import styles from './FlightDetails.module.css'
 const ChartViewer = lazy(() => import('../components/ChartViewer'))
 
 // A flight's details, shown under its card on the flight page (in FlightsPage): a card per
-// leg, and cards of its times and landings and its notes.
+// leg, and a card of its times and landings. (Its notes are on the card itself.)
 //
 // Each section pops in when this appears: a quick fade and grow, one after another (see .group
 // in FlightDetails.module.css).
@@ -25,7 +25,7 @@ export default function FlightDetails({ flight, delay = 100, className = '' }: P
   const press = usePress() // the cards press and pop for fun
   const multiLeg = flight.legs.length > 1
   // Sections pop in one after another, in the order they appear: one leg's touch-and-goes,
-  // or each leg (with its touch-and-goes), then Stats and Notes.
+  // or each leg (with its touch-and-goes), then Stats.
   const singleLegCards = multiLeg ? [] : touchAndGoCards(flight.legs[0])
   const statsOrder = multiLeg ? flight.legs.length : singleLegCards.length
   return (
@@ -61,14 +61,6 @@ export default function FlightDetails({ flight, delay = 100, className = '' }: P
         </dl>
       </section>
 
-      {flight.notes && (
-        <section className={styles.group} style={popOrder(statsOrder + 1)}>
-          <h2 className={styles.label}>Notes:</h2>
-          <p className={`card ${styles.notes}`} {...press}>
-            {flight.notes}
-          </p>
-        </section>
-      )}
     </div>
   )
 }

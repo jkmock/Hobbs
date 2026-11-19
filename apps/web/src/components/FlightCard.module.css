@@ -173,6 +173,9 @@
 }
 .tags li { display: inline-flex; align-items: center; gap: 5px; }
 
+/* The pilot's notes, under the tags. */
+.notes { margin: 0; font-size: 15px; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+
 .footer {
   position: relative;
   display: flex;
