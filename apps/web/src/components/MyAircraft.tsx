@@ -379,7 +379,9 @@ function AircraftDetails({
           {errors.model && <span className="error-text">Required</span>}
         </label>
         <label className="field">
-          <span>Year</span>
+          <span>
+            Year <span className={styles.optional}>(Optional)</span>
+          </span>
           <input
             className="input"
             inputMode="numeric"
@@ -402,20 +404,17 @@ function AircraftDetails({
         ]}
       />
 
-      <div className={styles.checks}>
-        <label>
-          <input type="checkbox" checked={form.isTailwheel} onChange={(e) => set({ isTailwheel: e.target.checked })} />
-          Tailwheel
-        </label>
-        <label>
-          <input type="checkbox" checked={form.isComplex} onChange={(e) => set({ isComplex: e.target.checked })} />
-          Complex
-        </label>
-        <label>
-          <input type="checkbox" checked={form.isHighPerf} onChange={(e) => set({ isHighPerf: e.target.checked })} />
-          High performance
-        </label>
-      </div>
+      {/* Complex counts toward the Commercial goal's complex training. (Tailwheel and high
+          performance aren't asked for, since nothing uses them; an aircraft keeps what it has.) */}
+      <Segmented<'simple' | 'complex'>
+        label="Complex"
+        value={form.isComplex ? 'complex' : 'simple'}
+        onChange={(v) => set({ isComplex: v === 'complex' })}
+        options={[
+          { value: 'simple', label: 'Not Complex' },
+          { value: 'complex', label: 'Complex' },
+        ]}
+      />
 
       {save.error && <p className="error-text">{save.error.message}</p>}
 

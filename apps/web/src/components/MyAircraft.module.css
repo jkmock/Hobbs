@@ -104,6 +104,5 @@
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
-.checks { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; }
-.checks label { display: inline-flex; align-items: center; gap: 6px; }
-.checks input { accent-color: var(--accent); width: 16px; height: 16px; }
+/* "(Optional)" beside a field's label, lighter. */
+.optional { font-weight: 400; color: var(--ink-3); }
