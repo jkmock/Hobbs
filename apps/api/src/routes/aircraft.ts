@@ -19,32 +19,27 @@ const AIRCRAFT_COLUMNS = `
   is_high_perf      AS "isHighPerf"
 `;
 
+// Each aircraft belongs to one user: everyone adds their own, so two people can have the same
+// tail number with their own details. Every route here only sees the signed-in user's aircraft.
 export default async function aircraftRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
-  // The aircraft this user has added or logged a flight in, most recently used first,
-  // leaving out any they've removed from their list.
+
+  // Your aircraft, most recently added or flown first, leaving out any you've removed.
   app.get("/aircraft/mine", async (request) => {
     const result = await pool.query(
-      `WITH used AS (
-         SELECT aircraft_id, added_at AS last_used FROM user_aircraft WHERE user_id = $1
-         UNION ALL
-         SELECT aircraft_id, max(flight_date)::timestamptz FROM flights WHERE user_id = $1 GROUP BY aircraft_id
-       )
-       SELECT ${AIRCRAFT_COLUMNS}
+      `SELECT ${AIRCRAFT_COLUMNS}
        FROM aircraft
-       JOIN (SELECT aircraft_id, max(last_used) AS last_used FROM used GROUP BY aircraft_id) u USING (aircraft_id)
-       WHERE NOT EXISTS (
-         SELECT 1 FROM user_aircraft r
-         WHERE r.user_id = $1 AND r.aircraft_id = aircraft.aircraft_id AND r.removed_at IS NOT NULL
-       )
-       ORDER BY u.last_used DESC, tail_number`,
+       WHERE user_id = $1 AND removed_at IS NULL
+       ORDER BY GREATEST(created_at,
+                         (SELECT max(flight_date)::timestamptz FROM flights f WHERE f.aircraft_id = aircraft.aircraft_id)) DESC,
+                tail_number`,
       [getCurrentUserId(request)],
     );
     return result.rows;
   });
 
-  // Adds an aircraft that's already in Hobbs (someone created its tail number) to this user's list,
-  // or brings back one they removed.
+  // Brings back an aircraft you removed. (iOS 1.0 calls this from its tail number search,
+  // which now only finds your own aircraft.)
   app.post("/aircraft/mine", async (request, reply) => {
     const body = z.object({ aircraftId: z.uuid() }).safeParse(request.body);
     if (!body.success) {
@@ -52,12 +47,9 @@ export default async function aircraftRoutes(app: FastifyInstance) {
     }
 
     const result = await pool.query(
-      `WITH linked AS (
-         INSERT INTO user_aircraft (user_id, aircraft_id)
-         SELECT $1, aircraft_id FROM aircraft WHERE aircraft_id = $2
-         ON CONFLICT (user_id, aircraft_id) DO UPDATE SET removed_at = NULL, added_at = now()
-       )
-       SELECT ${AIRCRAFT_COLUMNS} FROM aircraft WHERE aircraft_id = $2`,
+      `UPDATE aircraft SET removed_at = NULL
+       WHERE aircraft_id = $2 AND user_id = $1
+       RETURNING ${AIRCRAFT_COLUMNS}`,
       [getCurrentUserId(request), body.data.aircraftId],
     );
     if (result.rows.length === 0) {
@@ -66,10 +58,8 @@ export default async function aircraftRoutes(app: FastifyInstance) {
     return result.rows[0];
   });
 
-  // Takes an aircraft off this user's list, even one they've logged flights in.
-  // If nobody has logged a flight in it and nobody else has it on their list, the aircraft
-  // is deleted from Hobbs. Otherwise it's only hidden from this user's list: the aircraft
-  // stays for others, the flights stay logged, and adding it again brings it back.
+  // Takes an aircraft off your list. One you haven't logged a flight in is deleted; one you have
+  // is only hidden, so those flights keep it, and adding its tail number again brings it back.
   app.delete("/aircraft/mine/:id", async (request, reply) => {
     const params = IdParamsSchema.safeParse(request.params);
     if (!params.success) {
@@ -80,24 +70,18 @@ export default async function aircraftRoutes(app: FastifyInstance) {
     try {
       const deleted = await pool.query(
         `DELETE FROM aircraft a
-         WHERE a.aircraft_id = $2
-           AND NOT EXISTS (SELECT 1 FROM flights f WHERE f.aircraft_id = a.aircraft_id)
-           AND NOT EXISTS (
-             SELECT 1 FROM user_aircraft ua
-             WHERE ua.aircraft_id = a.aircraft_id AND ua.user_id <> $1 AND ua.removed_at IS NULL
-           )`,
+         WHERE a.aircraft_id = $2 AND a.user_id = $1
+           AND NOT EXISTS (SELECT 1 FROM flights f WHERE f.aircraft_id = a.aircraft_id)`,
         [userId, params.data.id],
       );
       if (deleted.rowCount) return reply.code(204).send();
     } catch (err) {
-      // Something else (a flight logged just now) still points at it: hide it instead.
+      // A flight logged in it just now still points at it: hide it instead.
       if ((err as { code?: string }).code !== "23503") throw err;
     }
 
     const result = await pool.query(
-      `INSERT INTO user_aircraft (user_id, aircraft_id, removed_at)
-       SELECT $1, aircraft_id, now() FROM aircraft WHERE aircraft_id = $2
-       ON CONFLICT (user_id, aircraft_id) DO UPDATE SET removed_at = now()`,
+      `UPDATE aircraft SET removed_at = now() WHERE aircraft_id = $2 AND user_id = $1`,
       [userId, params.data.id],
     );
     if (result.rowCount === 0) {
@@ -113,8 +97,8 @@ export default async function aircraftRoutes(app: FastifyInstance) {
     }
 
     const result = await pool.query(
-      `SELECT ${AIRCRAFT_COLUMNS} FROM aircraft WHERE aircraft_id = $1`,
-      [params.data.id],
+      `SELECT ${AIRCRAFT_COLUMNS} FROM aircraft WHERE aircraft_id = $1 AND user_id = $2`,
+      [params.data.id, getCurrentUserId(request)],
     );
 
     if (result.rows.length === 0) {
@@ -124,6 +108,8 @@ export default async function aircraftRoutes(app: FastifyInstance) {
     return result.rows[0];
   });
 
+  // Your aircraft whose tail number starts with this, removed ones included. Only iOS 1.0 uses
+  // it (its Add aircraft looks the tail number up first); the web app no longer does.
   app.get("/aircraft", async (request, reply) => {
     const params = AircraftSearchSchema.safeParse(request.query);
     if (!params.success) {
@@ -133,67 +119,65 @@ export default async function aircraftRoutes(app: FastifyInstance) {
     const result = await pool.query(
       `SELECT ${AIRCRAFT_COLUMNS}
       FROM aircraft
-      WHERE tail_number LIKE $1 || '%'
+      WHERE user_id = $2 AND tail_number LIKE $1 || '%'
       ORDER BY tail_number
       LIMIT 10`,
-      [params.data.tail],
+      [params.data.tail, getCurrentUserId(request)],
     );
 
     return result.rows;
   });
 
+  // Adds an aircraft to your list. A tail number you removed earlier comes back with these
+  // details; one already on your list is refused.
   app.post("/aircraft", async (request, reply) => {
-    
     const bodyParsed = CreateAircraftSchema.safeParse(request.body);
-
     if (!bodyParsed.success) {
       return reply.code(400).send({ error: "Invalid request", issues: bodyParsed.error.issues });
     }
-
     const body = bodyParsed.data;
 
-    try {
-      const result = await pool.query(
-        `INSERT INTO aircraft (tail_number, aircraft_make, aircraft_model, aircraft_year,
-                               aircraft_category, aircraft_class,
-                               is_tailwheel, is_complex, is_high_perf)
-         VALUES ($1, $2, $3, $4, 'airplane', $5, $6, $7, $8)
-         RETURNING ${AIRCRAFT_COLUMNS}`,
-        [
-          body.tailNumber,
-          body.make,
-          body.model,
-          body.year ?? null,
-          body.aircraftClass,
-          body.isTailwheel ?? false,
-          body.isComplex ?? false,
-          body.isHighPerf ?? false,
-        ],
-      );
-      const aircraft = result.rows[0];
-      await pool.query(
-        `INSERT INTO user_aircraft (user_id, aircraft_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-        [getCurrentUserId(request), aircraft.id],
-      );
-      return reply.code(201).send(aircraft);
-    } catch (err) {
-      if ((err as { code?: string }).code === "23505") {
-        return reply.code(409).send({ error: "Aircraft with this tail number already exists" });
-      }
-      throw err;
+    const result = await pool.query(
+      `INSERT INTO aircraft (user_id, tail_number, aircraft_make, aircraft_model, aircraft_year,
+                             aircraft_category, aircraft_class,
+                             is_tailwheel, is_complex, is_high_perf)
+       VALUES ($1, $2, $3, $4, $5, 'airplane', $6, $7, $8, $9)
+       ON CONFLICT (user_id, tail_number) DO UPDATE
+         SET aircraft_make  = EXCLUDED.aircraft_make,
+             aircraft_model = EXCLUDED.aircraft_model,
+             aircraft_year  = EXCLUDED.aircraft_year,
+             aircraft_class = EXCLUDED.aircraft_class,
+             is_tailwheel   = EXCLUDED.is_tailwheel,
+             is_complex     = EXCLUDED.is_complex,
+             is_high_perf   = EXCLUDED.is_high_perf,
+             removed_at     = NULL
+         WHERE aircraft.removed_at IS NOT NULL
+       RETURNING ${AIRCRAFT_COLUMNS}`,
+      [
+        getCurrentUserId(request),
+        body.tailNumber,
+        body.make,
+        body.model,
+        body.year ?? null,
+        body.aircraftClass,
+        body.isTailwheel ?? false,
+        body.isComplex ?? false,
+        body.isHighPerf ?? false,
+      ],
+    );
+    if (result.rows.length === 0) {
+      return reply.code(409).send({ error: `${body.tailNumber} is already in your aircraft` });
     }
+    return reply.code(201).send(result.rows[0]);
   });
 
   app.patch("/aircraft/:id", async (request, reply) => {
-    
     const bodyParsed = UpdateAircraftSchema.safeParse(request.body);
-
     const paramsParsed = IdParamsSchema.safeParse(request.params);
 
     if (!bodyParsed.success) {
       return reply.code(400).send({ error: "Invalid request", issues: bodyParsed.error.issues });
     }
-
     if (!paramsParsed.success) {
       return reply.code(400).send({ error: "Invalid request", issues: paramsParsed.error.issues });
     }
@@ -203,17 +187,18 @@ export default async function aircraftRoutes(app: FastifyInstance) {
 
     const result = await pool.query(
       `UPDATE aircraft
-      SET aircraft_make  = COALESCE($2, aircraft_make),
-          aircraft_model = COALESCE($3, aircraft_model),
-          aircraft_year  = COALESCE($4, aircraft_year),
-          aircraft_class = COALESCE($5, aircraft_class),
-          is_tailwheel   = COALESCE($6, is_tailwheel),
-          is_complex     = COALESCE($7, is_complex),
-          is_high_perf   = COALESCE($8, is_high_perf)
-      WHERE aircraft_id = $1
+      SET aircraft_make  = COALESCE($3, aircraft_make),
+          aircraft_model = COALESCE($4, aircraft_model),
+          aircraft_year  = COALESCE($5, aircraft_year),
+          aircraft_class = COALESCE($6, aircraft_class),
+          is_tailwheel   = COALESCE($7, is_tailwheel),
+          is_complex     = COALESCE($8, is_complex),
+          is_high_perf   = COALESCE($9, is_high_perf)
+      WHERE aircraft_id = $1 AND user_id = $2
       RETURNING ${AIRCRAFT_COLUMNS}`,
       [
         params.id,
+        getCurrentUserId(request),
         body.make ?? null,
         body.model ?? null,
         body.year ?? null,
@@ -231,16 +216,15 @@ export default async function aircraftRoutes(app: FastifyInstance) {
   });
 
   app.delete("/aircraft/:id", async (request, reply) => {
-
     const params = IdParamsSchema.safeParse(request.params);
-
     if (!params.success) {
       return reply.code(400).send({ error: "Invalid request", issues: params.error.issues });
     }
-    
+
     try {
       const result = await pool.query(
-        `DELETE FROM aircraft WHERE aircraft_id = $1`, [params.data.id],
+        `DELETE FROM aircraft WHERE aircraft_id = $1 AND user_id = $2`,
+        [params.data.id, getCurrentUserId(request)],
       );
       if (result.rowCount === 0) {
         return reply.code(404).send({ error: "Aircraft not found" });

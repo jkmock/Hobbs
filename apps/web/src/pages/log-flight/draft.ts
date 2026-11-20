@@ -63,9 +63,13 @@ export type Draft = {
   // null: a saved flight whose airports haven't loaded yet, so it isn't known whether its
   // cross-country time came from the legs (see syncCrossCountry).
   crossCountryFromLegs: boolean | null
-  // The Solo/Dual shortcut that's selected. While set, solo/dual (and PIC for solo) follow the
-  // total time; editing any of those by hand clears it.
+  // The Solo/Dual shortcut that's selected. While set, solo or dual follows the total time;
+  // editing either by hand clears it.
   flightType: FlightType | null
+  // The PIC/SIC shortcut that's selected, the same way for PIC or SIC time. Solo selects PIC;
+  // SIC and Dual Received can't be selected with Solo, nor PIC or SIC with Dual (see TimesStep).
+  // Missing from a draft saved before it existed.
+  pilotRole?: PilotRole | null
   landings: Record<LandingField, string>
   // Day full-stop landings follow the legs (one per leg, each ends with one) until the pilot
   // changes them.
@@ -151,30 +155,30 @@ export function applyPatch(d: Draft, patch: Partial<Draft>): Draft {
   // Typing a cross-country time yourself stops it following the legs.
   if (patch.times && patch.times.crossCountryTime !== d.times.crossCountryTime) next.crossCountryFromLegs = false
 
-  // Typing in Dual, Solo or PIC yourself turns the shortcut off.
-  if (patch.times && !('flightType' in patch)) {
-    const handEdited = (['dualReceivedTime', 'soloTime', 'picTime'] as const).some(
-      (key) => patch.times![key] !== d.times[key],
-    )
-    if (handEdited) next.flightType = null
-  }
-  // Otherwise the selected shortcut keeps its times matching the total.
+  // Typing in Dual or Solo yourself turns that shortcut off, and PIC or SIC the PIC/SIC one.
+  const handEdited = (keys: TimeField[]) => !!patch.times && keys.some((key) => patch.times![key] !== d.times[key])
+  if (!('flightType' in patch) && handEdited(['dualReceivedTime', 'soloTime'])) next.flightType = null
+  if (!('pilotRole' in patch) && handEdited(['picTime', 'sicTime'])) next.pilotRole = null
+  // Otherwise the selected shortcuts keep their times matching the total.
   if (next.flightType) next.times = fillFromTotal(next.times, next.flightType)
+  if (next.pilotRole) next.times = fillRole(next.times, next.pilotRole)
   return next
 }
 
 export type FlightType = 'solo' | 'dual'
+export type PilotRole = 'pic' | 'sic'
 
-// Most training flights are all solo or all dual. Solo is also PIC. Dual never adds PIC; it
-// only takes back PIC that matched solo (what Solo filled in), so PIC typed by hand stays.
+// Most training flights are all solo or all dual.
 function fillFromTotal(t: Draft['times'], type: FlightType): Draft['times'] {
-  if (type === 'solo') return { ...t, soloTime: t.totalTime, picTime: t.totalTime, dualReceivedTime: '0.0' }
-  return {
-    ...t,
-    dualReceivedTime: t.totalTime,
-    soloTime: '0.0',
-    picTime: t.picTime === t.soloTime ? '0.0' : t.picTime,
-  }
+  if (type === 'solo') return { ...t, soloTime: t.totalTime, dualReceivedTime: '0.0' }
+  return { ...t, dualReceivedTime: t.totalTime, soloTime: '0.0' }
+}
+
+// The whole flight as PIC or as SIC. The other one is only cleared if it was also the whole
+// flight (what the other option filled in), so time typed by hand stays.
+function fillRole(t: Draft['times'], role: PilotRole): Draft['times'] {
+  const [key, other] = role === 'pic' ? (['picTime', 'sicTime'] as const) : (['sicTime', 'picTime'] as const)
+  return { ...t, [key]: t.totalTime, [other]: t[other] === t.totalTime ? '0.0' : t[other] }
 }
 
 // For a saved flight: which shortcut its times look like, if either.
@@ -182,6 +186,15 @@ function flightTypeOf(t: Draft['times']): FlightType | null {
   const dual = Number(t.dualReceivedTime) > 0
   const solo = Number(t.soloTime) > 0
   return dual && !solo ? 'dual' : solo && !dual ? 'solo' : null
+}
+
+// The same for PIC/SIC, only when one of them is the whole flight (so selecting it changes nothing).
+function pilotRoleOf(t: Draft['times']): PilotRole | null {
+  const total = Number(t.totalTime)
+  if (!(total > 0)) return null
+  if (Number(t.picTime) === total && !(Number(t.sicTime) > 0)) return 'pic'
+  if (Number(t.sicTime) === total && !(Number(t.picTime) > 0)) return 'sic'
+  return null
 }
 
 export function emptyDraft(): Draft {
@@ -196,6 +209,7 @@ export function emptyDraft(): Draft {
     totalFromLegs: true,
     crossCountryFromLegs: true,
     flightType: null, // neither Solo nor Dual Received until the pilot picks one
+    pilotRole: null,
     landings: mapFields(LANDING_FIELDS, () => '0'),
     fullStopsFromLegs: true,
     notes: '',
@@ -223,6 +237,7 @@ export function draftFromFlight(f: Flight): Draft {
     totalFromLegs: f.legs.every((l) => l.time != null) && legTotal(f.legs.map((l) => l.time ?? 0)) === f.totalTime,
     crossCountryFromLegs: null, // decided once the airports load (see syncCrossCountry)
     flightType: flightTypeOf(times),
+    pilotRole: pilotRoleOf(times),
     landings: mapFields(LANDING_FIELDS, (key) => String(f[key])),
     // Keep following the legs only if the saved count still matches them.
     fullStopsFromLegs: f.dayLandingsFs === f.legs.length,

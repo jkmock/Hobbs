@@ -106,6 +106,8 @@ CREATE TABLE public.aircraft (
     is_high_perf boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    user_id uuid NOT NULL,
+    removed_at timestamp with time zone,
     CONSTRAINT aircraft_aircraft_category_check CHECK ((aircraft_category = 'airplane'::text)),
     CONSTRAINT aircraft_aircraft_class_check CHECK ((aircraft_class = ANY (ARRAY['single_engine_land'::text, 'multi_engine_land'::text]))),
     CONSTRAINT aircraft_aircraft_year_check CHECK ((aircraft_year >= 1903)),
@@ -363,18 +365,6 @@ CREATE TABLE public.sessions (
 
 
 --
--- Name: user_aircraft; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.user_aircraft (
-    user_id uuid NOT NULL,
-    aircraft_id uuid NOT NULL,
-    added_at timestamp with time zone DEFAULT now() NOT NULL,
-    removed_at timestamp with time zone
-);
-
-
---
 -- Name: user_identities; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -427,11 +417,11 @@ ALTER TABLE ONLY public.aircraft
 
 
 --
--- Name: aircraft aircraft_tail_number_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: aircraft aircraft_user_tail_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.aircraft
-    ADD CONSTRAINT aircraft_tail_number_key UNIQUE (tail_number);
+    ADD CONSTRAINT aircraft_user_tail_key UNIQUE (user_id, tail_number);
 
 
 --
@@ -584,14 +574,6 @@ ALTER TABLE ONLY public.schema_migrations
 
 ALTER TABLE ONLY public.sessions
     ADD CONSTRAINT sessions_pkey PRIMARY KEY (token_hash);
-
-
---
--- Name: user_aircraft user_aircraft_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.user_aircraft
-    ADD CONSTRAINT user_aircraft_pkey PRIMARY KEY (user_id, aircraft_id);
 
 
 --
@@ -780,6 +762,14 @@ CREATE TRIGGER users_set_updated_at BEFORE UPDATE ON public.users FOR EACH ROW E
 
 
 --
+-- Name: aircraft aircraft_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.aircraft
+    ADD CONSTRAINT aircraft_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
+
+
+--
 -- Name: blocks blocks_blocked_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -956,22 +946,6 @@ ALTER TABLE ONLY public.sessions
 
 
 --
--- Name: user_aircraft user_aircraft_aircraft_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.user_aircraft
-    ADD CONSTRAINT user_aircraft_aircraft_id_fkey FOREIGN KEY (aircraft_id) REFERENCES public.aircraft(aircraft_id) ON DELETE CASCADE;
-
-
---
--- Name: user_aircraft user_aircraft_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.user_aircraft
-    ADD CONSTRAINT user_aircraft_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(user_id) ON DELETE CASCADE;
-
-
---
 -- Name: user_identities user_identities_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1013,4 +987,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261117130000'),
     ('20261117180000'),
     ('20261117200000'),
-    ('20261119160000');
+    ('20261119160000'),
+    ('20261120120000');

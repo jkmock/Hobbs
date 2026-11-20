@@ -77,17 +77,6 @@
 /* min-height keeps rows the button's height where there's no Select button (the profile). */
 .option .detail { flex: 1; min-height: 30px; display: flex; align-items: center; color: var(--ink-2); font-size: 14px; }
 
-.found {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-}
-.found .tail { font-family: var(--font-tail); font-size: 15px; }
-.found .detail { color: var(--ink-2); font-size: 14px; }
-
 /* Same width as Add aircraft (.headButton), whether it says Select or Selected. */
 .selectButton { min-width: 122px; }
 .selected { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
@@ -104,5 +93,6 @@
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
+.fullRow { grid-column: 1 / -1; }
 /* "(Optional)" beside a field's label, lighter. */
 .optional { font-weight: 400; color: var(--ink-3); }

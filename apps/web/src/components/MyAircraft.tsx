@@ -1,15 +1,9 @@
-import { useDeferredValue, useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Check, Plus, Search, X } from 'lucide-react'
 import { CreateAircraftSchema, normalizeTailNumber } from '@hobbs/shared'
 import { Segmented } from './controls'
-import {
-  useAddMyAircraft,
-  useAircraftSearch,
-  useCreateAircraft,
-  useMyAircraft,
-  useRemoveMyAircraft,
-  useUpdateAircraft,
-} from '../hooks/useLookups'
+import ConfirmDialog from './ConfirmDialog'
+import { useCreateAircraft, useMyAircraft, useRemoveMyAircraft, useUpdateAircraft } from '../hooks/useLookups'
 import type { Aircraft } from '../lib/types'
 import styles from './MyAircraft.module.css'
 
@@ -44,10 +38,11 @@ export default function MyAircraft({ selected, onSelect, onDeselect, error, onAd
   // With no aircraft left there's nothing to edit; adding one also ends edit mode.
   const editMode = editModeOn && hasAircraft
   const remove = useRemoveMyAircraft()
+  // The aircraft whose Remove was tapped, while asking to be sure.
+  const [confirmingRemove, setConfirmingRemove] = useState<Option | null>(null)
   const editingAircraft = mine.data?.find((a) => a.id === editingId)
 
-  // Your aircraft (added or flown), narrowed by the search box, which matches the tail
-  // number, make or model. Other people's aircraft are reached through "Add aircraft".
+  // Your aircraft, narrowed by the search box, which matches the tail number, make or model.
   const term = search.trim().toUpperCase()
   const matches = (o: Option) => `${o.tailNumber} ${o.detail ?? ''}`.toUpperCase().includes(term)
   let options: Option[] = (mine.data ?? []).map((a) => ({
@@ -69,6 +64,7 @@ export default function MyAircraft({ selected, onSelect, onDeselect, error, onAd
   const removeAircraft = (a: Option) =>
     remove.mutate(a.id, {
       onSuccess: () => {
+        setConfirmingRemove(null)
         if (a.id === selected?.id) onDeselect?.()
       },
     })
@@ -118,8 +114,6 @@ export default function MyAircraft({ selected, onSelect, onDeselect, error, onAd
       {adding ? (
         <AddAircraft
           initialTail={search}
-          mine={mine.data ?? []}
-          canSelect={!!onSelect}
           onCancel={() => setAdding(false)}
           onAdded={(a) => {
             onSelect?.(a)
@@ -174,7 +168,10 @@ export default function MyAircraft({ selected, onSelect, onDeselect, error, onAd
                           type="button"
                           className={`btn btn--sm btn--danger ${styles.removeButton}`}
                           disabled={remove.isPending}
-                          onClick={() => removeAircraft(option)}
+                          onClick={() => {
+                            remove.reset()
+                            setConfirmingRemove(option)
+                          }}
                         >
                           Remove
                         </button>
@@ -202,42 +199,44 @@ export default function MyAircraft({ selected, onSelect, onDeselect, error, onAd
               })}
             </ul>
           )}
-          {editMode && remove.error && <p className="error-text">{remove.error.message}</p>}
         </>
       )}
       {error && <p className="error-text">{error}</p>}
+
+      <ConfirmDialog
+        open={!!confirmingRemove}
+        title={`Remove ${confirmingRemove?.tailNumber ?? ''}?`}
+        confirmLabel="Remove"
+        busyLabel="Removing…"
+        busy={remove.isPending}
+        error={remove.error ? `Couldn't remove it: ${remove.error.message}` : null}
+        danger
+        onConfirm={() => confirmingRemove && removeAircraft(confirmingRemove)}
+        onCancel={() => setConfirmingRemove(null)}
+      >
+        It comes off My Aircraft. Flights you've logged in it keep it, and you can add it again later.
+      </ConfirmDialog>
     </section>
   )
 }
 
-// "Add aircraft": enter the tail number first. If Hobbs already has it (someone else added it),
-// offer to add it to your aircraft; otherwise ask for its details and create it.
+// "Add aircraft": the tail number and the aircraft's details, all in one form. Each aircraft is
+// your own, so someone else with the same tail number has their own copy.
 function AddAircraft({
   initialTail,
-  mine,
-  canSelect,
   onCancel,
   onAdded,
 }: {
   initialTail: string
-  mine: Aircraft[]
-  canSelect: boolean
   onCancel: () => void
   onAdded: (aircraft: Aircraft) => void
 }) {
   const [tail, setTail] = useState(initialTail.trim().toUpperCase())
-  // Looked up (and saved) as normalized: "12345" becomes N12345.
-  const deferredTail = normalizeTailNumber(useDeferredValue(tail))
-  const lookup = useAircraftSearch(deferredTail)
-  const addMine = useAddMyAircraft()
-
-  const isComplete = TAIL_NUMBER.test(deferredTail)
-  const existing = lookup.data?.find((a) => a.tailNumber === deferredTail)
-  const alreadyMine = existing && mine.some((a) => a.id === existing.id)
-  const checking = normalizeTailNumber(tail) !== deferredTail || lookup.isFetching
+  // Saved as normalized: "12345" becomes N12345.
+  const normalized = normalizeTailNumber(tail)
 
   return (
-    <div className="stack">
+    <AircraftDetails tailNumber={normalized} onCancel={onCancel} onSaved={onAdded}>
       <label className="field">
         <span>Tail number</span>
         <input
@@ -252,60 +251,13 @@ function AddAircraft({
           placeholder="N123AB"
         />
         {/* Say so when the N is being added for you. */}
-        {isComplete && deferredTail !== tail.trim() && (
+        {TAIL_NUMBER.test(normalized) && normalized !== tail.trim() && (
           <small className="muted">
-            Saved as <span className="tail-number">{deferredTail}</span>
+            Saved as <span className="tail-number">{normalized}</span>
           </small>
         )}
       </label>
-
-      {!isComplete || (checking && !existing) ? (
-        // Nothing to show until the tail number is typed and looked up; Cancel is always available.
-        <button type="button" className="btn" onClick={onCancel}>
-          Cancel
-        </button>
-      ) : existing ? (
-        <>
-          {/* Labelled like the Tail number field above it. */}
-          <div className="field">
-            <span>Aircraft found</span>
-            <div className={styles.found}>
-              <span className={styles.tail}>{existing.tailNumber}</span>
-              <span className={styles.detail}>
-                {existing.make} {existing.model}
-                {existing.year ? `, ${existing.year}` : ''}
-              </span>
-            </div>
-          </div>
-          {addMine.error && <p className="error-text">{addMine.error.message}</p>}
-          <div className={styles.twoCol}>
-            <button type="button" className="btn" onClick={onCancel}>
-              Cancel
-            </button>
-            {alreadyMine ? (
-              <button type="button" className="btn btn--primary" onClick={() => onAdded(existing)}>
-                {canSelect ? 'Already yours, select it' : 'Already yours'}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn btn--primary"
-                disabled={addMine.isPending}
-                onClick={() => addMine.mutate(existing.id, { onSuccess: onAdded })}
-              >
-                Add to My Aircraft
-              </button>
-            )}
-          </div>
-        </>
-      ) : (
-        <AircraftDetails tailNumber={deferredTail} onCancel={onCancel} onSaved={onAdded} />
-      )}
-
-      {isComplete && !existing && !checking && lookup.isError && (
-        <p className="error-text">{lookup.error.message}</p>
-      )}
-    </div>
+    </AircraftDetails>
   )
 }
 
@@ -313,17 +265,20 @@ const TAIL_NUMBER = /^[A-Z0-9-]{2,10}$/
 
 type AircraftClass = 'single_engine_land' | 'multi_engine_land'
 
-// Details for a tail number Hobbs doesn't have yet, or, given `aircraft`, edits that aircraft's details.
+// Details for a new aircraft (its tail number field passed in as children), or, given
+// `aircraft`, edits that aircraft's details.
 function AircraftDetails({
   tailNumber,
   aircraft,
   onCancel,
   onSaved,
+  children,
 }: {
   tailNumber: string
   aircraft?: Aircraft
   onCancel: () => void
   onSaved: (aircraft: Aircraft) => void
+  children?: ReactNode
 }) {
   const createAircraft = useCreateAircraft()
   const updateAircraft = useUpdateAircraft()
@@ -352,23 +307,22 @@ function AircraftDetails({
       return
     }
     setErrors({})
-    // mutateAsync rather than mutate's onSuccess: saving refetches the aircraft lookups, and for a
-    // new aircraft the tail-number lookup then finds it, so AddAircraft swaps this form for
-    // "Aircraft found" and unmounts it before mutate's per-call onSuccess would run. The promise
-    // still resolves, so the new aircraft is selected and the form closes. Errors show via save.error.
-    const saved = aircraft
-      ? (() => {
-          const { tailNumber: _tail, ...details } = parsed.data
-          return updateAircraft.mutateAsync({ id: aircraft.id, ...details })
-        })()
-      : createAircraft.mutateAsync(parsed.data)
-    saved.then(onSaved, () => {})
+    // Errors show via save.error.
+    if (aircraft) {
+      const { tailNumber: _tail, ...details } = parsed.data
+      updateAircraft.mutate({ id: aircraft.id, ...details }, { onSuccess: onSaved })
+    } else {
+      createAircraft.mutate(parsed.data, { onSuccess: onSaved })
+    }
   }
 
   return (
     <form className="stack" onSubmit={submit}>
+      {/* Two to a row: Tail number and Make, then Model and Year. (Editing has no tail number
+          field, so Make has the first row to itself.) */}
       <div className={styles.twoCol}>
-        <label className="field">
+        {children}
+        <label className={`field ${children ? '' : styles.fullRow}`}>
           <span>Make</span>
           <input className="input" value={form.make} onChange={(e) => set({ make: e.target.value })} placeholder="Cessna" />
           {errors.make && <span className="error-text">Required</span>}

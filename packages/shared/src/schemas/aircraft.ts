@@ -31,7 +31,7 @@ export type CreateAircraft = z.infer<typeof CreateAircraftSchema>;
 export const UpdateAircraftSchema = CreateAircraftSchema.omit({ tailNumber: true }).partial();
 export type UpdateAircraft = z.infer<typeof UpdateAircraftSchema>;
 
-// GET /aircraft?tail=N12
+// GET /aircraft?tail=N12 (your own aircraft; only iOS 1.0 still searches)
 export const AircraftSearchSchema = z.object({
   tail: z
     .string()

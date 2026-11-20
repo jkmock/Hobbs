@@ -9,6 +9,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow-x: clip; /* a step sliding in or out (goTo) never widens the page */
 }
 
 /* Every card in the form floats a little off the page, the same as the leg cards. */

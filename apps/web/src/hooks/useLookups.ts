@@ -5,15 +5,6 @@ import type { Aircraft, Airport, DetectedTouchAndGoes, RecentFlight } from '../l
 
 const TAIL_SEARCH = /^[A-Z0-9-]{1,10}$/
 
-export function useAircraftSearch(term: string) {
-  const tail = term.trim().toUpperCase()
-  return useQuery({
-    queryKey: ['aircraft', 'search', tail],
-    queryFn: () => api<Aircraft[]>(`/aircraft?tail=${encodeURIComponent(tail)}`),
-    enabled: TAIL_SEARCH.test(tail),
-  })
-}
-
 // Aircraft you've added or logged a flight in, most recently used first.
 export function useMyAircraft() {
   return useQuery({
@@ -22,16 +13,7 @@ export function useMyAircraft() {
   })
 }
 
-// Adds an aircraft already in Hobbs to your aircraft.
-export function useAddMyAircraft() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (aircraftId: string) => api<Aircraft>('/aircraft/mine', { method: 'POST', body: { aircraftId } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['aircraft'] }),
-  })
-}
-
-// Takes an aircraft off your list (it stays in Hobbs for others).
+// Takes an aircraft off your list (deleted, or hidden if you've logged flights in it).
 export function useRemoveMyAircraft() {
   const queryClient = useQueryClient()
   return useMutation({

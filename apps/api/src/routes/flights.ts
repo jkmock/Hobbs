@@ -148,6 +148,13 @@ export async function loadSocial(flightIds: string[], viewerId: string): Promise
   return new Map(result.rows.map(({ id, ...social }) => [id, social as Social]));
 }
 
+// A flight can only be logged in one of your own aircraft (a removed one is fine: editing an
+// old flight keeps its aircraft).
+async function ownsAircraft(userId: string, aircraftId: string): Promise<boolean> {
+  const result = await pool.query(`SELECT 1 FROM aircraft WHERE aircraft_id = $1 AND user_id = $2`, [aircraftId, userId]);
+  return result.rowCount !== 0;
+}
+
 // Tracks for the legs imported from FlightAware, keyed by FlightAware flight id.
 // A track already stored (fetched for the Route step's map, or saved with an edited flight)
 // is reused, so each one is paid for once. A failed fetch only means that leg has no track.
@@ -284,6 +291,9 @@ export default async function flightRoutes(app: FastifyInstance) {
     }
     const body = parsed.data;
     const userId = getCurrentUserId(request);
+    if (!(await ownsAircraft(userId, body.aircraftId))) {
+      return reply.code(400).send({ error: "Choose one of your aircraft" });
+    }
 
     // 2. Look up all airports in one query. Pilots may type RDU or KRDU; see resolveAirports.
     const codes = [...new Set(body.legs.flatMap((leg) => [leg.origin, leg.destination, ...(leg.stops ?? []).map((s) => s.airport)]))];
@@ -374,6 +384,9 @@ export default async function flightRoutes(app: FastifyInstance) {
     const body = bodyParsed.data;
     const params = paramsParsed.data;
     const userId = getCurrentUserId(request);
+    if (!(await ownsAircraft(userId, body.aircraftId))) {
+      return reply.code(400).send({ error: "Choose one of your aircraft" });
+    }
 
     // 2. Look up all airports in one query. Pilots may type RDU or KRDU; see resolveAirports.
     const codes = [...new Set(body.legs.flatMap((leg) => [leg.origin, leg.destination, ...(leg.stops ?? []).map((s) => s.airport)]))];

@@ -1,7 +1,7 @@
 // Loads the demo account (data.ts) into the database DATABASE_URL points at, from scratch:
 // any earlier demo accounts are deleted first, with everything of theirs, so it can be run again
-// and again. Nothing else in the database is touched (aircraft it uses are added if missing and
-// left alone otherwise).
+// and again. Nothing else in the database is touched (each demo person's aircraft are their own,
+// and go with them).
 //
 //   DEMO_PASSWORD=... pnpm --filter @hobbs/api seed:demo
 //
@@ -75,18 +75,9 @@ async function main() {
     // 1. Out with the old demo accounts (flights, legs, props, comments and friendships go with them).
     const removed = await client.query(`DELETE FROM users WHERE email = $1 OR email LIKE $2`, [DEMO_EMAIL, `%@${FRIEND_DOMAIN}`]);
 
-    // 2. Aircraft: added if they aren't there yet.
-    const aircraftIds = new Map<string, string>();
-    for (const a of AIRCRAFT) {
-      await client.query(
-        `INSERT INTO aircraft (tail_number, aircraft_make, aircraft_model, aircraft_year, aircraft_category, aircraft_class, is_tailwheel, is_complex, is_high_perf)
-         VALUES ($1, $2, $3, $4, 'airplane', 'single_engine_land', $5, $6, $7)
-         ON CONFLICT (tail_number) DO NOTHING`,
-        [a.tail, a.make, a.model, a.year ?? null, a.tailwheel ?? false, a.complex ?? false, a.highPerf ?? false],
-      );
-      const row = await client.query(`SELECT aircraft_id FROM aircraft WHERE tail_number = $1`, [a.tail]);
-      aircraftIds.set(a.tail, row.rows[0].aircraft_id);
-    }
+    // 2. Aircraft are each person's own: added with the people, below (step 4).
+    const aircraftIds = new Map<string, string>(); // `${person key} ${tail}` -> aircraft_id
+    const aircraftByTail = new Map(AIRCRAFT.map((a) => [a.tail, a]));
 
     // 3. Airports used, with where they are.
     const idents = new Set<string>();
@@ -127,8 +118,17 @@ async function main() {
           row.rows[0].user_id, avatar.bytes, avatar.type, created,
         ]);
       }
-      for (const tail of p.aircraft) {
-        await client.query(`INSERT INTO user_aircraft (user_id, aircraft_id, added_at) VALUES ($1, $2, $3)`, [row.rows[0].user_id, aircraftIds.get(tail), created]);
+      // Their aircraft: the ones on their list, and any they've flown.
+      for (const tail of new Set([...p.aircraft, ...p.flights.map((f) => f.aircraft)])) {
+        const a = aircraftByTail.get(tail);
+        if (!a) throw new Error(`Aircraft ${tail} isn't in AIRCRAFT`);
+        const added = await client.query(
+          `INSERT INTO aircraft (user_id, tail_number, aircraft_make, aircraft_model, aircraft_year, aircraft_category, aircraft_class,
+                                 is_tailwheel, is_complex, is_high_perf, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, 'airplane', 'single_engine_land', $6, $7, $8, $9, $9) RETURNING aircraft_id`,
+          [row.rows[0].user_id, a.tail, a.make, a.model, a.year ?? null, a.tailwheel ?? false, a.complex ?? false, a.highPerf ?? false, created],
+        );
+        aircraftIds.set(`${p.key} ${tail}`, added.rows[0].aircraft_id);
       }
     }
 
@@ -159,7 +159,7 @@ async function main() {
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 'public', $21, $21)
            RETURNING flight_id`,
           [
-            userIds.get(p.key), date, aircraftIds.get(f.aircraft), f.total, departure, arrival,
+            userIds.get(p.key), date, aircraftIds.get(`${p.key} ${f.aircraft}`), f.total, departure, arrival,
             f.dual ?? 0, f.solo ?? 0, f.pic ?? f.solo ?? 0, f.xc ?? 0, f.night ?? 0, f.actual ?? 0,
             f.sim ?? 0, f.dayFs ?? 0, f.dayTg ?? 0, f.nightFs ?? 0, f.nightTg ?? 0,
             f.approaches ?? 0, f.notes ?? null, f.instructor ?? null, postedAt,

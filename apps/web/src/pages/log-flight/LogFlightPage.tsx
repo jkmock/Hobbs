@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { flushSync } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ArrowLeft, X } from 'lucide-react'
 import { CreateFlightSchema } from '@hobbs/shared'
@@ -36,6 +37,11 @@ export default function LogFlightPage() {
 
 const STEP_COMPONENTS = [AircraftStep, RouteStep, TimesStep, LandingsStep]
 const ROUTE_STEP = STEP_COMPONENTS.indexOf(RouteStep)
+// Changing step slides the page over, like going to the next screen in an iPhone app: the new
+// step slides in from the right (going forward) and pushes the old one off to the left.
+const SLIDE_MS = 450
+// Eases in and out (no sudden start), settling gently at the end.
+const SLIDE_EASING = 'cubic-bezier(0.45, 0, 0.2, 1)'
 
 function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
   const navigate = useNavigate()
@@ -48,6 +54,51 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
     if (body.current) body.current.scrollTop = 0
   }, [step])
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Goes to another step, sliding the page over (see SLIDE_MS). The step being left is a
+  // snapshot (a copy of the page as it was) that slides out beside the new one. Taps while it's
+  // sliding are ignored, so a double tap on Next moves one step.
+  const sliding = useRef(false)
+  function goTo(target: number) {
+    const el = body.current
+    if (sliding.current || target === step) return
+    if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return setStep(target)
+    const direction = target > step ? 1 : -1
+    sliding.current = true
+
+    const snapshot = el.cloneNode(true) as HTMLElement
+    snapshot.setAttribute('aria-hidden', 'true')
+    snapshot.inert = true
+    Object.assign(snapshot.style, {
+      position: 'absolute',
+      top: `${el.offsetTop}px`,
+      left: `${el.offsetLeft}px`,
+      width: `${el.offsetWidth}px`,
+      height: `${el.offsetHeight}px`,
+      pointerEvents: 'none',
+    })
+    el.after(snapshot)
+    snapshot.scrollTop = el.scrollTop
+    // A copy of a canvas (the route map) starts blank: draw what the original shows into it.
+    const canvases = snapshot.querySelectorAll('canvas')
+    el.querySelectorAll('canvas').forEach((canvas, i) => {
+      try {
+        canvases[i]?.getContext('2d')?.drawImage(canvas, 0, 0)
+      } catch {
+        // Left blank: only for the moment it's sliding away.
+      }
+    })
+
+    flushSync(() => setStep(target)) // the new step, scrolled to its top, where the old one was
+    const options = { duration: SLIDE_MS, easing: SLIDE_EASING }
+    snapshot.animate([{ transform: 'none' }, { transform: `translateX(${-direction * 100}%)` }], { ...options, fill: 'forwards' })
+    el.animate([{ transform: `translateX(${direction * 100}%)` }, { transform: 'none' }], options)
+      .finished.catch(() => {}) // cancelled: the page closed mid-slide
+      .finally(() => {
+        snapshot.remove()
+        sliding.current = false
+      })
+  }
 
   const update = (patch: Partial<Draft>) => setDraft((d) => applyPatch(d, patch))
   const clearError = (key: string) =>
@@ -100,12 +151,12 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
 
   function next() {
     const { firstBadStep } = check([step])
-    if (firstBadStep === null) setStep(step + 1)
+    if (firstBadStep === null) goTo(step + 1)
   }
 
   function submit() {
     const { data, firstBadStep } = check(STEPS.map((_, i) => i))
-    if (firstBadStep !== null) return setStep(firstBadStep)
+    if (firstBadStep !== null) return goTo(firstBadStep)
     if (!data) return
     save.mutate(data, {
       // A new flight pops into My flights (see FlightsPage); an edited one goes back to its page.
@@ -169,7 +220,7 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
           <li key={s.title}>
             <button
               type="button"
-              onClick={() => setStep(i)}
+              onClick={() => goTo(i)}
               aria-current={i === step ? 'step' : undefined}
               data-done={i < step || undefined}
             >
@@ -195,7 +246,7 @@ function FlightWizard({ id, initial }: { id?: string; initial: Draft }) {
               {save.isPending ? 'Saving…' : 'Save Changes'}
             </button>
           ) : step > 0 && (
-            <button type="button" className={`card ${styles.backButton}`} onClick={() => setStep(step - 1)} aria-label="Back">
+            <button type="button" className={`card ${styles.backButton}`} onClick={() => goTo(step - 1)} aria-label="Back">
               <ArrowLeft size={18} />
             </button>
           )}

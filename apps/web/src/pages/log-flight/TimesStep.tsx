@@ -1,24 +1,35 @@
 import { Segmented, Stepper } from '../../components/controls'
-import { draftLegTotal, TIME_FIELDS, type FlightType, type StepProps, type TimeField } from './draft'
+import { draftLegTotal, TIME_FIELDS, type FlightType, type PilotRole, type StepProps, type TimeField } from './draft'
 import styles from './LogFlight.module.css'
 
 export default function TimesStep({ draft, update, errors }: StepProps) {
   const t = draft.times
   const setTime = (key: TimeField, value: string) => update({ times: { ...t, [key]: value } })
 
-  // Solo or Dual: selecting one fills those times from the total and keeps them following it
-  // (see applyPatch in draft.ts).
-  const chooseType = (flightType: FlightType) => update({ flightType })
-
-  // Tapping the selected option again turns Autofill off and clears the times it filled in.
-  const clearType = () =>
-    update({
-      flightType: null,
-      times:
-        draft.flightType === 'solo'
-          ? { ...t, soloTime: '0.0', picTime: '0.0' }
-          : { ...t, dualReceivedTime: '0.0' },
-    })
+  // The two Autofill rows: Solo / Dual Received, and PIC / SIC. Selecting an option fills its
+  // time from the total and keeps it following it (see applyPatch in draft.ts); tapping it again
+  // unselects it and clears that time. Unselecting an option also clears what it filled in.
+  // Selecting one can unselect options in the other row:
+  //   Solo selects PIC (a solo flight is PIC), and unselects SIC; unselecting Solo unselects PIC.
+  //   Dual Received unselects PIC and SIC.
+  //   PIC unselects Dual Received (but doesn't select Solo).
+  //   SIC unselects Solo and Dual Received.
+  const typeTime = { solo: 'soloTime', dual: 'dualReceivedTime' } as const
+  const roleTime = { pic: 'picTime', sic: 'sicTime' } as const
+  const select = (flightType: FlightType | null, pilotRole: PilotRole | null) => {
+    const times = { ...t }
+    if (draft.flightType && draft.flightType !== flightType) times[typeTime[draft.flightType]] = '0.0'
+    if (draft.pilotRole && draft.pilotRole !== pilotRole) times[roleTime[draft.pilotRole]] = '0.0'
+    update({ flightType, pilotRole, times })
+  }
+  const role = draft.pilotRole ?? null
+  const chooseType = (type: FlightType) => select(type, type === 'solo' ? 'pic' : null)
+  // Solo selected PIC, so unselecting Solo unselects PIC too.
+  const clearType = () => select(null, draft.flightType === 'solo' && role === 'pic' ? null : role)
+  const chooseRole = (r: PilotRole) =>
+    select(r === 'sic' || draft.flightType === 'dual' ? null : draft.flightType, r)
+  // Solo is PIC, so unselecting PIC unselects Solo too.
+  const clearRole = () => select(role === 'pic' && draft.flightType === 'solo' ? null : draft.flightType, null)
 
   const legSum = draftLegTotal(draft.legs)
   const total = Number(t.totalTime) || 0
@@ -62,6 +73,16 @@ export default function TimesStep({ draft, update, errors }: StepProps) {
             options={[
               { value: 'solo', label: 'Solo' },
               { value: 'dual', label: 'Dual Received' },
+            ]}
+          />
+          <Segmented<PilotRole>
+            label="Pilot role"
+            value={role}
+            onChange={chooseRole}
+            onClear={clearRole}
+            options={[
+              { value: 'pic', label: 'PIC' },
+              { value: 'sic', label: 'SIC' },
             ]}
           />
         </div>
