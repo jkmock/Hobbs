@@ -1,7 +1,16 @@
 .shell {
   display: flex;
   flex-direction: column;
-  padding-top: 56px;
+  /* padding-top is set in AuthShell: the login card centered, the others' tops lined up with it. */
+}
+/* Everything in the shell sits above the backdrop. */
+.shell > * { position: relative; }
+
+/* The navy gradient behind it all, the whole screen (status bar included). */
+.shell > .backdrop {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, #0a3354, #03192a);
 }
 
 /* Everything but the brand, in one card like the rest of the app's. */
@@ -11,6 +20,8 @@
   gap: 16px;
   padding: 20px 16px;
   box-shadow: 0 6px 16px rgb(0 0 0 / 0.18), 0 1px 3px rgb(0 0 0 / 0.12);
+  /* Narrower than the page: 16px more in from each side. */
+  margin-inline: 16px;
 }
 
 .brand {
@@ -18,39 +29,12 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  margin-bottom: 24px;
+  /* margin-bottom (and the page's padding-top) are set in AuthShell: the logo centered above the card. */
   text-align: center;
 }
 
-/* A Hobbs meter readout: whole hours, then tenths on an inverted drum. */
-.meter {
-  display: inline-flex;
-  gap: 2px;
-  padding: 4px;
-  border-radius: 6px;
-  background: var(--ink);
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 20px;
-  font-weight: 500;
-}
-.meter > span {
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 30px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--ink) 80%, var(--paper));
-  color: var(--paper);
-}
-.meter > .tenths { background: var(--paper); color: var(--ink); }
-
-.wordmark {
-  margin-top: 10px;
-  font-size: 34px;
-  font-weight: 720;
-  letter-spacing: -0.03em;
-}
+/* The white Hobbs logo with its tagline (898 x 419). */
+.logo { display: block; width: 320px; max-width: 100%; height: auto; }
 
 .title { font-size: 20px; font-weight: 650; }
 
@@ -97,4 +81,4 @@
 
 /* "By continuing, you agree to the Terms of Use": small, under the sign-in buttons. */
 .terms { margin: 0; font-size: 13px; text-align: center; color: var(--ink-3); }
-.terms a { color: inherit; text-decoration: underline; }
+.terms a { color: inherit; text-decoration: underline; white-space: nowrap; }

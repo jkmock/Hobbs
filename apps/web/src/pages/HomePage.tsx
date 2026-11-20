@@ -64,7 +64,7 @@ export default function HomePage() {
           />
         ) : (
           <PageHeader
-            title="Feed"
+            logo
             className={listStyles.topHeader}
             action={
               // Like My flights' Log Flight button, with the icon after the text.

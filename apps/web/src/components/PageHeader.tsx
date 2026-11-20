@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import styles from './PageHeader.module.css'
+import logoOnLight from '../assets/hobbs-text-logo-dark.png'
+import logoOnDark from '../assets/hobbs-text-logo-light.png'
 
 type Props = {
   title?: string // left out when the header has only a back button
@@ -7,13 +9,20 @@ type Props = {
   leading?: ReactNode // e.g. a back button
   action?: ReactNode
   className?: string
+  logo?: boolean // the Hobbs logo, left of the title
 }
 
-export default function PageHeader({ title, subtitle, leading, action, className = '' }: Props) {
+export default function PageHeader({ title, subtitle, leading, logo, action, className = '' }: Props) {
   return (
-    <header className={`${styles.header} ${className}`}>
+    <header className={`${styles.header} ${logo ? styles.withLogo : ''} ${className}`}>
       <div className={styles.titleRow}>
         {leading}
+        {logo && (
+          <>
+            <img src={logoOnLight} alt={title ? '' : 'Hobbs'} className={`${styles.logo} ${styles.logoOnLight}`} />
+            <img src={logoOnDark} alt={title ? '' : 'Hobbs'} className={`${styles.logo} ${styles.logoOnDark}`} />
+          </>
+        )}
         {(title || subtitle) && (
           <div>
             {title && <h1 className={styles.title}>{title}</h1>}

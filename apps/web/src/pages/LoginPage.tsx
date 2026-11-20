@@ -28,6 +28,7 @@ export default function LoginPage() {
 
   return (
     <AuthShell
+      center
       title="Log in"
       footer={
         <>

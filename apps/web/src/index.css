@@ -38,6 +38,10 @@
   --radius: 12px;
   --radius-sm: 8px;
   --font-sans: 'Archivo Variable', system-ui, sans-serif;
+  /* Page headers (Feed, My flights...). */
+  --font-display: 'Rubik Variable', system-ui, sans-serif;
+  /* Page titles: navy in light mode, like the logo; the usual ink in dark mode. */
+  --title-ink: light-dark(var(--accent-light-mode), var(--ink));
   /* Numbers, times, tail numbers and airport codes: the text font with fixed-width digits
      (font-variant-numeric: tabular-nums wherever it's used), so columns of numbers line up.
      Archivo's zero is plain, without the dot a monospace font usually has. */

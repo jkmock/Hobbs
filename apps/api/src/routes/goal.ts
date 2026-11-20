@@ -18,7 +18,7 @@ export default async function goalRoutes(app: FastifyInstance) {
 
   const settings = async (userId: string) => {
     const [user, checkrides] = await Promise.all([
-      pool.query(`SELECT goal, goal_adjustments AS adjustments FROM users WHERE user_id = $1`, [userId]),
+      pool.query(`SELECT goal, goal_adjustments AS adjustments, atp_required_hours AS "atpRequiredHours" FROM users WHERE user_id = $1`, [userId]),
       pool.query(`SELECT ${CHECKRIDE_COLUMNS} FROM checkrides WHERE user_id = $1 ORDER BY passed_on`, [userId]),
     ]);
     return { ...user.rows[0], checkrides: checkrides.rows };
@@ -32,11 +32,11 @@ export default async function goalRoutes(app: FastifyInstance) {
     // Adjustments of 0 aren't kept.
     const adjustments = Object.fromEntries(Object.entries(body.data.adjustments).filter(([, n]) => n !== 0));
     const userId = getCurrentUserId(request);
-    await pool.query(`UPDATE users SET goal = $2, goal_adjustments = $3 WHERE user_id = $1`, [
-      userId,
-      body.data.goal,
-      JSON.stringify(adjustments),
-    ]);
+    await pool.query(
+      `UPDATE users SET goal = $2, goal_adjustments = $3, atp_required_hours = COALESCE($4, atp_required_hours)
+       WHERE user_id = $1`,
+      [userId, body.data.goal, JSON.stringify(adjustments), body.data.atpRequiredHours ?? null],
+    );
     return settings(userId);
   });
 

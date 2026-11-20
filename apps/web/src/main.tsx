@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from 'react-router'
 import '@fontsource-variable/archivo'
+import '@fontsource-variable/rubik'
 import '@fontsource/azeret-mono/400.css'
 import '@fontsource/azeret-mono/500.css'
 // Global styles before any component, so component CSS modules can override them.

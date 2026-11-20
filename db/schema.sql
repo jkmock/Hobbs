@@ -157,7 +157,7 @@ CREATE TABLE public.checkrides (
     visibility text DEFAULT 'public'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     removed_at timestamp with time zone,
-    CONSTRAINT checkrides_goal_check CHECK ((goal = ANY (ARRAY['sport'::text, 'private'::text, 'instrument'::text, 'commercial'::text, 'multi'::text]))),
+    CONSTRAINT checkrides_goal_check CHECK ((goal = ANY (ARRAY['sport'::text, 'private'::text, 'instrument'::text, 'commercial'::text, 'multi'::text, 'atp'::text]))),
     CONSTRAINT checkrides_removed_private CHECK (((removed_at IS NULL) OR (visibility = 'private'::text))),
     CONSTRAINT checkrides_visibility_check CHECK ((visibility = ANY (ARRAY['public'::text, 'private'::text])))
 );
@@ -404,15 +404,17 @@ CREATE TABLE public.users (
     avatar bytea,
     avatar_type text,
     avatar_updated_at timestamp with time zone,
-    goal text DEFAULT 'private'::text NOT NULL,
+    goal text,
     goal_adjustments jsonb DEFAULT '{}'::jsonb NOT NULL,
     banned_at timestamp with time zone,
     is_admin boolean DEFAULT false NOT NULL,
+    atp_required_hours smallint DEFAULT 1500 NOT NULL,
+    CONSTRAINT users_atp_required_hours_check CHECK ((atp_required_hours = ANY (ARRAY[1500, 1250, 1000, 750]))),
     CONSTRAINT users_avatar_check CHECK ((octet_length(avatar) <= 300000)),
     CONSTRAINT users_avatar_complete CHECK (((avatar IS NULL) = (avatar_type IS NULL))),
     CONSTRAINT users_avatar_type_check CHECK ((avatar_type = ANY (ARRAY['image/jpeg'::text, 'image/png'::text, 'image/webp'::text]))),
     CONSTRAINT users_goal_adjustments_check CHECK ((jsonb_typeof(goal_adjustments) = 'object'::text)),
-    CONSTRAINT users_goal_check CHECK ((goal = ANY (ARRAY['sport'::text, 'private'::text, 'instrument'::text, 'commercial'::text, 'multi'::text])))
+    CONSTRAINT users_goal_check CHECK ((goal = ANY (ARRAY['none'::text, 'sport'::text, 'private'::text, 'instrument'::text, 'commercial'::text, 'multi'::text, 'atp'::text])))
 );
 
 
@@ -1010,4 +1012,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20261117090000'),
     ('20261117130000'),
     ('20261117180000'),
-    ('20261117200000');
+    ('20261117200000'),
+    ('20261119160000');

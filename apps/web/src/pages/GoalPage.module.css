@@ -22,6 +22,12 @@
 
 /* The editor's cards: a goal picker or a column of number rows. */
 .editCard { gap: 8px; }
+/* The goal card's labels (Goal, and Required hours for ATP), as big as the other cards'
+   headings ("Your stats"). */
+.goalCard > :global(.field) > span { font-size: 18px; font-weight: 550; color: var(--ink); }
+.goalCard > :global(.field):not(:first-child) { margin-top: 8px; }
+/* The goal's total (Total time) in Your stats, in the same style. */
+.editCard .totalLabel { font-size: 18px; font-weight: 550; color: var(--ink); }
 .hint { font-size: 13px; color: var(--ink-2); }
 
 /* Checkride, at the bottom: the plan's name on the left, the button on the right. */

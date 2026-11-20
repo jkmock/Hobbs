@@ -46,6 +46,8 @@
 }
 
 .title {
+  font-family: var(--font-display);
+  color: var(--title-ink);
   font-size: 28px; /* the same as the other pages' titles (PageHeader) */
   font-weight: 680;
   letter-spacing: -0.02em;

@@ -27,7 +27,7 @@
   padding: 44px 16px 0;
   background: var(--paper);
 }
-.header h1 { font-size: 28px; font-weight: 680; letter-spacing: -0.02em; line-height: 1.15; }
+.header h1 { font-family: var(--font-display); color: var(--title-ink); font-size: 28px; font-weight: 680; letter-spacing: -0.02em; line-height: 1.15; }
 .headerActions { display: flex; gap: 4px; }
 
 /* Step indicator: four segments, filled up to the current step. */

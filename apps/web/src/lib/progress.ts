@@ -13,7 +13,7 @@ export type Requirement = {
   key: string
   label: string
   value: number
-  target: number
+  target?: number // none for No Specific Goal's totals: just the number, no bar
   unit: 'hours' | 'count'
 }
 
@@ -24,12 +24,15 @@ export type ProgressSection = {
 
 export type GoalProgress = { total: Requirement; sections: ProgressSection[] }
 
+// Choices that change what a goal asks for.
+export type GoalOptions = { atpRequiredHours: number } // ATP: 1500, or less for a restricted ATP
+
 export type Goal = {
   id: GoalId
   title: string // "Private Pilot"
   subtitle: string // the regulation
   earns: string // what passing the checkride earns: "Private Pilot certificate"
-  progress: (flights: Flight[], aircraft: Map<string, Aircraft>) => GoalProgress
+  progress: (flights: Flight[], aircraft: Map<string, Aircraft>, options: GoalOptions) => GoalProgress
 }
 
 // --- Measuring flights ---
@@ -66,12 +69,48 @@ function withinTwoMonths(isoDate: string): boolean {
 const instrument = (f: Flight) => f.actualInstrumentTime + f.simulatedInstrumentTime
 const fullStops = (f: Flight) => f.dayLandingsFs + f.nightLandingsFs
 
-const hours = (key: string, label: string, value: number, target: number): Requirement => ({ key, label, value, target, unit: 'hours' })
-const count = (key: string, label: string, value: number, target: number): Requirement => ({ key, label, value, target, unit: 'count' })
+const hours = (key: string, label: string, value: number, target?: number): Requirement => ({ key, label, value, target, unit: 'hours' })
+const count = (key: string, label: string, value: number, target?: number): Requirement => ({ key, label, value, target, unit: 'count' })
 
 // --- The goals ---
 
 export const GOALS: Goal[] = [
+  {
+    // No Specific Goal: the logbook's totals, with nothing to reach. Keys are shared with the
+    // goals that measure the same thing, so time set here carries over if a goal is picked later.
+    id: 'none',
+    title: 'No Specific Goal',
+    subtitle: 'Your logbook totals',
+    earns: '',
+    progress: (flights) => ({
+      total: hours('totalTime', 'Total time', sumHours(flights, (f) => f.totalTime)),
+      sections: [
+        {
+          title: 'Time',
+          items: [
+            hours('picTime', 'PIC', sumHours(flights, (f) => f.picTime)),
+            hours('sicTime', 'SIC', sumHours(flights, (f) => f.sicTime)),
+            hours('dualReceived', 'Dual received', sumHours(flights, (f) => f.dualReceivedTime)),
+            hours('soloTime', 'Solo', sumHours(flights, (f) => f.soloTime)),
+            hours('crossCountryTime', 'Cross-country', sumHours(flights, (f) => f.crossCountryTime)),
+            hours('nightTime', 'Night', sumHours(flights, (f) => f.nightTime)),
+            hours('actualInstrument', 'Actual instrument', sumHours(flights, (f) => f.actualInstrumentTime)),
+            hours('simulatedInstrument', 'Simulated instrument', sumHours(flights, (f) => f.simulatedInstrumentTime)),
+          ],
+        },
+        {
+          title: 'Landings and approaches',
+          items: [
+            count('dayFullStops', 'Day full-stop landings', flights.reduce((n, f) => n + f.dayLandingsFs, 0)),
+            count('dayTouchAndGoes', 'Day touch-and-goes', flights.reduce((n, f) => n + f.dayLandingsTg, 0)),
+            count('nightFullStops', 'Night full-stop landings', flights.reduce((n, f) => n + f.nightLandingsFs, 0)),
+            count('nightTouchAndGoes', 'Night touch-and-goes', flights.reduce((n, f) => n + f.nightLandingsTg, 0)),
+            count('instrumentApproaches', 'Instrument approaches', flights.reduce((n, f) => n + f.instrumentApproaches, 0)),
+          ],
+        },
+      ],
+    }),
+  },
   {
     id: 'private',
     title: 'Private Pilot',
@@ -224,6 +263,41 @@ export const GOALS: Goal[] = [
       return {
         total: hours('multiDual', 'Multi-engine training', sumHours(dual, (f) => f.dualReceivedTime), 10),
         sections: [],
+      }
+    },
+  },
+  {
+    id: 'atp',
+    title: 'Airline Transport Pilot',
+    subtitle: '14 CFR 61.159(a) · airplane',
+    earns: 'Airline Transport Pilot certificate',
+    progress: (flights, aircraft, options) => {
+      // 61.159(a)(3): 50 hours in the class of airplane the certificate is for. Most ATPs are
+      // multi-engine, so this counts multi-engine time.
+      const multi = flights.filter((f) => aircraft.get(f.aircraftId)?.aircraftClass === 'multi_engine_land')
+      return {
+        total: hours('totalTime', 'Total time', sumHours(flights, (f) => f.totalTime), options.atpRequiredHours),
+        sections: [
+          {
+            title: 'Flight time',
+            items: [
+              // A restricted ATP (fewer than 1500 hours, 61.160) asks for 200 hours of
+              // cross-country in place of 500.
+              hours('crossCountryTime', 'Cross-country', sumHours(flights, (f) => f.crossCountryTime), options.atpRequiredHours < 1500 ? 200 : 500),
+              hours('nightTime', 'Night', sumHours(flights, (f) => f.nightTime), 100),
+              hours('instrumentTime', 'Instrument', sumHours(flights, instrument), 75),
+              hours('multiTime', 'Multi-engine', sumHours(multi, (f) => f.totalTime), 50),
+            ],
+          },
+          {
+            title: 'Pilot in command',
+            items: [
+              hours('picTime', 'PIC time', sumHours(flights, (f) => f.picTime), 250),
+              hours('picCrossCountry', 'Cross-country as PIC', sumHours(flights, (f) => Math.min(f.crossCountryTime, f.picTime)), 100),
+              hours('picNight', 'Night as PIC', sumHours(flights, (f) => Math.min(f.nightTime, f.picTime)), 25),
+            ],
+          },
+        ],
       }
     },
   },

@@ -1,38 +1,138 @@
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAppleSignIn, useGoogleSignIn } from '../hooks/useAuth'
 import { isNative } from '../lib/native'
 import { wasCanceled } from '../lib/nativeAuth'
+import { useStatusBarColor } from '../lib/statusBar'
+import logo from '../assets/hobbs-long-logo-light.png'
 import styles from './AuthShell.module.css'
 
-// Shared frame for login, signup and setting a password: the logo and wordmark on top, then
-// one card holding everything else (title, the form, Google, and the link to the other screen).
+// The top of the background's navy gradient, for the bar above the page (Safari's toolbar).
+const GRADIENT_TOP = '#0A3354'
+
+// The login card's height, measured on the login screen. Sign up (and Set a password) put their
+// card's top where the login card's is, so going between them the card's top doesn't move.
+let loginCardHeight: number | null = null
+// The last card shown's height, for the next screen's card to grow or shrink from.
+let lastCardHeight: number | null = null
+const RESIZE_MS = 320
+// The least space above the logo (under the status bar and the iPhone's notch) and below it, for
+// a screen too short to center the card with the logo above it.
+const MIN_ABOVE = 56
+const MIN_BELOW = 32
+// The login card sits this far below the center of the screen, leaving more room for the logo.
+const BELOW_CENTER = 40
+// In the iOS app, the login screen fits the phone's screen without scrolling: the card's bottom
+// is as far from the bottom of the screen as its sides are from the sides (the page's padding),
+// and the logo fills the space above it, LOGO_SPACE from the top and from the card.
+const SIDE_GAP = 32
+const LOGO_SPACE = 40
+const LOGO_RATIO = 898 / 419 // the logo image's width / height
+const LOGO_MAX_WIDTH = 350
+
+// Shared frame for login, signup and setting a password: on a navy gradient, the Hobbs logo
+// (with its tagline) on top, then one card holding everything else (title, the form, Google, and the link to the other screen).
 // `google: false` leaves out Continue with Google (Set a password, already signed in with it).
 export default function AuthShell({
   title,
   children,
   footer,
   google = true,
+  center = false,
 }: {
   title: string
   children: ReactNode
   footer: ReactNode
   google?: boolean
+  center?: boolean // the login screen: its card is centered on the screen
 }) {
+  useStatusBarColor(GRADIENT_TOP)
+  const page = useRef<HTMLDivElement>(null)
+  const brand = useRef<HTMLDivElement>(null)
+  const logoImg = useRef<HTMLImageElement>(null)
+  const card = useRef<HTMLElement>(null)
+  // The last screen's card height, when this one opened (read once, so that StrictMode running
+  // the effect twice still animates).
+  const startHeight = useRef(lastCardHeight)
+
+  // The card's top: BELOW_CENTER under where a card the login card's height would be centered
+  // (lower on a short screen, to fit the logo). The logo is centered between the top of the page and the card. Set
+  // before the screen is drawn, and again whenever the screen or the card changes size.
+  //
+  // Going between login and sign up, the card grows or shrinks from the last screen's height to
+  // its own, as its contents fade in. (Its top stays put, so it grows downward.)
+  useLayoutEffect(() => {
+    const el = page.current
+    if (!el || !brand.current || !card.current) return
+    let animating = false // the card's height is mid-animation: not its own, so not measured
+    const place = () => {
+      if (animating) return
+      // Rounded up, so a card a fraction of a pixel taller never makes the page scroll.
+      lastCardHeight = Math.ceil(card.current!.getBoundingClientRect().height)
+      if (center) loginCardHeight = lastCardHeight
+      const height = loginCardHeight ?? card.current!.offsetHeight
+      if (isNative) {
+        // The card's top, for its bottom to sit SIDE_GAP from the bottom of the screen; the logo
+        // as big as fits above it (up to LOGO_MAX_WIDTH, and the page's width).
+        const top = Math.floor(el.clientHeight - height - SIDE_GAP)
+        const maxWidth = Math.min(LOGO_MAX_WIDTH, el.clientWidth - 2 * SIDE_GAP)
+        const logoHeight = Math.max(48, Math.min(maxWidth / LOGO_RATIO, top - 2 * LOGO_SPACE))
+        logoImg.current!.style.width = `${Math.floor(logoHeight * LOGO_RATIO)}px`
+        const logo = brand.current!.offsetHeight
+        const gap = Math.max(2 * 16, top - logo) // on a very short screen, it scrolls
+        const above = Math.floor(gap / 2)
+        el.style.paddingTop = `${above}px`
+        el.style.paddingBottom = `${SIDE_GAP}px`
+        brand.current!.style.marginBottom = `${gap - above}px`
+        return
+      }
+      const logo = brand.current!.offsetHeight
+      const top = Math.max(logo + MIN_ABOVE + MIN_BELOW, (el.clientHeight - height) / 2 + BELOW_CENTER)
+      const gap = Math.round(top - logo)
+      const above = Math.max(MIN_ABOVE, Math.round(gap / 2))
+      el.style.paddingTop = `${above}px`
+      brand.current!.style.marginBottom = `${gap - above}px`
+    }
+    const from = startHeight.current
+    place()
+    const to = lastCardHeight
+    let resize: Animation | undefined
+    if (from && from !== to && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      animating = true
+      resize = card.current.animate(
+        [
+          { height: `${from}px`, overflow: 'hidden' },
+          { height: `${to}px`, overflow: 'hidden' },
+        ],
+        { duration: RESIZE_MS, easing: 'cubic-bezier(0.33, 1, 0.68, 1)' },
+      )
+      for (const child of card.current.children) {
+        child.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: RESIZE_MS * 0.3, easing: 'ease-out', fill: 'backwards' })
+      }
+      resize.onfinish = () => {
+        animating = false
+        place()
+      }
+    }
+    const observer = new ResizeObserver(place)
+    observer.observe(el)
+    observer.observe(card.current)
+    observer.observe(brand.current)
+    return () => {
+      observer.disconnect()
+      resize?.cancel()
+    }
+  }, [center])
+
   return (
-    <div className={`page ${styles.shell}`}>
-      <div className={styles.brand}>
-        <span className={styles.meter} aria-hidden>
-          {'0042'.split('').map((digit, i) => (
-            <span key={i}>{digit}</span>
-          ))}
-          <span className={styles.tenths}>7</span>
-        </span>
-        <p className={styles.wordmark}>Hobbs</p>
-        <p className="muted">The logbook for student pilots</p>
+    <div ref={page} className={`page ${styles.shell}`}>
+      {/* The gradient fills the whole screen, under the status bar too. */}
+      <div className={styles.backdrop} aria-hidden />
+      <div ref={brand} className={styles.brand}>
+        <img ref={logoImg} src={logo} width={898} height={419} alt="Hobbs: The social app for pilots" className={styles.logo} />
       </div>
 
-      <section className={`card ${styles.card}`}>
+      <section ref={card} className={`card ${styles.card}`}>
         <h1 className={styles.title}>{title}</h1>
         {children}
 

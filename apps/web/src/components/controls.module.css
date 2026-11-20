@@ -150,6 +150,7 @@
   cursor: pointer;
 }
 .selectValue { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.selectPlaceholder { color: var(--ink-3); }
 .selectChevron { flex-shrink: 0; color: var(--ink-2); transition: transform 0.15s ease; }
 .selectChevron[data-open] { transform: rotate(180deg); }
 
@@ -171,6 +172,8 @@
   /* Shows the instant it's opened, and just goes when it closes: no animation either way. */
 }
 .selectList[data-above] { top: auto; bottom: calc(100% + 6px); }
+/* showAll: every option shows, without scrolling. */
+.selectList.selectListAll { max-height: none; overflow-y: visible; }
 
 .selectOption {
   display: flex;

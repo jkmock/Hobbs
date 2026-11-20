@@ -345,15 +345,17 @@ type SelectProps = {
   options: SelectOption[]
   onChange: (value: string) => void
   action?: { label: string; onSelect: () => void }
+  placeholder?: string // shown, muted, while no option is picked
+  showAll?: boolean // the list is as tall as all its options, with no scrolling (short lists)
 }
 
 // How long a picked option's press-and-pop shows before the list goes.
 const PICK_HOLD_MS = 140
 
-export function Select({ label, value, options, onChange, action }: SelectProps) {
+export function Select({ label, value, options, onChange, action, placeholder, showAll = false }: SelectProps) {
   const [open, setOpen] = useState(false)
   const [above, setAbove] = useState(false)
-  const [active, setActive] = useState(0) // highlighted row, for the keyboard
+  const [active, setActive] = useState(0) // highlighted row, for the keyboard (-1: none yet)
   const ref = useRef<HTMLDivElement>(null)
   const toggledByPointer = useRef(false) // the click after a touch: already opened (or closed) by it
   const id = useId()
@@ -366,10 +368,12 @@ export function Select({ label, value, options, onChange, action }: SelectProps)
   const selected = options.find((o) => o.value === value)
 
   const show = () => {
-    // Opens upward when the list (up to 280px) wouldn't fit under the button.
+    // Opens upward when the list (up to 280px, or all its 44px rows) wouldn't fit under the button.
     const box = ref.current?.getBoundingClientRect()
-    setAbove(!!box && window.innerHeight - box.bottom < 300 && box.top > window.innerHeight - box.bottom)
-    setActive(Math.max(0, options.findIndex((o) => o.value === value)))
+    const listHeight = showAll ? rows * 44 + 14 : 280
+    setAbove(!!box && window.innerHeight - box.bottom < listHeight + 20 && box.top > window.innerHeight - box.bottom)
+    // The picked option, or nothing highlighted while none is picked (a placeholder showing).
+    setActive(options.findIndex((o) => o.value === value))
     clearTimeout(leaveTimer.current)
     setOpen(true)
   }
@@ -391,7 +395,9 @@ export function Select({ label, value, options, onChange, action }: SelectProps)
     }
     if (e.key === 'ArrowDown') setActive((a) => Math.min(rows - 1, a + 1))
     else if (e.key === 'ArrowUp') setActive((a) => Math.max(0, a - 1))
-    else if (e.key === 'Enter' || e.key === ' ') pick(active)
+    else if (e.key === 'Enter' || e.key === ' ') {
+      if (active >= 0) pick(active)
+    }
     else if (e.key === 'Tab') return close()
     else return
     e.preventDefault()
@@ -407,7 +413,7 @@ export function Select({ label, value, options, onChange, action }: SelectProps)
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-labelledby={`${id}-label ${id}-value`}
-          aria-activedescendant={open ? `${id}-${active}` : undefined}
+          aria-activedescendant={open && active >= 0 ? `${id}-${active}` : undefined}
           // Opens (or closes) the moment it's touched, not when the finger lifts.
           onPointerDown={(e) => {
             if (e.button !== 0) return
@@ -428,13 +434,13 @@ export function Select({ label, value, options, onChange, action }: SelectProps)
           onKeyDown={onKeyDown}
         >
           {selected?.leading}
-          <span id={`${id}-value`} className={styles.selectValue}>
-            {selected?.label ?? ''}
+          <span id={`${id}-value`} className={`${styles.selectValue} ${selected ? '' : styles.selectPlaceholder}`}>
+            {selected?.label ?? placeholder ?? ''}
           </span>
           <ChevronDown size={18} className={styles.selectChevron} data-open={open || undefined} aria-hidden />
         </button>
         {open && (
-          <ul className={styles.selectList} role="listbox" aria-labelledby={`${id}-label`} data-above={above || undefined}>
+          <ul className={`${styles.selectList} ${showAll ? styles.selectListAll : ''}`} role="listbox" aria-labelledby={`${id}-label`} data-above={above || undefined}>
             {options.map((option, i) => (
               <li
                 key={option.value}

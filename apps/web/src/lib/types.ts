@@ -1,4 +1,4 @@
-import type { GoalId } from '@hobbs/shared'
+import type { CheckrideGoalId } from '@hobbs/shared'
 
 // Shapes of the JSON the API sends back. Request bodies use the Zod types
 // from @hobbs/shared instead (e.g. CreateFlight).
@@ -96,7 +96,7 @@ export type FeedFlight = Flight & { pilotId: string; pilot: Person }
 // Lists include its props and comments counts, as for flights.
 export type Checkride = {
   id: string
-  goal: GoalId
+  goal: CheckrideGoalId
   passedOn: string
   visibility: 'public' | 'private'
   removed?: boolean // removed by an admin after a report: private for good

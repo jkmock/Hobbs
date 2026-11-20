@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Award, Check } from 'lucide-react'
-import type { GoalId } from '@hobbs/shared'
+import type { AtpRequiredHours, CheckrideGoalId, GoalId } from '@hobbs/shared'
 import PageHeader from '../components/PageHeader'
 import ProgressBar from '../components/ProgressBar'
 import PageLoading from '../components/PageLoading'
@@ -17,7 +17,15 @@ import type { Aircraft, Checkride, Flight } from '../lib/types'
 import listStyles from '../components/FlightList.module.css'
 import styles from './GoalPage.module.css'
 
-const DEFAULT_SETTINGS: GoalSettings = { goal: 'private', adjustments: {}, checkrides: [] }
+const DEFAULT_SETTINGS: GoalSettings = { goal: null, adjustments: {}, atpRequiredHours: 1500, checkrides: [] }
+
+// The ATP goal's Required hours: 1500, or less for a restricted ATP (14 CFR 61.160).
+const ATP_HOURS_OPTIONS: { value: AtpRequiredHours; label: string }[] = [
+  { value: 1500, label: '1500 (Default)' },
+  { value: 1250, label: '1250 (Aviation Associates Degree)' },
+  { value: 1000, label: '1000 (Aviation Bachelors Degree)' },
+  { value: 750, label: '750 (Military Pilot)' },
+]
 
 // Progress toward the certificate or rating you're working on, worked out from your flights
 // plus any adjustments you've made (Update: time logged before Hobbs, or a different goal), and
@@ -29,11 +37,16 @@ export default function GoalPage() {
   const [editing, setEditing] = useState(false)
 
   const settings = goalSettings.data ?? DEFAULT_SETTINGS
-  const goal = goalById(settings.goal)
+  const goal = goalById(settings.goal ?? 'none')
   const aircraft = useMemo(() => new Map(myAircraft.map((a) => [a.id, a])), [myAircraft])
-  const { total, sections } = adjusted(goal.progress(flights, aircraft), settings.adjustments)
+  const { total, sections } = adjusted(goal.progress(flights, aircraft, { atpRequiredHours: settings.atpRequiredHours }), settings.adjustments)
   const loading = isPending || goalSettings.isPending
+  const known = goalSettings.data?.goal != null // the goal, loaded and set
 
+  // A new account has no goal yet: Set Your Goal, in place of the page.
+  if (!loading && goalSettings.data && settings.goal === null) {
+    return <GoalEditor setup settings={settings} flights={flights} aircraft={aircraft} onDone={() => setEditing(false)} />
+  }
   if (editing && !loading) {
     return <GoalEditor settings={settings} flights={flights} aircraft={aircraft} onDone={() => setEditing(false)} />
   }
@@ -41,8 +54,9 @@ export default function GoalPage() {
   return (
     <>
       <PageHeader
-        title={goal.title}
-        subtitle={goal.subtitle}
+        // Blank (a non-breaking space, so the header keeps its height) until the goal has loaded.
+        title={known ? goal.title : '\u00a0'}
+        subtitle={known ? goal.subtitle : '\u00a0'}
         className={listStyles.topHeader}
         action={
           !loading && (
@@ -75,10 +89,13 @@ export default function GoalPage() {
               </section>
             ))}
 
-            <CheckrideCard
-              goalId={goal.id}
-              passed={settings.checkrides.find((c) => c.goal === goal.id)}
-            />
+            {/* No Specific Goal has no checkride. */}
+            {goal.id !== 'none' && (
+              <CheckrideCard
+                goalId={goal.id}
+                passed={settings.checkrides.find((c) => c.goal === goal.id)}
+              />
+            )}
           </>
         )}
       </div>
@@ -112,7 +129,7 @@ function scrollAlong(el: HTMLElement, by: number) {
   requestAnimationFrame(step)
 }
 
-function CheckrideCard({ goalId, passed }: { goalId: GoalId; passed: Checkride | undefined }) {
+function CheckrideCard({ goalId, passed }: { goalId: CheckrideGoalId; passed: Checkride | undefined }) {
   const goal = goalById(goalId)
   const logCheckride = useLogCheckride()
   const removeCheckride = useRemoveCheckride()
@@ -305,46 +322,60 @@ function CheckrideCard({ goalId, passed }: { goalId: GoalId; passed: Checkride |
   )
 }
 
+// The goals in the picker: the certificates and ratings, then No Specific Goal.
+const GOAL_OPTIONS = [...GOALS.filter((g) => g.id !== 'none'), ...GOALS.filter((g) => g.id === 'none')].map((g) => ({
+  value: g.id,
+  label: g.title,
+}))
+
 // Update: pick the goal, and set any stat by hand (each starts at what it shows now). What's
 // set is saved as the difference from what the flights add up to, so flights logged later
 // still add to it.
+//
+// Set Your Goal (`setup`, a new account with no goal yet) is the same, except nothing is picked
+// to start with: the stats show once a goal is. There's no Cancel. Saving shows the goal's progress, as Update does.
 function GoalEditor({
   settings,
   flights,
   aircraft,
   onDone,
+  setup = false,
 }: {
   settings: GoalSettings
   flights: Flight[]
   aircraft: Map<string, Aircraft>
   onDone: () => void
+  setup?: boolean
 }) {
   const save = useSaveGoal()
-  const [goalId, setGoalId] = useState(settings.goal)
+  const [goalId, setGoalId] = useState<GoalId | null>(settings.goal)
+  const [atpRequiredHours, setAtpRequiredHours] = useState(settings.atpRequiredHours)
   // Typed values by stat key; a stat not typed in shows what it shows now.
   const [values, setValues] = useState<Record<string, string>>({})
 
-  const goal = goalById(goalId)
-  const computed = goal.progress(flights, aircraft)
+  const goal = goalById(goalId ?? 'none')
+  const computed = goal.progress(flights, aircraft, { atpRequiredHours })
   const shown = adjusted(computed, settings.adjustments)
   const all = (p: GoalProgress) => [p.total, ...p.sections.flatMap((s) => s.items)]
   const shownValue = new Map(all(shown).map((r) => [r.key, r.value]))
   const valueOf = (r: Requirement) => values[r.key] ?? format(r, shownValue.get(r.key) ?? 0)
 
   const submit = () => {
+    if (!goalId) return
     const adjustments = { ...settings.adjustments }
     for (const r of all(computed)) {
       const entered = Number(valueOf(r))
       if (!Number.isFinite(entered) || entered < 0) continue
       adjustments[r.key] = Math.round((entered - r.value) * 10) / 10
     }
-    save.mutate({ goal: goalId, adjustments }, { onSuccess: onDone })
+    save.mutate({ goal: goalId, adjustments, atpRequiredHours }, { onSuccess: onDone })
   }
 
-  const field = (r: Requirement) => (
+  const field = (r: Requirement, labelClassName?: string) => (
     <Stepper
       key={r.key}
       label={r.label}
+      labelClassName={labelClassName}
       value={valueOf(r)}
       step={r.unit === 'hours' ? 0.1 : 1}
       max={99999}
@@ -355,14 +386,16 @@ function GoalEditor({
   return (
     <>
       <PageHeader
-        title="Update goal"
+        title={setup ? 'Set Your Goal' : 'Update Goal'}
         className={listStyles.topHeader}
         action={
           <>
-            <button type="button" className="btn btn--ghost" onClick={onDone} disabled={save.isPending}>
-              Cancel
-            </button>
-            <button type="button" className="btn btn--primary" onClick={submit} disabled={save.isPending}>
+            {!setup && (
+              <button type="button" className="btn btn--ghost" onClick={onDone} disabled={save.isPending}>
+                Cancel
+              </button>
+            )}
+            <button type="button" className="btn btn--primary" onClick={submit} disabled={save.isPending || !goalId}>
               {save.isPending ? 'Saving…' : 'Save'}
             </button>
           </>
@@ -370,27 +403,41 @@ function GoalEditor({
       />
       <div className="page">
         {save.error && <p className="error-text">{save.error.message}</p>}
-        <section className={`card ${styles.card} ${styles.editCard}`}>
+        <section className={`card ${styles.card} ${styles.editCard} ${styles.goalCard}`}>
           <Select
             label="Goal"
-            value={goalId}
+            value={goalId ?? ''}
+            placeholder="Choose a goal"
+            showAll
             onChange={(id) => setGoalId(id as GoalId)}
-            options={GOALS.map((g) => ({ value: g.id, label: g.title }))}
+            options={GOAL_OPTIONS}
           />
-          <p className={styles.hint}>{goal.subtitle}</p>
+          <p className={styles.hint}>{goalId ? goal.subtitle : 'What are you working toward? You can change it any time.'}</p>
+          {goalId === 'atp' && (
+            <Select
+              label="Required hours"
+              value={String(atpRequiredHours)}
+              onChange={(v) => setAtpRequiredHours(Number(v) as AtpRequiredHours)}
+              options={ATP_HOURS_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))}
+            />
+          )}
         </section>
 
-        <section className={`card ${styles.card} ${styles.editCard}`}>
-          <h2>Your stats</h2>
-          <p className={styles.hint}>Set any of these to include time from before Hobbs. Flights you log later still add to them.</p>
-          {field(shown.total)}
-        </section>
-        {shown.sections.map((section) => (
-          <section key={section.title} className={`card ${styles.card} ${styles.editCard}`}>
-            <h2>{section.title}</h2>
-            {section.items.map(field)}
-          </section>
-        ))}
+        {goalId && (
+          <>
+            <section className={`card ${styles.card} ${styles.editCard}`}>
+              <h2>Your stats</h2>
+              <p className={styles.hint}>Set any of these to include time from before Hobbs. Flights you log later will add to them.</p>
+              {field(shown.total, styles.totalLabel)}
+            </section>
+            {shown.sections.map((section) => (
+              <section key={section.title} className={`card ${styles.card} ${styles.editCard}`}>
+                <h2>{section.title}</h2>
+                {section.items.map((r) => field(r))}
+              </section>
+            ))}
+          </>
+        )}
       </div>
     </>
   )

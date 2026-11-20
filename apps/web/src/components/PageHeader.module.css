@@ -9,6 +9,11 @@
 }
 .header + :global(.page) { padding-top: 8px; }
 
+/* The logo is taller than the buttons: they're centered on it. The header gives back half the
+   difference (46px logo, 38px button) above and below, so the button and the page below it sit
+   where they do on the other pages. */
+.withLogo { align-items: center; margin-block: -4px; }
+
 .titleRow {
   display: flex;
   align-items: center;
@@ -17,6 +22,8 @@
 }
 
 .title {
+  font-family: var(--font-display);
+  color: var(--title-ink);
   font-size: 28px;
   font-weight: 680;
   letter-spacing: -0.02em;
@@ -33,4 +40,14 @@
   flex-shrink: 0;
   display: flex;
   gap: 4px;
+}
+
+/* The Hobbs logo, left of a title (the Feed): navy in light mode, white in dark mode. */
+.logo { display: block; height: 46px; width: auto; margin-left: 10px; }
+.logoOnDark { display: none; }
+:root[data-theme='dark'] .logoOnLight { display: none; }
+:root[data-theme='dark'] .logoOnDark { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .logoOnLight { display: none; }
+  :root:not([data-theme='light']) .logoOnDark { display: block; }
 }

@@ -1,24 +1,37 @@
 import { useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query'
-import type { GoalId } from '@hobbs/shared'
+import type { AtpRequiredHours, CheckrideGoalId, GoalId } from '@hobbs/shared'
 import { api } from '../lib/api'
 import type { Checkride } from '../lib/types'
 import { todayIso } from '../lib/format'
 
-export type GoalSettings = { goal: GoalId; adjustments: Record<string, number>; checkrides: Checkride[] }
+// goal is null until the pilot sets one (a new account): the Goal tab asks them to.
+// atpRequiredHours: the total time the ATP goal asks for (1500, or less for a restricted ATP).
+export type GoalSettings = {
+  goal: GoalId | null
+  adjustments: Record<string, number>
+  atpRequiredHours: AtpRequiredHours
+  checkrides: Checkride[]
+}
 
 const GOAL_KEY = ['goal']
+
+// Required hours is 1500 (the default) when the API leaves it out (one from before it existed).
+const withDefaults = (s: GoalSettings): GoalSettings => ({ ...s, atpRequiredHours: s.atpRequiredHours ?? 1500 })
 
 // The Goal tab's settings: the goal, the pilot's adjustments to its stats, and the checkrides
 // they've passed.
 export function useGoal() {
-  return useQuery({ queryKey: GOAL_KEY, queryFn: () => api<GoalSettings>('/goal') })
+  return useQuery({
+    queryKey: GOAL_KEY,
+    queryFn: () => api<GoalSettings>('/goal').then(withDefaults),
+  })
 }
 
 export function useSaveGoal() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: Pick<GoalSettings, 'goal' | 'adjustments'>) => api<GoalSettings>('/goal', { method: 'PUT', body }),
-    onSuccess: (saved) => queryClient.setQueryData(GOAL_KEY, saved),
+    mutationFn: (body: { goal: GoalId; adjustments: Record<string, number>; atpRequiredHours: AtpRequiredHours }) => api<GoalSettings>('/goal', { method: 'PUT', body }),
+    onSuccess: (saved) => queryClient.setQueryData(GOAL_KEY, withDefaults(saved)),
   })
 }
 
@@ -27,10 +40,10 @@ export function useSaveGoal() {
 export function useLogCheckride() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { goal: GoalId; visibility: 'public' | 'private' }) =>
+    mutationFn: (body: { goal: CheckrideGoalId; visibility: 'public' | 'private' }) =>
       api<GoalSettings>('/checkrides', { method: 'POST', body: { ...body, passedOn: todayIso() } }),
     onSuccess: (saved) => {
-      queryClient.setQueryData(GOAL_KEY, saved)
+      queryClient.setQueryData(GOAL_KEY, withDefaults(saved))
       // 'all' so My flights reloads even while its tab is in the background.
       queryClient.invalidateQueries({ queryKey: ['flights', 'pages'], refetchType: 'all' })
       queryClient.invalidateQueries({ queryKey: ['feed'] })
@@ -64,7 +77,7 @@ export function useRemoveCheckride() {
   return useMutation({
     mutationFn: (id: string) => api<GoalSettings>(`/checkrides/${id}`, { method: 'DELETE' }),
     onSuccess: (saved) => {
-      queryClient.setQueryData(GOAL_KEY, saved)
+      queryClient.setQueryData(GOAL_KEY, withDefaults(saved))
       queryClient.invalidateQueries({ queryKey: ['flights', 'pages'] })
       queryClient.invalidateQueries({ queryKey: ['feed'] })
     },
